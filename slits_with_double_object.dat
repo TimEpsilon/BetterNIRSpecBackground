@@ -1,0 +1,41 @@
+# Pointing  Disperser  Central_target  Companion
+ 4            prism          386         35134        X  below bright
+ 4            prism          757         19565	Y     # Long 6-shutter slit.
+ 4            prism         5674         22842	X  below probably erased
+ 4            prism        19960          9743	Y
+ 4            prism        17699          8656	X  17699 above, very affected by contaminant 8656; 1-shutter apart
+ 4            Mgrat          386         35134	X  below bright
+ 4            Mgrat          613         22310	X  below
+ 5            prism         9141         30152	Y  30152 above, probably erased
+ 5            Mgrat           76         13348	Y
+ 7            prism        10685         24686	X  10685 is the top one   #  Long 6-shutter slit.
+ 7            prism         2962         28042	Y
+ 8            prism        22247         14589	X  below faint
+ 8            prism        37988         37993	Y  Were swapped, but now corrected
+ 8            prism         8997         37597	X  above, affected by main target; 1-shutter apart
+ 8            prism         1378          1381	Y  1-shutter apart
+ 8            prism        16772         40571	Y
+ 8            Mgrat        37597          8997	X  below bright
+ 9            prism         3765          8735
+ 9            prism         3929          3928
+ 9            Mgrat         3535         27182	X  below with faint lines   #  Long 6-shutter slit.
+ 9            Mgrat         3929          3928	Y  3928 above
+10            prism        42683         14904
+10            prism         8656         17699
+10            prism        17695          1779
+10            Mgrat         1374          1376	X  below faint, affected by main source
+10            Mgrat        41330         41323	Y
+11            prism          549         30308	X  above bright
+11            prism         2549          9076	Y
+11            prism         3480          4696	X  below, strongly affected by main source
+11            prism          603         28944	X  above bright
+11            prism        21913         36641	X  below with lines
+11            prism        40971         26509	Y   #  Long 6-shutter slit.
+11            prism        83534         24977	X  24977 should be 1 shutter below, but it is strongly affected by the companion
+11            prism        80954         80955	Y
+11            prism         8105         85626	Y  Were swapped, but now corrected
+11            prism        85630         85634	X  85630 is above
+11            prism         8045         83582	Y  Were swapped, but now corrected
+12            prism         3971         82049	X  below faint, strongly affected by the main source
+12            prism        82167         82168	X  below with some lines; 1-shutter apart
+12            prism         1211         15972	Y  1-shutter apart
