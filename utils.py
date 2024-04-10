@@ -40,25 +40,6 @@ Slitlet model : 3 gaussians of same sigma
 def slitletModel(x,x1,x2,x3,A1,A2,A3,s):
     return gaussian(x,x1,A1,s) + gaussian(x,x2,A2,s) + gaussian(x,x3,A3,s)
 
-"""
-Returns the sub-pixel peaks
-"""
-def getPeaksPrecise(x,y,peaks):
-    coeff, err, info, msg, ier = cfit(slitletModel, x, y, p0=[*peaks,*y[peaks],0.5],full_output=True)
-    return np.array(coeff[:3])
-
-"""
-Returns slices for a set of peaks
-"""
-def getPeakSlice(peaks,imin,imax):
-	d1 = (peaks[1] - peaks[0])/2
-	d2 = (peaks[2] - peaks[1])/2
-
-	xmin = np.array([round(max(imin,peaks[0]-d1)),round(peaks[1]-d1),round(peaks[2]-d2)])
-	xmax = np.array([round(peaks[0]+d1), round(peaks[1]+d2), round(min(imax,peaks[2]+d2))])
-
-	return np.array([xmin,xmax]).T
-
 
 def IDWExtrapolation(xy, ui, power=1):
 	"""

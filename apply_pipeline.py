@@ -7,120 +7,12 @@ from jwst.pipeline import Detector1Pipeline
 from jwst.pipeline import Spec2Pipeline
 from jwst.pipeline import Spec3Pipeline
 from glob import glob
-from astropy.io import fits
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.signal import find_peaks_cwt
+
+from utils import logConsole
 
 from jwst.master_background import MasterBackgroundMosStep as BkgMosStep
 import stdatamodels.jwst.datamodels as dm
-
-from utils import *
-
-
-"""
- Creates a _bkg file from a _srctype file
-"""
-def BetterBackground(name):
-	# 1st draft Algorithm :	
-	multi_hdu = fits.open(name)
-
-	# For a given _srctype, for every SCI inside
-	for i,hdu in enumerate(multi_hdu):
-		if not hdu.name == 'SCI':
-			continue
-		hdr = hdu.header
-		data = np.ma.array(hdu.data, mask=np.isnan(hdu.data))
-
-		shutter_id = WhichShutterOpen(hdr)
-		if shutter_id == None:
-			continue
-
-		# Get vertical cross section by summing horizontally
-		horiz_sum = np.mean(data,axis=1)
-
-		# Determine 3 maxima for 3 slits
-		peaks = []
-		j = 2
-		while not len(peaks) == 3:
-			if j > 6:
-				break
-			peaks = find_peaks_cwt(horiz_sum,j)
-			j += 1
-		if not len(peaks) == 3:
-			continue
-		peaks = np.sort(getPeaksPrecise(range(len(horiz_sum)),horiz_sum,peaks))
-
-		# Cut horizontally at midpoint between maxima -> 3 strips
-		slice_indices = getPeakSlice(peaks,0,len(horiz_sum))
-
-		# Get 2 background strips
-		#TODO : Flag main slit and outside bkg slits, interpolate those values, substract this new image
-		src = data[slice_indices[shutter_id][0]:slice_indices[shutter_id][1],:]
-		bkg1 = data[slice_indices[shutter_id-1][0]:slice_indices[shutter_id-1][1],:]
-		bkg2 = data[slice_indices[shutter_id-2][0]:slice_indices[shutter_id-2][1],:]
-
-
-		# Determine non background sources : sudden spikes, high correlation with source strip -> flag pixels
-		# TODO : Better background detection
-		threshold = 0.3
-		mask1 = bkg1 > bkg1.min() + (bkg1.max() - bkg1.min())*threshold
-		mask2 = bkg2 > bkg2.min() + (bkg2.max() - bkg2.min())*threshold
-
-		bkg1_keep = np.ma.array(bkg1,mask=mask1,fill_value=np.nan)
-		bkg2_keep = np.ma.array(bkg2,mask=mask2,fill_value=np.nan)
-
-		height = min(bkg1_keep.shape[0],bkg2_keep.shape[0])
-		print(height,data.shape[0],slice_indices[0][1]-slice_indices[1][1])
-
-		bkg_master = np.ma.dstack((bkg1_keep[:height,:],bkg2_keep[:height,:])).mean(axis=2)
-		mask_master = np.ma.getmask(bkg_master)
-
-
-		# Remove pixels + interpolate on a given strip (ignore source strip)
-		non_nan = np.where(np.logical_not(mask_master))
-		x = non_nan[0]
-		y = non_nan[1]
-		z = bkg_master[non_nan]
-
-		interp = NNExtrapolation(np.c_[x, y], z)
-		
-		X = np.arange(bkg_master.shape[0])
-		Y = np.arange(bkg_master.shape[1])
-		YY,XX = np.meshgrid(Y,X)
-		bkg_interp = interp(XX,YY)
-
-		
-
-		plt.figure()
-
-		plt.subplot(4,1,1)
-		plt.title("Background 1")
-		plt.imshow(bkg1,interpolation='none',vmin=bkg1.min(),vmax=bkg1.max())
-		plt.subplot(4,1,2)
-		plt.title("Background 2")
-		plt.imshow(bkg2,interpolation='none',vmin=bkg2.min(),vmax=bkg2.max())
-		plt.subplot(4,1,3)
-		plt.title("Master Background")
-		plt.imshow(bkg_master,interpolation='none',vmin=bkg1.min(),vmax=bkg1.max())
-		plt.subplot(4,1,4)
-		plt.title("Inverse Distance Weighting")
-		interp = IDWExtrapolation(np.c_[x,y], z, power = 8)
-		bkg_interp = interp(XX,YY)
-		plt.imshow(bkg_interp,interpolation='none',vmin=bkg1.min(),vmax=bkg1.max())
-
-		plt.savefig(str(i)+".png")
-		plt.close()
-		
-	multi_hdu.close()
-
-	return multi_hdu
-
-
-BetterBackground("jw01345063001_03101_00001_nrs1_srctype.fits")
-
-exit()
-
 
 
 working_dir = "./mastDownload/JWST/"
@@ -171,9 +63,9 @@ for folder in os.listdir(working_dir):
                          # The expansion factor for the enclosing circles
                          # or ellipses.
                          'expand_factor': 2.0},
+                         'maximum_cores': 'half'
                 }
 		det1 = Detector1Pipeline(steps=steps)
-		det1.jump.maximum_cores='half'
 		det1.ramp_fit.maximum_cores='half'
 		det1.save_results = True
 		det1.output_dir = path

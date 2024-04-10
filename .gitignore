@@ -1,0 +1,7 @@
+# Ignore Data folders
+/mastDownload/
+/.ipynb_checkpoints/
+/__pycache__/
+
+# Ignore Images
+*.png
