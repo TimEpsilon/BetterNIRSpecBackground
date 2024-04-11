@@ -2,6 +2,7 @@
 /mastDownload/
 /.ipynb_checkpoints/
 /__pycache__/
+/.idea/
 
 # Ignore Images
 *.png

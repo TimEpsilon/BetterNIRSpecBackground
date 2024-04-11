@@ -5,6 +5,8 @@ from scipy.signal import find_peaks_cwt
 
 from utils import *
 
+import matplotlib
+matplotlib.rcParams['interactive'] == True
 
 
 def BetterBackgroundStep(name,threshold=0.3):
@@ -20,15 +22,17 @@ def BetterBackgroundStep(name,threshold=0.3):
 	 	1 being no pixels removed, 0 being every pixel removed
 	"""
 	if not "_srctype" in name:
-		logConsole(f"{name.split("/")[-1]} not a _srctype file. Skipping...")
+		logConsole(f"{name.split('/')[-1]} not a _srctype file. Skipping...",source="WARNING")
 		pass
 
 	# 1st draft Algorithm :	
-	logConsole(f"Starting Custom Bakcground Substraction on {name.split("/")[-1]}")
+	logConsole(f"Starting Custom Bakcground Substraction on {name.split('/')[-1]}",source="BetterBackground")
 	multi_hdu = fits.open(name)
 
 	# For a given _srctype, for every SCI inside
 	for i,hdu in enumerate(multi_hdu):
+		if not i == 283:
+			continue 
 		if not hdu.name == 'SCI':
 			continue
 		hdr = hdu.header
@@ -40,95 +44,107 @@ def BetterBackgroundStep(name,threshold=0.3):
 		if shutter_id == None:
 			continue
 
-		logConsole(f"Extension {i} is SCI. Open shutter is {shutter_id+1}")
+		logConsole(f"Extension {i} is SCI. Open shutter is {shutter_id+1}",source="BetterBackground")
 
 		slice_indices = SelectSlice(data)
 
-		# Get 2 background strips
-		bkg1 = data[slice_indices[shutter_id-1][0]:slice_indices[shutter_id-1][1],:]
-		bkg2 = data[slice_indices[shutter_id-2][0]:slice_indices[shutter_id-2][1],:]
+		if np.any(slice_indices == None):
+			logConsole("Can't find 3 spectra. Skipping",source="WARNING")
+			continue
+
+		bkg_slice = []
+		master_background = []
+		bkg_interp = []
+		for j in range(2):
+			# Get 2 background strips
+			bkg_slice.append(data[slice_indices[shutter_id-j-1][0]:slice_indices[shutter_id-j-1][1],:])
 
 
-		# Determine non background sources : sudden spikes, high correlation with source strip, etc -> flag pixels
-		# TODO : Better background detection
-		mask1 = bkg1 > bkg1.min() + (bkg1.max() - bkg1.min())*threshold
-		mask2 = bkg2 > bkg2.min() + (bkg2.max() - bkg2.min())*threshold
-
-		mask1 = np.logical_or(mask1, bkg1 == np.nan)
-		mask2 = np.logical_or(mask2, bkg2 == np.nan)
-
-		bkg1_keep = np.ma.array(bkg1,mask=mask1,fill_value=np.nan)
-		bkg2_keep = np.ma.array(bkg2,mask=mask2,fill_value=np.nan)
-
-		master_background = [bkg1_keep,bkg2_keep]
-
+			bkg_interp.append(SubstractSignalToBackground(bkg_slice[j],threshold))
+			
 
 		# Remove pixels + interpolate on a given strip (ignore source strip)
-		bkg_interp = []
+		new_bkg = np.copy(data)
+		new_bkg[:,:] = np.nan
 
-		for bkg in master_background:
-			mask_bkg = np.ma.getmask(bkg)
-			non_nan = np.where(np.logical_not(mask_bkg))
-			x = non_nan[0]
-			y = non_nan[1]
-			z = bkg[non_nan]
+		new_bkg[slice_indices[shutter_id-1][0]:slice_indices[shutter_id-1][1],:] = bkg_interp[0]
+		new_bkg[slice_indices[shutter_id-2][0]:slice_indices[shutter_id-2][1],:] = bkg_interp[1]
 
-			interp = IDWExtrapolation(np.c_[x, y], z, power=10)
-			
-			X = np.arange(bkg.shape[0])
-			Y = np.arange(bkg.shape[1])
-			YY,XX = np.meshgrid(Y,X)
-			bkg_interp.append(interp(XX,YY))
-
-		new_data = np.copy(data)
-		new_data[:,:] = np.nan
-
-		new_data[slice_indices[shutter_id-1][0]:slice_indices[shutter_id-1][1],:] = bkg_interp[0]
-		new_data[slice_indices[shutter_id-2][0]:slice_indices[shutter_id-2][1],:] = bkg_interp[1]
-
-		non_nan = np.where(np.logical_not(np.isnan(new_data)))
+		non_nan = np.where(np.logical_not(np.isnan(new_bkg)))
 
 		x = non_nan[0]
 		y = non_nan[1]
-		z = new_data[non_nan]
+		z = new_bkg[non_nan]
 
 
 		interp = IDWExtrapolation(np.c_[x, y], z, power=5)
 		
-		X = np.arange(new_data.shape[0])
-		Y = np.arange(new_data.shape[1])
+		X = np.arange(new_bkg.shape[0])
+		Y = np.arange(new_bkg.shape[1])
 		YY,XX = np.meshgrid(Y,X)
-		new_data = interp(XX,YY)
+		new_bkg = interp(XX,YY)
 
-		hdu.data = data - new_data
+		hdu.data = np.ma.getdata(data - new_bkg)
 
-
-
-		"""
 		plt.figure()
-
-		plt.subplot(4,1,1)
-		plt.title("Raw")
-		plt.imshow(data,interpolation='none',vmin=data.min(),vmax=data.max())
-		plt.subplot(4,1,2)
-		plt.title("Bkg1")
-		plt.imshow(bkg_interp[0],interpolation='none',vmin=data.min(),vmax=data.max())
-		plt.subplot(4,1,3)
-		plt.title("Bkg2")
-		plt.imshow(bkg_interp[1],interpolation='none',vmin=data.min(),vmax=data.max())
-		plt.subplot(4,1,4)
-		plt.title("Substracted")
-		plt.imshow(new_data,interpolation='none',vmin=data.min(),vmax=data.max())
-		plt.hlines(slice_indices.ravel(),0,data.shape[1],color='red',linestyle='dashed',linewidth=1)
-
-		plt.savefig(str(i)+".png")
+		plt.subplot(2,1,1)
+		plt.imshow(new_bkg,vmin=data.min(),vmax=data.max())
+		plt.subplot(2,1,2)
+		plt.imshow(data)
+		plt.savefig(f"{i}.png")
 		plt.close()
-		"""
 
-
+	logConsole(f"Saving File {name.split('/')[-1]}",source="BetterBackground")
 	multi_hdu.writeto(name.replace("_srctype","_bkg"),overwrite=True)
 	multi_hdu.close()
 	pass
+
+
+def SubstractSignalToBackground(bkg,threshold):
+	"""
+	Substracts the high value signal from the background and interpolates those flagged pixels
+
+	Params
+	-----------
+	bkg : 2D array
+		The background strip
+
+	threshold : float
+	"""
+
+	# Determine non background sources : sudden spikes, high correlation with source strip, etc -> flag pixels
+	# TODO : Better background detection
+	# TODO : ignore < 0 values
+	mask = bkg > max(bkg.min(),0) + (bkg.max() - bkg.min())*threshold
+	mask = np.logical_or(mask, bkg < 0)
+	plt.figure()
+	plt.hist(bkg.ravel(),bins=30)
+	plt.show()
+
+	print(bkg.shape,mask.sum())
+	mask = np.logical_or(mask, np.isnan(bkg))
+
+	plt.figure()
+	plt.subplot(2,1,1)
+	plt.imshow(bkg)
+	plt.subplot(2,1,2)
+	plt.imshow(mask)
+	plt.show()
+
+	master_background = np.ma.array(bkg,mask=mask,fill_value=np.nan)
+
+	non_nan = np.where(np.logical_not(mask))
+	x = non_nan[0]
+	y = non_nan[1]
+	z = master_background[non_nan]
+
+	interp = IDWExtrapolation(np.c_[x, y], z, power=10)
+	
+	X = np.arange(bkg.shape[0])
+	Y = np.arange(bkg.shape[1])
+	YY,XX = np.meshgrid(Y,X)
+
+	return interp(XX,YY)
 
 
 def SelectSlice(data):
@@ -159,9 +175,12 @@ def SelectSlice(data):
 		peaks = find_peaks_cwt(horiz_sum,j)
 		j += 1
 	if not len(peaks) == 3:
-		continue
+		return None
 	# Subpixel peaks
 	peaks = np.sort(getPeaksPrecise(range(len(horiz_sum)),horiz_sum,peaks))
+
+	if np.any(peaks > len(horiz_sum)) or np.any(peaks < 0):
+		return None
 
 	# Cut horizontally at midpoint between maxima -> 3 strips
 	slice_indices = getPeakSlice(peaks,0,len(horiz_sum))
@@ -169,17 +188,18 @@ def SelectSlice(data):
 	return slice_indices
 
 
-"""
-Returns the sub-pixel peaks
-"""
 def getPeaksPrecise(x,y,peaks):
-    coeff, err, info, msg, ier = cfit(slitletModel, x, y, p0=[*peaks,*y[peaks],0.5],full_output=True)
-    return np.array(coeff[:3])
+	"""
+	Returns the sub-pixel peaks
+	"""
+	coeff, err, info, msg, ier = cfit(slitletModel, x, y, p0=[*peaks,*y[peaks],0.5],full_output=True)
+	return np.array(coeff[:3])
 
-"""
-Returns slices for a set of peaks
-"""
+
 def getPeakSlice(peaks,imin,imax):
+	"""
+	Returns slices for a set of peaks
+	"""
 	d1 = (peaks[1] - peaks[0])/2
 	d2 = (peaks[2] - peaks[1])/2
 
@@ -275,3 +295,5 @@ def NNExtrapolation(xy, z):
 		return zz
 
 	return new_f
+
+BetterBackgroundStep("jw01345063001_03101_00001_nrs1_srctype.fits")

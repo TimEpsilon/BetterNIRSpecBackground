@@ -8,9 +8,12 @@ from scipy.optimize import curve_fit as cfit
 """
  Logger : displays time + log
 """
-def logConsole(text):
+def logConsole(text, source=None):
 	curr_time = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
-	print(f"[{curr_time}]  :  {text}")
+	if source == None:
+		print(f"[{curr_time}]  : {text}")
+	else :
+		print(f"[{curr_time}]  : ({source}) - {text}")
 
 
 """
