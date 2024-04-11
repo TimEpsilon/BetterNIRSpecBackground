@@ -17,7 +17,7 @@ def my_CT(xy, z):
     func : callable
         A callable object which mirrors the CT behavior,
         with an additional neareast-neighbor extrapolation
-        outside of the data range.
+        outside the data range.
     """
     x = xy[:, 0]
     print(xy)

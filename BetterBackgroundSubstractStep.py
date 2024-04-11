@@ -9,7 +9,7 @@ import matplotlib
 matplotlib.rcParams['interactive'] == True
 
 
-def BetterBackgroundStep(name,threshold=0.3):
+def BetterBackgroundStep(name,threshold=0.9):
 	"""
 	 Creates a _bkg file from a _srctype file
 
@@ -41,25 +41,22 @@ def BetterBackgroundStep(name,threshold=0.3):
 		#TODO : Eventually, work on error propagation
 
 		shutter_id = WhichShutterOpen(hdr)
-		if shutter_id == None:
+		if shutter_id is None:
 			continue
 
 		logConsole(f"Extension {i} is SCI. Open shutter is {shutter_id+1}",source="BetterBackground")
 
 		slice_indices = SelectSlice(data)
 
-		if np.any(slice_indices == None):
+		if np.any(slice_indices is None):
 			logConsole("Can't find 3 spectra. Skipping",source="WARNING")
 			continue
 
 		bkg_slice = []
-		master_background = []
 		bkg_interp = []
 		for j in range(2):
 			# Get 2 background strips
 			bkg_slice.append(data[slice_indices[shutter_id-j-1][0]:slice_indices[shutter_id-j-1][1],:])
-
-
 			bkg_interp.append(SubstractSignalToBackground(bkg_slice[j],threshold))
 			
 
@@ -86,14 +83,6 @@ def BetterBackgroundStep(name,threshold=0.3):
 
 		hdu.data = np.ma.getdata(data - new_bkg)
 
-		plt.figure()
-		plt.subplot(2,1,1)
-		plt.imshow(new_bkg,vmin=data.min(),vmax=data.max())
-		plt.subplot(2,1,2)
-		plt.imshow(data)
-		plt.savefig(f"{i}.png")
-		plt.close()
-
 	logConsole(f"Saving File {name.split('/')[-1]}",source="BetterBackground")
 	multi_hdu.writeto(name.replace("_srctype","_bkg"),overwrite=True)
 	multi_hdu.close()
@@ -114,21 +103,24 @@ def SubstractSignalToBackground(bkg,threshold):
 
 	# Determine non background sources : sudden spikes, high correlation with source strip, etc -> flag pixels
 	# TODO : Better background detection
-	# TODO : ignore < 0 values
-	mask = bkg > max(bkg.min(),0) + (bkg.max() - bkg.min())*threshold
+	mask = bkg < np.quantile(bkg, threshold)
+	print(mask)
 	mask = np.logical_or(mask, bkg < 0)
+
+	mask = np.logical_or(mask, np.isnan(bkg))
+	mask = np.ma.getdata(mask)
+
+	plt.close('all')
 	plt.figure()
-	plt.hist(bkg.ravel(),bins=30)
+	plt.hist(bkg.ravel(), bins=200)
+	plt.hist(bkg[mask].ravel(),bins=200)
 	plt.show()
 
-	print(bkg.shape,mask.sum())
-	mask = np.logical_or(mask, np.isnan(bkg))
-
-	plt.figure()
-	plt.subplot(2,1,1)
-	plt.imshow(bkg)
-	plt.subplot(2,1,2)
-	plt.imshow(mask)
+	plt.figure(figsize=(32,8))
+	plt.subplot(2, 1, 1)
+	plt.imshow(bkg,aspect='auto')
+	plt.subplot(2, 1, 2)
+	plt.imshow(mask,aspect='auto')
 	plt.show()
 
 	master_background = np.ma.array(bkg,mask=mask,fill_value=np.nan)
