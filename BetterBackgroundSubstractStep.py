@@ -6,10 +6,10 @@ from scipy.signal import find_peaks_cwt
 from utils import *
 
 import matplotlib
-matplotlib.rcParams['interactive'] == True
+matplotlib.use('Qt5Agg')
 
 
-def BetterBackgroundStep(name,threshold=0.9):
+def BetterBackgroundStep(name,threshold=0.7):
 	"""
 	 Creates a _bkg file from a _srctype file
 
@@ -25,6 +25,7 @@ def BetterBackgroundStep(name,threshold=0.9):
 		logConsole(f"{name.split('/')[-1]} not a _srctype file. Skipping...",source="WARNING")
 		pass
 
+	plt.close('all')
 	# 1st draft Algorithm :	
 	logConsole(f"Starting Custom Bakcground Substraction on {name.split('/')[-1]}",source="BetterBackground")
 	multi_hdu = fits.open(name)
@@ -36,7 +37,7 @@ def BetterBackgroundStep(name,threshold=0.9):
 		if not hdu.name == 'SCI':
 			continue
 		hdr = hdu.header
-		data = np.ma.array(hdu.data, mask=np.isnan(hdu.data))
+		data = np.ma.masked_invalid(hdu.data)
 
 		#TODO : Eventually, work on error propagation
 
@@ -57,8 +58,12 @@ def BetterBackgroundStep(name,threshold=0.9):
 		for j in range(2):
 			# Get 2 background strips
 			bkg_slice.append(data[slice_indices[shutter_id-j-1][0]:slice_indices[shutter_id-j-1][1],:])
-			bkg_interp.append(SubstractSignalToBackground(bkg_slice[j],threshold))
-			
+			_ = bkg_slice[j] < 0
+			bkg_slice[j][_] = np.nan
+			bkg_slice[j][_].mask = True
+
+			bkg_interp.append(SubtractSignalToBackground(bkg_slice[j], threshold))
+
 
 		# Remove pixels + interpolate on a given strip (ignore source strip)
 		new_bkg = np.copy(data)
@@ -67,6 +72,10 @@ def BetterBackgroundStep(name,threshold=0.9):
 		new_bkg[slice_indices[shutter_id-1][0]:slice_indices[shutter_id-1][1],:] = bkg_interp[0]
 		new_bkg[slice_indices[shutter_id-2][0]:slice_indices[shutter_id-2][1],:] = bkg_interp[1]
 
+		plt.figure(figsize=(30,4))
+		plt.imshow(new_bkg,aspect='auto',interpolation="none")
+		plt.show(block=False)
+
 		non_nan = np.where(np.logical_not(np.isnan(new_bkg)))
 
 		x = non_nan[0]
@@ -74,12 +83,17 @@ def BetterBackgroundStep(name,threshold=0.9):
 		z = new_bkg[non_nan]
 
 
-		interp = IDWExtrapolation(np.c_[x, y], z, power=5)
+		interp = IDWExtrapolation(np.c_[x, y], z, power=10)
 		
 		X = np.arange(new_bkg.shape[0])
 		Y = np.arange(new_bkg.shape[1])
 		YY,XX = np.meshgrid(Y,X)
 		new_bkg = interp(XX,YY)
+
+
+		plt.figure(figsize=(30,4))
+		plt.imshow(new_bkg,aspect='auto',interpolation='none')
+		plt.show(block=True)
 
 		hdu.data = np.ma.getdata(data - new_bkg)
 
@@ -89,9 +103,9 @@ def BetterBackgroundStep(name,threshold=0.9):
 	pass
 
 
-def SubstractSignalToBackground(bkg,threshold):
+def SubtractSignalToBackground(bkg, threshold, selectionMethod="median", interpMethod="IDW", **Kwargs):
 	"""
-	Substracts the high value signal from the background and interpolates those flagged pixels
+	Subtracts the high value signal from the background and interpolates those flagged pixels
 
 	Params
 	-----------
@@ -99,38 +113,56 @@ def SubstractSignalToBackground(bkg,threshold):
 		The background strip
 
 	threshold : float
+
+	selectionMethod : str
+		Either "median" or "minmax".
+		"median" means that the selection uses the q-th quantile, q the threshold.
+		If threshold = 0.3, we keep 30% of the lowest values. This is useful if we want a set amount of pixels
+		"minmax" means that the selection is based on the range between the min and max value.
+		If threshold = 0.3, we keep all values below 30% of the range. This is useful if we want a max pixel value.
+
+	interpMethod : str
+		Either "IDW", "NN"
+		"IDW" is Inverse Distance Weighting, a weighted average interpolation method based on the distance to known points.
+			Additional arguments are "power"
+		"NN" is Nearest Neighbour, which assigns to each unknown point the value of the nearest known point. Unpractical
+
+	**Kwargs : additional arguments for the interpolation. Careful to use the appropriated keywords
 	"""
-
+	bkg = np.ma.masked_invalid(bkg)
 	# Determine non background sources : sudden spikes, high correlation with source strip, etc -> flag pixels
-	# TODO : Better background detection
-	mask = bkg < np.quantile(bkg, threshold)
-	print(mask)
-	mask = np.logical_or(mask, bkg < 0)
+	if selectionMethod == "median":
+		mask = bkg < np.nanquantile(bkg.compressed(), threshold)
+	elif selectionMethod == "minmax":
+		mask = bkg < bkg.min() + (bkg.max() - bkg.min()) * threshold
+	else :
+		logConsole(f"Unknown selectionMethod {selectionMethod}, defaulting to median",source="WARNING")
+		mask = bkg < np.quantile(bkg, threshold)
 
-	mask = np.logical_or(mask, np.isnan(bkg))
 	mask = np.ma.getdata(mask)
 
-	plt.close('all')
+	logConsole(f"Ratio of kept pixels is {round(mask.sum()/len(bkg.ravel()),3)}")
 	plt.figure()
 	plt.hist(bkg.ravel(), bins=200)
-	plt.hist(bkg[mask].ravel(),bins=200)
-	plt.show()
+	plt.hist(bkg[mask].ravel(),bins=50)
+	plt.show(block=False)
 
-	plt.figure(figsize=(32,8))
+	plt.figure(figsize=(32,4))
 	plt.subplot(2, 1, 1)
-	plt.imshow(bkg,aspect='auto')
+	plt.imshow(bkg,aspect='auto',interpolation='none')
 	plt.subplot(2, 1, 2)
-	plt.imshow(mask,aspect='auto')
-	plt.show()
+	plt.imshow(mask,aspect='auto',interpolation='none')
+	plt.show(block=False)
 
-	master_background = np.ma.array(bkg,mask=mask,fill_value=np.nan)
+	master_background = np.ma.array(bkg,mask=~mask,fill_value=np.nan)
 
-	non_nan = np.where(np.logical_not(mask))
+	non_nan = np.where(mask)
 	x = non_nan[0]
 	y = non_nan[1]
 	z = master_background[non_nan]
+	z = np.ma.getdata(z)
 
-	interp = IDWExtrapolation(np.c_[x, y], z, power=10)
+	interp = IDWExtrapolation(np.c_[x, y], z, power=4)
 	
 	X = np.arange(bkg.shape[0])
 	Y = np.arange(bkg.shape[1])
@@ -230,7 +262,10 @@ def IDWExtrapolation(xy, ui, power=1):
 
 		d = ((X1-X2)**2 + (Y1-Y2)**2).T
 
-		w = d**(-power/2)
+		w = np.empty_like(d)
+
+		w[d==0] = 10e10
+		w[d>0] = d[d>0]**(-power/2)
 
 		w_ui_sum = ui[:, None]*w
 		w_ui_sum = w_ui_sum.sum(axis=0)
@@ -239,6 +274,7 @@ def IDWExtrapolation(xy, ui, power=1):
 
 		result = w_ui_sum / wsum
 		result = result.reshape(np.shape(xx))
+
 		result[x,y] = ui
 
 		return result
