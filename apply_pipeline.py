@@ -11,9 +11,6 @@ import numpy as np
 
 from utils import logConsole
 
-from jwst.master_background import MasterBackgroundMosStep as BkgMosStep
-import stdatamodels.jwst.datamodels as dm
-
 
 working_dir = "./mastDownload/JWST/"
 
@@ -62,11 +59,12 @@ for folder in os.listdir(working_dir):
                          'min_jump_area': 15.0,
                          # The expansion factor for the enclosing circles
                          # or ellipses.
-                         'expand_factor': 2.0},
-                         'maximum_cores': 'half'
+                         'expand_factor': 2.0,
+						 'maximum_cores': 'half'},
+			"ramp_fit" : {'maximum_cores': 'half'}
+
                 }
 		det1 = Detector1Pipeline(steps=steps)
-		det1.ramp_fit.maximum_cores='half'
 		det1.save_results = True
 		det1.output_dir = path
 		det1.run(uncal)
@@ -76,6 +74,9 @@ for folder in os.listdir(working_dir):
 	##########
 	# Stage 2
 	##########
+
+
+	exit()
 
 	logConsole(f"Stage 1 Finished. Preparing Stage 2")
 	rate_list = glob(path+"*_rate.fits")

@@ -5,9 +5,6 @@ from scipy.signal import find_peaks_cwt
 
 from utils import *
 
-import matplotlib
-matplotlib.use('Qt5Agg')
-
 
 def BetterBackgroundStep(name,threshold=0.7):
 	"""
@@ -16,24 +13,22 @@ def BetterBackgroundStep(name,threshold=0.7):
 	 Params
 	 ---------
 	 name : str
-	 	Path to the file to open. Must be a _srctype
+		Path to the file to open. Must be a _srctype
 	 threshold : float
-	 	A number between 0 and 1. Represents the proportion of high intensity pixels that will be cutoff, 
-	 	1 being no pixels removed, 0 being every pixel removed
+		A number between 0 and 1. Represents the proportion of high intensity pixels that will be cutoff,
+		1 being no pixels removed, 0 being every pixel removed
 	"""
+	p = 2
 	if not "_srctype" in name:
 		logConsole(f"{name.split('/')[-1]} not a _srctype file. Skipping...",source="WARNING")
 		pass
 
-	plt.close('all')
-	# 1st draft Algorithm :	
+	# 1st draft Algorithm :
 	logConsole(f"Starting Custom Bakcground Substraction on {name.split('/')[-1]}",source="BetterBackground")
 	multi_hdu = fits.open(name)
 
 	# For a given _srctype, for every SCI inside
 	for i,hdu in enumerate(multi_hdu):
-		if not i == 283:
-			continue 
 		if not hdu.name == 'SCI':
 			continue
 		hdr = hdu.header
@@ -62,7 +57,7 @@ def BetterBackgroundStep(name,threshold=0.7):
 			bkg_slice[j][_] = np.nan
 			bkg_slice[j][_].mask = True
 
-			bkg_interp.append(SubtractSignalToBackground(bkg_slice[j], threshold))
+			bkg_interp.append(SubtractSignalToBackground(bkg_slice[j], threshold, power=p))
 
 
 		# Remove pixels + interpolate on a given strip (ignore source strip)
@@ -72,10 +67,6 @@ def BetterBackgroundStep(name,threshold=0.7):
 		new_bkg[slice_indices[shutter_id-1][0]:slice_indices[shutter_id-1][1],:] = bkg_interp[0]
 		new_bkg[slice_indices[shutter_id-2][0]:slice_indices[shutter_id-2][1],:] = bkg_interp[1]
 
-		plt.figure(figsize=(30,4))
-		plt.imshow(new_bkg,aspect='auto',interpolation="none")
-		plt.show(block=False)
-
 		non_nan = np.where(np.logical_not(np.isnan(new_bkg)))
 
 		x = non_nan[0]
@@ -83,17 +74,12 @@ def BetterBackgroundStep(name,threshold=0.7):
 		z = new_bkg[non_nan]
 
 
-		interp = IDWExtrapolation(np.c_[x, y], z, power=10)
-		
+		interp = IDWExtrapolation(np.c_[x, y], z, power=p)
+
 		X = np.arange(new_bkg.shape[0])
 		Y = np.arange(new_bkg.shape[1])
 		YY,XX = np.meshgrid(Y,X)
 		new_bkg = interp(XX,YY)
-
-
-		plt.figure(figsize=(30,4))
-		plt.imshow(new_bkg,aspect='auto',interpolation='none')
-		plt.show(block=True)
 
 		hdu.data = np.ma.getdata(data - new_bkg)
 
@@ -142,17 +128,6 @@ def SubtractSignalToBackground(bkg, threshold, selectionMethod="median", interpM
 	mask = np.ma.getdata(mask)
 
 	logConsole(f"Ratio of kept pixels is {round(mask.sum()/len(bkg.ravel()),3)}")
-	plt.figure()
-	plt.hist(bkg.ravel(), bins=200)
-	plt.hist(bkg[mask].ravel(),bins=50)
-	plt.show(block=False)
-
-	plt.figure(figsize=(32,4))
-	plt.subplot(2, 1, 1)
-	plt.imshow(bkg,aspect='auto',interpolation='none')
-	plt.subplot(2, 1, 2)
-	plt.imshow(mask,aspect='auto',interpolation='none')
-	plt.show(block=False)
 
 	master_background = np.ma.array(bkg,mask=~mask,fill_value=np.nan)
 
@@ -162,8 +137,11 @@ def SubtractSignalToBackground(bkg, threshold, selectionMethod="median", interpM
 	z = master_background[non_nan]
 	z = np.ma.getdata(z)
 
-	interp = IDWExtrapolation(np.c_[x, y], z, power=4)
-	
+	if interpMethod == "NN":
+		interp = NNExtrapolation(np.c_[x, y], z)
+	else:
+		interp = IDWExtrapolation(np.c_[x, y], z, **Kwargs)
+
 	X = np.arange(bkg.shape[0])
 	Y = np.arange(bkg.shape[1])
 	YY,XX = np.meshgrid(Y,X)
@@ -173,7 +151,7 @@ def SubtractSignalToBackground(bkg, threshold, selectionMethod="median", interpM
 
 def SelectSlice(data):
 	"""
-	Selects 3 slices (2 background, 1 signal) by analysing a cross section, finding a pixel position for each peak, 
+	Selects 3 slices (2 background, 1 signal) by analysing a cross section, finding a pixel position for each peak,
 	searching for a subpixel position, and slicing at the midpoints
 
 	Params
@@ -262,9 +240,8 @@ def IDWExtrapolation(xy, ui, power=1):
 
 		d = ((X1-X2)**2 + (Y1-Y2)**2).T
 
-		w = np.empty_like(d)
+		w = np.zeros_like(d,dtype=float)
 
-		w[d==0] = 10e10
 		w[d>0] = d[d>0]**(-power/2)
 
 		w_ui_sum = ui[:, None]*w
