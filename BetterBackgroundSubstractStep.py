@@ -1,8 +1,6 @@
-import numpy as np
 from astropy.io import fits
-import matplotlib.pyplot as plt
 from scipy.signal import find_peaks_cwt
-
+import matplotlib.pyplot as plt
 from utils import *
 
 
@@ -24,7 +22,7 @@ def BetterBackgroundStep(name,threshold=0.7):
 		pass
 
 	# 1st draft Algorithm :
-	logConsole(f"Starting Custom Bakcground Substraction on {name.split('/')[-1]}",source="BetterBackground")
+	logConsole(f"Starting Custom Background Substraction on {name.split('/')[-1]}",source="BetterBackground")
 	multi_hdu = fits.open(name)
 
 	# For a given _srctype, for every SCI inside
@@ -47,6 +45,11 @@ def BetterBackgroundStep(name,threshold=0.7):
 		if np.any(slice_indices is None):
 			logConsole("Can't find 3 spectra. Skipping",source="WARNING")
 			continue
+
+		plt.figure(figsize=(20, 5))
+		plt.subplot(1,3,1)
+		plt.title("Base image")
+		plt.imshow(data)
 
 		bkg_slice = []
 		bkg_interp = []
@@ -82,6 +85,14 @@ def BetterBackgroundStep(name,threshold=0.7):
 		new_bkg = interp(XX,YY)
 
 		hdu.data = np.ma.getdata(data - new_bkg)
+
+		plt.subplot(1,3,2)
+		plt.title("Interpolated background")
+		plt.imshow(new_bkg,vmin=data.min(),vmax=data.max())
+		plt.subplot(1,3,3)
+		plt.title("New Background Substracted")
+		plt.imshow(hdu.data,vmin=data.min(),vmax=data.max())
+		plt.savefig(f"{i}.png")
 
 	logConsole(f"Saving File {name.split('/')[-1]}",source="BetterBackground")
 	multi_hdu.writeto(name.replace("_srctype","_bkg"),overwrite=True)
@@ -212,6 +223,7 @@ def getPeakSlice(peaks,imin,imax):
 
 
 def IDWExtrapolation(xy, ui, power=1):
+	# TODO : Still an issue with sometimes empty arrays
 	"""
 	Rough implementation of the Inverse Distance Weighting algorithm
 
@@ -300,5 +312,6 @@ def NNExtrapolation(xy, z):
 		return zz
 
 	return new_f
+
 
 BetterBackgroundStep("jw01345063001_03101_00001_nrs1_srctype.fits")

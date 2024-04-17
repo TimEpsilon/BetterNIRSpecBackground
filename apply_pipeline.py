@@ -7,6 +7,7 @@ from jwst.pipeline import Detector1Pipeline
 from jwst.pipeline import Spec2Pipeline
 from jwst.pipeline import Spec3Pipeline
 from glob import glob
+import BetterBackgroundSubstractStep as BkgSubstractStep
 import numpy as np
 
 from utils import logConsole
@@ -37,7 +38,7 @@ for folder in os.listdir(working_dir):
 
 	for n,uncal in enumerate(uncal_list):
 		logConsole(f"Starting Stage 1 ({n+1}/{len(uncal_list)})")
-		if os.path.exists(uncal.replace("uncal","rate")):
+		if os.path.exists(uncal.replace("_uncal","_rate")):
 			continue
 		# Steps Params By Pablo Arrabal Haro
 		steps = {
@@ -67,16 +68,16 @@ for folder in os.listdir(working_dir):
 		det1 = Detector1Pipeline(steps=steps)
 		det1.save_results = True
 		det1.output_dir = path
-		det1.run(uncal)
+		try :
+			det1.run(uncal)
+		except Exception as e :
+			print(e)
 
 		det1 = None
 
 	##########
 	# Stage 2
 	##########
-
-
-	exit()
 
 	logConsole(f"Stage 1 Finished. Preparing Stage 2")
 	rate_list = glob(path+"*_rate.fits")
@@ -101,9 +102,25 @@ for folder in os.listdir(working_dir):
 		spec2 = Spec2Pipeline(steps=steps)
 		spec2.save_results = True
 		spec2.output_dir = path
-		spec2.bkg_subtract.skip = True
-		
 		spec2.run(rate)
+
+		BkgSubstractStep.BetterBackgroundStep(rate.replace("_rate","_srctype"))
+
+		bkg = rate.replace("_rate","_bkg")
+
+		steps = {
+			"assign_wcs" : {'skip':True},
+			"imprint" : {"skip":True},
+			"msa_flagging" : {'skip':True},
+			"extract_2d" : {'skip':True},
+			"srctype" : {'skip':True},
+			'master_background_mos': {'skip': True}
+		}
+
+		spec2 = Spec2Pipeline(steps=steps)
+		spec2.save_results = True
+		spec2.output_dir = path
+		spec2.run(bkg)
 
 		spec2 = None
 
@@ -118,7 +135,7 @@ for folder in os.listdir(working_dir):
 	# 5 - Apply Spec3 to the spec3_asn.json
 	##########
 
-
+	exit()
 
 	##########
 	# Stage 3

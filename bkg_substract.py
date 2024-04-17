@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import CloughTocher2DInterpolator as CT
 
+
 def my_CT(xy, z):
     """CT interpolator + nearest-neighbor extrapolation.
 
