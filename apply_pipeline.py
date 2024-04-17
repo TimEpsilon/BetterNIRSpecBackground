@@ -10,6 +10,7 @@ from glob import glob
 import BetterBackgroundSubstractStep as BkgSubstractStep
 import numpy as np
 
+
 from utils import logConsole
 
 
@@ -25,6 +26,7 @@ working_dir = "./mastDownload/JWST/"
 
 logConsole(f"Found {len(os.listdir(working_dir))} folders")
 for folder in os.listdir(working_dir):
+	break
 	path = working_dir + folder + "/"
 	logConsole(f"Starting on {folder}")
 
@@ -60,67 +62,65 @@ for folder in os.listdir(working_dir):
                          'min_jump_area': 15.0,
                          # The expansion factor for the enclosing circles
                          # or ellipses.
-                         'expand_factor': 2.0,
-						 'maximum_cores': 'half'},
-			"ramp_fit" : {'maximum_cores': 'half'}
-
+                         'expand_factor': 2.0}
                 }
 		det1 = Detector1Pipeline(steps=steps)
 		det1.save_results = True
 		det1.output_dir = path
-		try :
-			det1.run(uncal)
-		except Exception as e :
-			print(e)
-
+		det1.run(uncal)
+		
 		det1 = None
 
-	##########
-	# Stage 2
-	##########
+##########
+# Stage 2
+##########
 
-	logConsole(f"Stage 1 Finished. Preparing Stage 2")
+logConsole(f"Stage 1 Finished. Preparing Stage 2")
+
+for folder in os.listdir(working_dir):
+	path = working_dir + folder + "/"
+	logConsole(f"Starting on {folder}")
+
 	rate_list = glob(path+"*_rate.fits")
 	logConsole(f"Found {len(rate_list)} countrate files")
 
 	for n,rate in enumerate(rate_list):
 		logConsole(f"Starting Stage 2 ({n+1}/{len(rate_list)})")
-		if os.path.exists(rate.replace("rate","srctype")):
-			continue
-		steps={'srctype': {'save_results':True},
-				'photom': {'skip':True},
-				'flat_field': {'skip':True},
-				'master_background_mos': {'skip':True},
-				'wavecorr': {'skip':True},
-				'pathloss': {'skip':True},
-				'barshadow': {'skip':True},
-				'pixel_replace': {'skip':True},
-				'extract_1d': {'skip':True},
-				'cube_build': {'skip':True},
-				'resample_spec': {'skip':True}}
+		if ~os.path.exists(rate.replace("rate","srctype")):
+			steps={'srctype': {'save_results':True},
+					'photom': {'skip':True},
+					'flat_field': {'skip':True},
+					'master_background_mos': {'skip':True},
+					'wavecorr': {'skip':True},
+					'pathloss': {'skip':True},
+					'barshadow': {'skip':True},
+					'pixel_replace': {'skip':True},
+					'extract_1d': {'skip':True},
+					'cube_build': {'skip':True},
+					'resample_spec': {'skip':True}}
 
-		spec2 = Spec2Pipeline(steps=steps)
-		spec2.save_results = True
-		spec2.output_dir = path
-		spec2.run(rate)
+			spec2 = Spec2Pipeline(steps=steps)
+			spec2.output_dir = path
+			spec2.run(rate)
 
-		BkgSubstractStep.BetterBackgroundStep(rate.replace("_rate","_srctype"))
+		if ~os.path.exists(rate.replace("rate","bkg")):
+			BkgSubstractStep.BetterBackgroundStep(rate.replace("_rate","_srctype"))
 
 		bkg = rate.replace("_rate","_bkg")
 
-		steps = {
-			"assign_wcs" : {'skip':True},
-			"imprint" : {"skip":True},
-			"msa_flagging" : {'skip':True},
-			"extract_2d" : {'skip':True},
-			"srctype" : {'skip':True},
-			'master_background_mos': {'skip': True}
-		}
+		if ~os.path.exists(bkg.replace("bkg","cal")):
+			steps = {
+				"assign_wcs" : {'skip':True},
+				"msa_flagging" : {'skip':True},
+				"extract_2d" : {'skip':True},
+				"srctype" : {'skip':True},
+				'master_background_mos': {'skip': True}
+			}
 
-		spec2 = Spec2Pipeline(steps=steps)
-		spec2.save_results = True
-		spec2.output_dir = path
-		spec2.run(bkg)
+			spec2 = Spec2Pipeline(steps=steps)
+			spec2.save_results = True
+			spec2.output_dir = path
+			spec2.run(bkg)
 
 		spec2 = None
 
@@ -142,6 +142,11 @@ for folder in os.listdir(working_dir):
 	##########
 
 	logConsole(f"Stage 2 Finished. Preparing Stage 3")
+
+for folder in os.listdir(working_dir):
+	path = working_dir + folder + "/"
+	logConsole(f"Starting on {folder}")
+
 	asn_list = glob(path+"*_spec2_*_asn.json")
 	logConsole(f"Found {len(asn_list)} association files")
 
