@@ -1,6 +1,5 @@
 from astropy.io import fits
 from scipy.signal import find_peaks_cwt
-import matplotlib.pyplot as plt
 from utils import *
 
 
