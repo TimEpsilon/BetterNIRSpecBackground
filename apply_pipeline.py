@@ -1,13 +1,15 @@
 import os
 
-os.environ['CRDS_PATH'] = '/home/tim/crds_cache'
+import utils
+
+os.environ['CRDS_PATH'] = '/home/tdewachter/crds_cache'
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
 from jwst.pipeline import Detector1Pipeline
 from jwst.pipeline import Spec2Pipeline
 from jwst.pipeline import Spec3Pipeline
 from glob import glob
-import BetterBackgroundSubstractStep as BkgSubstractStep
+import BetterBackgroundSubtractStep as BkgSubtractStep
 import numpy as np
 
 
@@ -26,7 +28,6 @@ working_dir = "./mastDownload/JWST/"
 
 logConsole(f"Found {len(os.listdir(working_dir))} folders")
 for folder in os.listdir(working_dir):
-	break
 	path = working_dir + folder + "/"
 	logConsole(f"Starting on {folder}")
 
@@ -104,7 +105,7 @@ for folder in os.listdir(working_dir):
 			spec2.run(rate)
 
 		if ~os.path.exists(rate.replace("rate","bkg")):
-			BkgSubstractStep.BetterBackgroundStep(rate.replace("_rate","_srctype"))
+			BkgSubtractStep.BetterBackgroundStep(rate.replace("_rate", "_srctype"))
 
 		bkg = rate.replace("_rate","_bkg")
 
@@ -126,16 +127,14 @@ for folder in os.listdir(working_dir):
 
 
 	##########
-	# TODO : Master Background
+	# Basic Master Background Algorithm
 	# 0 - Apply Spec2 up until srctype (included) and save them
 	# 1 - Modify the _srctype files, all spectra
 	# 2 - Create a _bkg file, exact copy
-	# 3 - Modify the spec2_asn.json files in order to apply to those _bkg
-	# 4 - Apply the rest of Spec2 to spec2_asn.json
+	# 3 - Apply the rest of Spec2 to _bkg
+	# 4 - Modify the spec3_asn.json
 	# 5 - Apply Spec3 to the spec3_asn.json
 	##########
-
-	exit()
 
 	##########
 	# Stage 3
@@ -147,11 +146,13 @@ for folder in os.listdir(working_dir):
 	path = working_dir + folder + "/"
 	logConsole(f"Starting on {folder}")
 
-	asn_list = glob(path+"*_spec2_*_asn.json")
+	asn_list = glob(path+"*_spec3_*_asn.json")
 	logConsole(f"Found {len(asn_list)} association files")
 
 	for n,asn in enumerate(asn_list):
 		logConsole(f"Starting Stage 3 ({n+1}/{len(asn_list)})")
+		logConsole("Modifying Stage 3 association files")
+		utils.rewriteJSON(asn)
 		Spec3Pipeline.call(asn,save_results=True,output_dir=path)
 
 	break

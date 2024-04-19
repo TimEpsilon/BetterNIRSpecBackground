@@ -4,6 +4,7 @@ import numpy as np
 import datetime
 import time
 from scipy.optimize import curve_fit as cfit
+import json
 
 """
  Logger : displays time + log
@@ -35,13 +36,13 @@ def WhichShutterOpen(hdr):
 Simple gaussian function
 """
 def gaussian(x,x0,A,s):
-    return A * np.exp(-(x-x0)**2 / (2*s**2))
+	return A * np.exp(-(x-x0)**2 / (2*s**2))
 
 """
 Slitlet model : 3 gaussians of same sigma
 """
 def slitletModel(x,x1,x2,x3,A1,A2,A3,s):
-    return gaussian(x,x1,A1,s) + gaussian(x,x2,A2,s) + gaussian(x,x3,A3,s)
+	return gaussian(x,x1,A1,s) + gaussian(x,x2,A2,s) + gaussian(x,x3,A3,s)
 
 
 def IDWExtrapolation(xy, ui, power=1):
@@ -130,3 +131,34 @@ def NNExtrapolation(xy, z):
 		return zz
 
 	return new_f
+
+def rewriteJSON(file):
+	"""
+	Rewrites the asn.json files in order to apply to the _bkg files
+
+	Parameters
+	----------
+	file : str
+	Path to the asn.json file
+
+	Returns
+	-------
+	"""
+
+	with open(file, "r") as asn:
+		data = json.load(asn)
+
+		# Get calibration indices
+		not_science = []
+		for i in range(len(data["products"][0]["members"])):
+			data["products"][0]["members"][i]["expname"] = data["products"][0]["members"][i]["expname"].replace("_cal",
+																												"_bkg")
+			if not data["products"][0]["members"][i]["exptype"] == "science":
+				not_science.append(i)
+
+		# Starting from the end in order to keep the values at the same index
+		for i in not_science[::-1]:
+			del data["products"][0]["members"][i]
+
+	with open(file, "w") as asn:
+		json.dump(data, asn, indent=4)
