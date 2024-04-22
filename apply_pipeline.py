@@ -1,7 +1,5 @@
 import os
 
-import utils
-
 os.environ['CRDS_PATH'] = '/home/tdewachter/crds_cache'
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
@@ -10,8 +8,6 @@ from jwst.pipeline import Spec2Pipeline
 from jwst.pipeline import Spec3Pipeline
 from glob import glob
 import BetterBackgroundSubtractStep as BkgSubtractStep
-import numpy as np
-
 
 from utils import logConsole
 
@@ -87,7 +83,7 @@ for folder in os.listdir(working_dir):
 
 	for n,rate in enumerate(rate_list):
 		logConsole(f"Starting Stage 2 ({n+1}/{len(rate_list)})")
-		if ~os.path.exists(rate.replace("rate","srctype")):
+		if not os.path.exists(rate.replace("rate","srctype")):
 			steps={'srctype': {'save_results':True},
 					'photom': {'skip':True},
 					'flat_field': {'skip':True},
@@ -104,12 +100,13 @@ for folder in os.listdir(working_dir):
 			spec2.output_dir = path
 			spec2.run(rate)
 
-		if ~os.path.exists(rate.replace("rate","bkg")):
+		if not os.path.exists(rate.replace("rate","bkg")):
 			BkgSubtractStep.BetterBackgroundStep(rate.replace("_rate", "_srctype"))
 
 		bkg = rate.replace("_rate","_bkg")
 
-		if ~os.path.exists(bkg.replace("bkg","cal")):
+		if not os.path.exists(bkg.replace("_bkg","_cal")):
+			logConsole("Restarting Pipeline Stage 2")
 			steps = {
 				"assign_wcs" : {'skip':True},
 				"msa_flagging" : {'skip':True},
@@ -123,7 +120,7 @@ for folder in os.listdir(working_dir):
 			spec2.output_dir = path
 			spec2.run(bkg)
 
-		spec2 = None
+			spec2 = None
 
 
 	##########
@@ -139,7 +136,6 @@ for folder in os.listdir(working_dir):
 	##########
 	# Stage 3
 	##########
-
 	logConsole(f"Stage 2 Finished. Preparing Stage 3")
 
 for folder in os.listdir(working_dir):

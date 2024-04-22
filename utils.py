@@ -1,20 +1,28 @@
-import numpy as np
 from scipy.interpolate import CloughTocher2DInterpolator as CT
 import numpy as np
 import datetime
 import time
-from scipy.optimize import curve_fit as cfit
 import json
+import logging
+
+logger = logging.getLogger("stpipe")
+
+
 
 """
  Logger : displays time + log
+ 
+ Source can be WARNING, ERROR, DEBUG or None / INFO / any other string, in which case it will be considered an INFO log
 """
 def logConsole(text, source=None):
-	curr_time = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
-	if source == None:
-		print(f"[{curr_time}]  : {text}")
-	else :
-		print(f"[{curr_time}]  : ({source}) - {text}")
+	#curr_time = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
+	text = f" - [BetterBackground]  : {text}"
+	logType = {"WARNING": lambda : logger.warning(text),
+			   "ERROR": lambda : logger.error(text),
+			   "DEBUG": lambda : logger.debug(text)
+			   }
+
+	logType.get(source,lambda : logger.info(text))()
 
 
 """
