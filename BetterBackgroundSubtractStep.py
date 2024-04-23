@@ -1,7 +1,7 @@
 from astropy.io import fits
 from scipy.signal import find_peaks_cwt
 from utils import *
-
+from scipy.optimize import curve_fit as cfit
 
 def BetterBackgroundStep(name,threshold=0.7):
 	"""
@@ -42,8 +42,11 @@ def BetterBackgroundStep(name,threshold=0.7):
 		slice_indices = SelectSlice(data)
 
 		if np.any(slice_indices is None):
-			logConsole("Can't find 3 spectra. Skipping",source="WARNING")
-			continue
+			logConsole("Can't find 3 spectra. Defaulting to equal slices",source="WARNING")
+			n = data.shape[0]
+			xmin = np.array([0,int(n/3),int(2*n/3)])
+			xmax = np.array([int(n/3),int(2*n/3),n])
+			slice_indices = np.array([xmin,xmax]).T
 
 		bkg_slice = []
 		bkg_interp = []
@@ -212,8 +215,7 @@ def getPeakSlice(peaks,imin,imax):
 	return np.array([xmin,xmax]).T
 
 
-def IDWExtrapolation(xy, ui, power=1):
-	# TODO : Still an issue with sometimes empty arrays
+def IDWExtrapolation(xy, ui, power=2):
 	"""
 	Rough implementation of the Inverse Distance Weighting algorithm
 
