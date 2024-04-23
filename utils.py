@@ -160,7 +160,7 @@ def rewriteJSON(file):
 		not_science = []
 		for i in range(len(data["products"][0]["members"])):
 			data["products"][0]["members"][i]["expname"] = data["products"][0]["members"][i]["expname"].replace("_cal",
-																												"_bkg")
+			"_bkg_photomstep")
 			if not data["products"][0]["members"][i]["exptype"] == "science":
 				not_science.append(i)
 

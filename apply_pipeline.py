@@ -1,13 +1,21 @@
 import os
 
-
-
 os.environ['CRDS_PATH'] = '/home/tdewachter/crds_cache'
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
 from jwst.pipeline import Detector1Pipeline
 from jwst.pipeline import Spec2Pipeline
 from jwst.pipeline import Spec3Pipeline
+import stdatamodels.jwst.datamodels as dm
+from jwst.wavecorr import WavecorrStep
+from jwst.flatfield import FlatFieldStep
+from jwst.pathloss import PathLossStep
+from jwst.barshadow import BarShadowStep
+from jwst.photom import PhotomStep
+from jwst.pixel_replace import PixelReplaceStep
+from jwst.resample import ResampleSpecStep
+from jwst.extract_1d import Extract1dStep
+
 from glob import glob
 import BetterBackgroundSubtractStep as BkgSubtractStep
 
@@ -107,23 +115,30 @@ for folder in os.listdir(working_dir):
 			BkgSubtractStep.BetterBackgroundStep(rate.replace("_rate", "_srctype"))
 
 		bkg = rate.replace("_rate","_bkg")
+		spec2 = None
 
-		if not os.path.exists(bkg.replace("_bkg","_cal")):
+		if not os.path.exists(bkg.replace("_bkg","_bkg_photomstep")):
 			logConsole("Restarting Pipeline Stage 2")
-			steps = {
-				"assign_wcs" : {'skip':True},
-				"msa_flagging" : {'skip':True},
-				"extract_2d" : {'skip':True},
-				"srctype" : {'skip':True},
-				'master_background_mos': {'skip': True}
-			}
+			# Steps :
+			# wavecorr
+			# flat field
+			# path loss
+			# bar shadow
+			# photom
+			# pixel replace
+			# rectified 2D -> Save
+			# spectral extraction -> Save
 
-			spec2 = Spec2Pipeline(steps=steps)
-			spec2.save_results = True
-			spec2.output_dir = path
-			spec2.run(bkg)
-
-			spec2 = None
+			with dm.open(bkg) as data:
+				logConsole("Successfully loaded _bkg file")
+				calibrated = WavecorrStep.call(data)
+				calibrated = FlatFieldStep.call(calibrated)
+				calibrated = PathLossStep.call(calibrated)
+				calibrated = BarShadowStep.call(calibrated)
+				calibrated = PhotomStep.call(calibrated,output_dir=path,save_results=True)
+				calibrated = PixelReplaceStep.call(calibrated)
+				calibrated = ResampleSpecStep.call(calibrated,output_dir=path,save_results=True)
+				calibrated = Extract1dStep.call(calibrated,output_dir=path,save_results=True)
 
 
 	##########
