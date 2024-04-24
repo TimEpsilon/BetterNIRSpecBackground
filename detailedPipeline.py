@@ -131,12 +131,12 @@ if not os.path.exists(bkg.replace("_bkg","_cal")):
 
 	with dm.open(bkg) as data:
 		logConsole("Successfully loaded _bkg file")
-		calibrated = WavecorrStep.call(data,save_results=True)
-		calibrated = FlatFieldStep.call(calibrated,save_results=True)
-		calibrated = PathLossStep.call(calibrated,save_results=True)
-		calibrated = BarShadowStep.call(calibrated,save_results=True)
+		calibrated = WavecorrStep.call(data,output_dir=path,save_results=True)
+		calibrated = FlatFieldStep.call(calibrated,output_dir=path,save_results=True)
+		calibrated = PathLossStep.call(calibrated,output_dir=path,save_results=True)
+		calibrated = BarShadowStep.call(calibrated,output_dir=path,save_results=True)
 		calibrated = PhotomStep.call(calibrated,output_dir=path,save_results=True)
-		calibrated = PixelReplaceStep.call(calibrated,save_results=True)
+		calibrated = PixelReplaceStep.call(calibrated,output_dir=path,save_results=True)
 		calibrated = ResampleSpecStep.call(calibrated,output_dir=path,save_results=True)
 		calibrated = Extract1dStep.call(calibrated,output_dir=path,save_results=True)
 

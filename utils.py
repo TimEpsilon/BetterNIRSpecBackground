@@ -1,20 +1,18 @@
 from scipy.interpolate import CloughTocher2DInterpolator as CT
 import numpy as np
-import datetime
-import time
 import json
 import logging
 
 logger = logging.getLogger("stpipe")
 
 
-
-"""
- Logger : displays time + log
- 
- Source can be WARNING, ERROR, DEBUG or None / INFO / any other string, in which case it will be considered an INFO log
-"""
 def logConsole(text, source=None):
+	"""
+	 Logger : displays time + log
+
+	 Source can be WARNING, ERROR, DEBUG or None / INFO / any other string,
+	 in which case it will be considered an INFO log
+	"""
 	#curr_time = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
 	text = f" - [BetterBackground]  : {text}"
 	logType = {"WARNING": lambda : logger.warning(text),
@@ -25,10 +23,12 @@ def logConsole(text, source=None):
 	logType.get(source,lambda : logger.info(text))()
 
 
-"""
- Gets the id of which shutter is open in the slitlet. If SHUTSTA is unusual (i.e. only one shutter is open), returns None
-"""
+
 def WhichShutterOpen(hdr):
+	"""
+	 Gets the id of which shutter is open in the slitlet.
+	 If SHUTSTA is unusual (i.e. only one shutter is open), returns None
+	"""
 	_ = hdr["SHUTSTA"]
 	if _ == "11x":
 		return 2
@@ -40,10 +40,11 @@ def WhichShutterOpen(hdr):
 		return None
 
 
-"""
-Simple gaussian function
-"""
+
 def gaussian(x,x0,A,s):
+	"""
+	Simple gaussian function
+	"""
 	return A * np.exp(-(x-x0)**2 / (2*s**2))
 
 """
@@ -53,7 +54,7 @@ def slitletModel(x,x1,x2,x3,A1,A2,A3,s):
 	return gaussian(x,x1,A1,s) + gaussian(x,x2,A2,s) + gaussian(x,x3,A3,s)
 
 
-def IDWExtrapolation(xy, ui, power=1):
+def IDWExtrapolation(xy, ui, power=2):
 	"""
 	Rough implementation of the Inverse Distance Weighting algorithm
 
@@ -82,7 +83,9 @@ def IDWExtrapolation(xy, ui, power=1):
 
 		d = ((X1-X2)**2 + (Y1-Y2)**2).T
 
-		w = d**(-power/2)
+		w = np.zeros_like(d,dtype=float)
+
+		w[d>0] = d[d>0]**(-power/2)
 
 		w_ui_sum = ui[:, None]*w
 		w_ui_sum = w_ui_sum.sum(axis=0)
@@ -91,8 +94,8 @@ def IDWExtrapolation(xy, ui, power=1):
 
 		result = w_ui_sum / wsum
 		result = result.reshape(np.shape(xx))
-		result[x,y] = ui
 
+		result[x,y] = ui
 		return result
 
 	return new_f
