@@ -4,8 +4,8 @@
 #SBATCH -c 4                       
 #SBATCH --mem=24GB
 #SBATCH -t 10:00:00
-#SBATCH -o Out_%A_%a.txt                 # output file name
-#SBATCH -e Err_%A_%a.txt                 # error file name
+#SBATCH -o Out.txt                 # output file name
+#SBATCH -e Err.txt                 # error file name
 #SBATCH --mail-type=BEGIN,END,FAIL # send me a mail at beginning and end of the job
 #SBATCH --mail-user=tim.dewachter@lam.fr
 

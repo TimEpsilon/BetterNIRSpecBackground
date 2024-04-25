@@ -28,7 +28,6 @@ working_dir = "./mastDownload/JWST/"
 folders = os.listdir(working_dir) #Default, needs to be overwritten
 try :
 	folders = sys.argv[1:]
-	folders = [working_dir + folder for folder in folders]
 except :
 	logConsole("No Folders Specified. Defaulting to all Folders")
 
