@@ -18,12 +18,19 @@ from jwst.extract_1d import Extract1dStep
 
 from glob import glob
 import BetterBackgroundSubtractStep as BkgSubtractStep
+import sys
 
 import utils
 from utils import logConsole
 
 
 working_dir = "./mastDownload/JWST/"
+folders = os.listdir(working_dir) #Default, needs to be overwritten
+try :
+	folders = sys.argv[1:]
+	folders = [working_dir + folder for folder in folders]
+except :
+	logConsole("No Folders Specified. Defaulting to all Folders")
 
 #########
 # Monkey Patch Master Background method
@@ -33,8 +40,8 @@ working_dir = "./mastDownload/JWST/"
 #logConsole("Overriding Master Background method")
 
 
-logConsole(f"Found {len(os.listdir(working_dir))} folders")
-for folder in os.listdir(working_dir):
+logConsole(f"Found {len(folders)} folders")
+for folder in folders:
 	path = working_dir + folder + "/"
 	logConsole(f"Starting on {folder}")
 
@@ -85,7 +92,7 @@ for folder in os.listdir(working_dir):
 
 logConsole(f"Stage 1 Finished. Preparing Stage 2")
 
-for folder in os.listdir(working_dir):
+for folder in folders:
 	path = working_dir + folder + "/"
 	logConsole(f"Starting on {folder}")
 
@@ -156,7 +163,7 @@ for folder in os.listdir(working_dir):
 	##########
 	logConsole(f"Stage 2 Finished. Preparing Stage 3")
 
-for folder in os.listdir(working_dir):
+for folder in folders:
 	path = working_dir + folder + "/"
 	logConsole(f"Starting on {folder}")
 
@@ -167,7 +174,11 @@ for folder in os.listdir(working_dir):
 		logConsole(f"Starting Stage 3 ({n+1}/{len(asn_list)})")
 		logConsole("Modifying Stage 3 association files")
 		utils.rewriteJSON(asn)
-		Spec3Pipeline.call(asn,save_results=True,output_dir=path)
+
+		final = path + "Final/"
+		if not os.path.exists(final):
+			os.makedirs(final)
+		Spec3Pipeline.call(asn,save_results=True,output_dir=final)
 
 	break
 
