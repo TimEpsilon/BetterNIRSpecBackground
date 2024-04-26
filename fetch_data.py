@@ -3,7 +3,7 @@ import numpy as np
 import os
 import pandas as pd
 
-from utils import logConsole
+from utils import logConsole, numberSameLength
 
 
 def find_corresponding_entry(entry):
@@ -18,10 +18,7 @@ def find_corresponding_entry(entry):
 	-------
 
 	"""
-	entry = [*str(entry)]
-	while len(entry) < 5:
-		entry.insert(0, '0')
-	entry = "".join(entry)
+	entry = numberSameLength(entry)
 	for _ in range(len(obs_id)):
 		obs = obs_id[_]
 		if f"{entry}_nirspec" in obs:
@@ -75,8 +72,7 @@ obs_table = OBS.query_criteria(
 	obs_collection = ["JWST"],
 	instrument_name = ["NIRSPEC/MSA"],
 	obs_title = ['Spectroscopic follow-up of ultra-high-z candidates in CEERS: Characterizing true z > 12 galaxies and z~4-7 interlopers in preparation for JWST Cycle 2', 
-					'The Cosmic Evolution Early Release Science (CEERS) Survey free'],
-	filters = ["CLEAR;PRISM"]
+					'The Cosmic Evolution Early Release Science (CEERS) Survey free']
 	)
 
 logConsole("Successful Query!")
@@ -100,9 +96,8 @@ for i in range(len(result)):
 
 	download(obsids,path)
 
-exit()
 
-n = 2
+n = len(obs_table['obsid'])
 logConsole(f"Starting Product List Query for n={n}")
 
 for i in range(n) :

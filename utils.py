@@ -173,3 +173,20 @@ def rewriteJSON(file):
 
 	with open(file, "w") as asn:
 		json.dump(data, asn, indent=4)
+
+def numberSameLength(entry):
+	"""
+	Prepends 0 to a number in order to respect the XXXXX format
+	----------
+	entry : a number, assumed to be < 5 chars long
+
+	Returns
+		a str with 0 prepended to a number
+	-------
+
+	"""
+	entry = [*str(entry)]
+	while len(entry) < 5:
+		entry.insert(0, '0')
+	entry = "".join(entry)
+	return entry

@@ -19,9 +19,9 @@ from jwst.extract_1d import Extract1dStep
 from glob import glob
 import BetterBackgroundSubtractStep as BkgSubtractStep
 import sys
+import pandas as pd
 
-import utils
-from utils import logConsole
+from utils import logConsole, numberSameLength, rewriteJSON
 
 
 working_dir = "./mastDownload/JWST/"
@@ -164,20 +164,57 @@ for folder in folders:
 
 for folder in folders:
 	path = working_dir + folder + "/"
-	logConsole(f"Starting on {folder}")
 
-	asn_list = glob(path+"*_spec3_*_asn.json")
-	logConsole(f"Found {len(asn_list)} association files")
+	if os.path.exists(f"{path}FilesOfInterest.csv"):
+		logConsole("FilesOfInterest.csv already exists. Skipping this folder")
+		continue
+	else:
+		logConsole(f"Starting on {folder}")
 
-	for n,asn in enumerate(asn_list):
-		logConsole(f"Starting Stage 3 ({n+1}/{len(asn_list)})")
-		logConsole("Modifying Stage 3 association files")
-		utils.rewriteJSON(asn)
+		asn_list = glob(path+"*_spec3_*_asn.json")
+		logConsole(f"Found {len(asn_list)} association files")
 
-		final = path + "Final/"
-		if not os.path.exists(final):
-			os.makedirs(final)
-		Spec3Pipeline.call(asn,save_results=True,output_dir=final)
 
-	break
+		for n,asn in enumerate(asn_list):
+			logConsole(f"Starting Stage 3 ({n+1}/{len(asn_list)})")
+			logConsole("Modifying Stage 3 association files")
+			rewriteJSON(asn)
+
+			final = path + "Final/"
+			if not os.path.exists(final):
+				os.makedirs(final)
+			Spec3Pipeline.call(asn,save_results=True,output_dir=final)
+
+		# Creates a file signifying that the pipeline has finished
+		# As a bonus, this file acts as a table containing the names of the files mentioned in slits_with_double_object.dat
+		double_slits = pd.read_csv("slits_with_double_object.dat", sep=",")
+		main_target = double_slits["Central_target"]
+		companion = double_slits["Companion"]
+		main_target = main_target.apply(numberSameLength)
+		companion = companion.apply(numberSameLength)
+
+		target_path = []
+		n = len(main_target)
+		for i in range(n):
+			target = main_target[i]
+			_ = glob(f"{path}*{target}*_s2d.fits")
+			if len(_) > 0 and f"P{double_slits['Pointing'][i]}" in _ [0]:
+				target_path.append(_[0].split("/")[-1])
+			else:
+				target_path.append(None)
+
+		for i in range(n):
+			target = companion[i]
+			_ = glob(f"{path}*{target}*_s2d.fits")
+			if len(_) > 0 and f"P{double_slits['Pointing'][i]}" in _ [0]:
+				target_path.append(_[0].split("/")[-1])
+			else:
+				target_path.append(None)
+
+		file_of_interest = {"TargetType" : ["Main"]*len(main_target) + ["Companion"]*len(main_target),
+							"ID" : [*main_target, *companion],
+							"Path" : target_path}
+
+		df = pd.DataFrame(file_of_interest)
+		df.to_csv(f"{path}FilesOfInterest.csv")
 
