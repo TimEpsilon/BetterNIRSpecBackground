@@ -3,7 +3,7 @@ import numpy as np
 import os
 import pandas as pd
 
-from utils import logConsole, numberSameLength
+from utils import numberSameLength
 
 
 def find_corresponding_entry(entry):
@@ -49,10 +49,10 @@ def download(obsids,path):
 				)
 
 	data_filtered = data_filtered[np.logical_not(mask)]
-	logConsole("Successful Filtering!")
+	print("Successful Filtering!")
 	print(data_filtered)
 
-	logConsole("Starting Download")
+	print("Starting Download")
 	OBS.download_products(data_filtered,flat=True,download_dir=path)
 
 ########
@@ -62,7 +62,7 @@ def download(obsids,path):
 
 
 
-logConsole("Starting MAST Query...")
+print("Starting MAST Query...")
 
 products_to_download = ['UNCAL', 'MSA', 'ASN']
 obs_table = OBS.query_criteria(
@@ -75,7 +75,7 @@ obs_table = OBS.query_criteria(
 					'The Cosmic Evolution Early Release Science (CEERS) Survey free']
 	)
 
-logConsole("Successful Query!")
+print("Successful Query!")
 
 # Priority to known double objects
 
@@ -85,12 +85,12 @@ target = double_slits["Central_target"]
 
 result = target.apply(find_corresponding_entry)
 
-logConsole(f"Starting Product List Query for n={len(result)} known double objects")
+print(f"Starting Product List Query for n={len(result)} known double objects")
 
 for i in range(len(result)):
 	if result[i] is None:
 		continue
-	logConsole("Product " + str(i + 1))
+	print("Product " + str(i + 1))
 	path = "./mastDownload/JWST/" + result[i][1]
 	obsids = result[i][0]
 
@@ -98,10 +98,10 @@ for i in range(len(result)):
 
 
 n = len(obs_table['obsid'])
-logConsole(f"Starting Product List Query for n={n}")
+print(f"Starting Product List Query for n={n}")
 
 for i in range(n) :
-	logConsole("Product " + str(i+1))
+	print("Product " + str(i+1))
 	obsids = obs_table['obsid'][i]
 	path = "./mastDownload/JWST/" + obs_table["target_name"][i]
 
