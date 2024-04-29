@@ -9,3 +9,4 @@
 *.fits
 *.npy
 *.json
+*-checkpoint*

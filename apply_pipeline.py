@@ -218,3 +218,5 @@ for folder in folders:
 		df = pd.DataFrame(file_of_interest)
 		df.to_csv(f"{path}FilesOfInterest.csv")
 
+		logConsole("Finished")
+
