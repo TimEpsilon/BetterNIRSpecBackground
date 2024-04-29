@@ -1,0 +1,3 @@
+rsync -avzP tdewachter@ssh.osupytheas.fr:JWST/*_bkg.fits . 	# download files from osupytheas
+rsync -avzP tdewachter@cc.lam.fr:JWST/BetterNIRSpecBackground/mastDownload/JWST/CEERS-NIRSPEC-P9-PRISM-MSATA/*_photomstep.fits .	#download files from cluster (on osupytheas)
+find . -name '*_bkg.fits'	# gets _bkg files

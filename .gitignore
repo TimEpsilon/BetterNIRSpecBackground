@@ -1,8 +1,9 @@
 # Ignore Data folders
-/mastDownload/
-/.ipynb_checkpoints/
-/__pycache__/
-/.idea/
+/JWST/mastDownload/
+/JWST/.ipynb_checkpoints/
+/JWST/__pycache__/
+/JWST/.idea/
+/Topcat/
 
 # Ignore Images
 *.png
@@ -10,3 +11,6 @@
 *.npy
 *.json
 *-checkpoint*
+
+jwst-pipeline-readthedocs-io-en-latest.pdf
+download_MAST_data.py
