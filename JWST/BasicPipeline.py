@@ -11,7 +11,8 @@ from glob import glob
 import pandas as pd
 import time
 
-from utils import logConsole, rewriteJSON, numberSameLength
+from utils import logConsole, numberSameLength
+import json
 
 start = time.time()
 
@@ -22,6 +23,25 @@ path = "./mastDownload/JWST/CEERS-NIRSPEC-P10-PRISM-MSATA/basicPipeline/"
 # This is the full jwst pipeline with no modifications.
 # This is a test file
 ########
+
+
+def rewriteJSON(file):
+
+	with open(file, "r") as asn:
+		data = json.load(asn)
+
+		# Get calibration indices
+		not_science = []
+		for i in range(len(data["products"][0]["members"])):
+			if not data["products"][0]["members"][i]["exptype"] == "science":
+				not_science.append(i)
+
+		# Starting from the end in order to keep the values at the same index
+		for i in not_science[::-1]:
+			del data["products"][0]["members"][i]
+
+	with open(file, "w") as asn:
+		json.dump(data, asn, indent=4)
 
 
 ##########
@@ -106,4 +126,6 @@ else:
 	df.to_csv(f"{path}FilesOfInterest.csv")
 
 	logConsole(f"Finished with time {round(time.time() - start)}s")
+
+
 

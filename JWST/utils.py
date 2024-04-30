@@ -143,6 +143,15 @@ def NNExtrapolation(xy, z):
 
 	return new_f
 
+
+def polynomialBasis(x, y, max_order=4):
+	"""Return the fit basis polynomials: 1, x, x^2, ..., xy, x^2y, ... etc."""
+	basis = []
+	for i in range(max_order+1):
+		for j in range(max_order - i +1):
+			basis.append(x**j * y**i)
+	return basis
+
 def rewriteJSON(file):
 	"""
 	Rewrites the asn.json files in order to apply to the _bkg files

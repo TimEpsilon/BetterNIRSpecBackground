@@ -1,9 +1,11 @@
+import numpy as np
 from astropy.io import fits
 from scipy.signal import find_peaks_cwt
 from utils import *
 from scipy.optimize import curve_fit as cfit
 
-def BetterBackgroundStep(name,threshold=0.7):
+
+def BetterBackgroundStep(name,threshold=0.4):
 	"""
 	 Creates a _bkg file from a _srctype file
 
@@ -73,7 +75,8 @@ def BetterBackgroundStep(name,threshold=0.7):
 		y = non_nan[1]
 		z = new_bkg[non_nan]
 
-		interp = IDWExtrapolation(np.c_[x, y], z, power=p)
+		#interp = IDWExtrapolation(np.c_[x, y], z, power=p)
+		interp = polynomialExtrapolation(x,y,z)
 
 		X = np.arange(new_bkg.shape[0])
 		Y = np.arange(new_bkg.shape[1])
@@ -89,7 +92,7 @@ def BetterBackgroundStep(name,threshold=0.7):
 	pass
 
 
-def SubtractSignalToBackground(bkg, threshold, selectionMethod="median", interpMethod="IDW", **Kwargs):
+def SubtractSignalToBackground(bkg, threshold, selectionMethod="median", interpMethod="Polynomial", **Kwargs):
 	"""
 	Subtracts the high value signal from the background and interpolates those flagged pixels
 
@@ -101,17 +104,18 @@ def SubtractSignalToBackground(bkg, threshold, selectionMethod="median", interpM
 	threshold : float
 
 	selectionMethod : str
-		Either "median" or "minmax".
+		Either "median" or "minmax". This will be ignored if interpMethod = Polynomial
 		"median" means that the selection uses the q-th quantile, q the threshold.
 		If threshold = 0.3, we keep 30% of the lowest values. This is useful if we want a set amount of pixels
 		"minmax" means that the selection is based on the range between the min and max value.
 		If threshold = 0.3, we keep all values below 30% of the range. This is useful if we want a max pixel value.
 
 	interpMethod : str
-		Either "IDW", "NN"
+		Either "IDW", "NN" or Polynomial
 		"IDW" is Inverse Distance Weighting, a weighted average interpolation method based on the distance to known points.
 			Additional arguments are "power"
 		"NN" is Nearest Neighbour, which assigns to each unknown point the value of the nearest known point. Unpractical
+		"Polynomial" : Fits a 2D polynomial surface to the image. Threshold and selectionMethod will be ignored
 
 	**Kwargs : additional arguments for the interpolation. Careful to use the appropriated keywords
 	"""
@@ -129,7 +133,7 @@ def SubtractSignalToBackground(bkg, threshold, selectionMethod="median", interpM
 
 	logConsole(f"Ratio of kept pixels is {round(mask.sum()/len(bkg.ravel()),3)}")
 
-	master_background = np.ma.array(bkg,mask=~mask,fill_value=np.nan)
+	master_background = np.ma.array(bkg,mask=np.logical_not(mask),fill_value=np.nan)
 
 	non_nan = np.where(mask)
 	x = non_nan[0]
@@ -137,16 +141,34 @@ def SubtractSignalToBackground(bkg, threshold, selectionMethod="median", interpM
 	z = master_background[non_nan]
 	z = np.ma.getdata(z)
 
-	if interpMethod == "NN":
-		interp = NNExtrapolation(np.c_[x, y], z)
-	else:
-		interp = IDWExtrapolation(np.c_[x, y], z, **Kwargs)
-
 	X = np.arange(bkg.shape[0])
 	Y = np.arange(bkg.shape[1])
-	YY,XX = np.meshgrid(Y,X)
+	YY, XX = np.meshgrid(Y, X)
 
-	return interp(XX,YY)
+	if interpMethod == "NN":
+		interp = NNExtrapolation(np.c_[x, y], z)
+		return interp(XX, YY)
+	elif interpMethod == "IDW":
+		interp = IDWExtrapolation(np.c_[x, y], z, **Kwargs)
+		return interp(XX, YY)
+	else :
+		x_r, y_r = YY.ravel(), XX.ravel()
+		# Maximum order of polynomial term in the basis.
+		max_order = 4
+		basis = polynomialBasis(x_r, y_r, max_order)
+
+		# Linear, least-squares fit.
+		A = np.vstack(basis).T
+		bkg[np.isnan(bkg)] = 0
+		b = bkg.ravel()
+		c, r, rank, s = np.linalg.lstsq(A, b, rcond=None)
+
+		# Calculate the fitted surface from the coefficients, c.
+		fit = np.sum(c[:, None, None] * np.array(polynomialBasis(YY, XX, max_order))
+					 .reshape(len(basis), *YY.shape), axis=0)
+
+		return fit
+
 
 
 def SelectSlice(data):
@@ -215,4 +237,22 @@ def getPeakSlice(peaks,imin,imax):
 	return np.array([xmin,xmax]).T
 
 
-#BetterBackgroundStep("jw01345063001_03101_00001_nrs1_srctype.fits")
+def polynomialExtrapolation(x, y, z):
+	"""
+	Extrapolates a full image using slices already fitted by polynomials.
+	The data is supposed to be an image with the rows such that : [.,A,x,B,.]
+	Where A and B have been fitted by a polynomial.
+	x will then be calculated as a weighted sum of both A and B coefficients
+
+	Parameters
+	----------
+	x
+	y
+	z
+
+	Returns
+	-------
+
+	"""
+	pass
+

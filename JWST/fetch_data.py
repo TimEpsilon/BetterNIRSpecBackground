@@ -39,7 +39,7 @@ def download(obsids,path):
 
 	data_filtered = data_products[mask]
 
-	mask = False
+	mask = np.full(len(data_filtered["obs_id"]),False)
 	for i,name in enumerate(data_filtered["productFilename"]):
 		if "image" in name:
 			temp_obs_id = data_filtered[i]["obs_id"]
@@ -49,9 +49,12 @@ def download(obsids,path):
 				)
 
 	data_filtered = data_filtered[np.logical_not(mask)]
+
+	if len(data_filtered) == 0:
+		pass
+
 	print("Successful Filtering!")
 	print(data_filtered)
-
 	print("Starting Download")
 	OBS.download_products(data_filtered,flat=True,download_dir=path)
 

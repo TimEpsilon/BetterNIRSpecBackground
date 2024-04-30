@@ -31,13 +31,6 @@ try :
 except :
 	logConsole("No Folders Specified. Defaulting to all Folders")
 
-#########
-# Monkey Patch Master Background method
-#########
-
-#BkgMosStep.process = BetterMasterBackgroundMosStep
-#logConsole("Overriding Master Background method")
-
 
 logConsole(f"Found {len(folders)} folders")
 for folder in folders:
