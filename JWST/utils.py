@@ -199,3 +199,30 @@ def numberSameLength(entry):
 		entry.insert(0, '0')
 	entry = "".join(entry)
 	return entry
+
+def getPolynomialOrder(coeffCount):
+	"""
+	Returns the order of a polynomial based on the amount of coefficients
+
+	The amount of coefficients is given by n^2/2 + 3/2*n + 1, n the order
+	Parameters
+
+	The order is assumed to be somewhere between 3 and 6
+	----------
+	coeffCount : int
+		The amount of coefficients
+
+	Returns
+	-------
+	order : int
+		The order of the polynomial
+	"""
+
+	order = None
+	for n in range(3,6):
+		amount = n**2 / 2 + 3*2 * n + 1
+		if amount == coeffCount:
+			order = n
+			return order
+
+	return order

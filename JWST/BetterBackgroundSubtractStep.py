@@ -52,6 +52,7 @@ def BetterBackgroundStep(name,threshold=0.4):
 
 		bkg_slice = []
 		bkg_interp = []
+		coeff = []
 		for j in range(2):
 			# Get 2 background strips
 			bkg_slice.append(data[slice_indices[shutter_id-j-1][0]:slice_indices[shutter_id-j-1][1],:])
@@ -59,7 +60,10 @@ def BetterBackgroundStep(name,threshold=0.4):
 			bkg_slice[j][_] = np.nan
 			bkg_slice[j][_].mask = True
 
-			bkg_interp.append(SubtractSignalToBackground(bkg_slice[j], threshold, power=p))
+			new_bkg_slice, c =AdjustModelToBackground(bkg_slice[j], threshold, power=p)
+			bkg_interp.append(new_bkg_slice)
+			coeff.append(c)
+
 
 
 		# Remove pixels + interpolate on a given strip (ignore source strip)
@@ -69,19 +73,7 @@ def BetterBackgroundStep(name,threshold=0.4):
 		new_bkg[slice_indices[shutter_id-1][0]:slice_indices[shutter_id-1][1],:] = bkg_interp[0]
 		new_bkg[slice_indices[shutter_id-2][0]:slice_indices[shutter_id-2][1],:] = bkg_interp[1]
 
-		non_nan = np.where(np.logical_not(np.isnan(new_bkg)))
-
-		x = non_nan[0]
-		y = non_nan[1]
-		z = new_bkg[non_nan]
-
-		#interp = IDWExtrapolation(np.c_[x, y], z, power=p)
-		interp = polynomialExtrapolation(x,y,z)
-
-		X = np.arange(new_bkg.shape[0])
-		Y = np.arange(new_bkg.shape[1])
-		YY,XX = np.meshgrid(Y,X)
-		new_bkg = interp(XX,YY)
+		new_bkg = polynomialExtrapolation(new_bkg,*coeff)
 
 		hdu.data = np.ma.getdata(data - new_bkg)
 		
@@ -92,7 +84,7 @@ def BetterBackgroundStep(name,threshold=0.4):
 	pass
 
 
-def SubtractSignalToBackground(bkg, threshold, selectionMethod="median", interpMethod="Polynomial", **Kwargs):
+def AdjustModelToBackground(bkg, threshold, selectionMethod="median", interpMethod="Polynomial", **Kwargs):
 	"""
 	Subtracts the high value signal from the background and interpolates those flagged pixels
 
@@ -118,6 +110,13 @@ def SubtractSignalToBackground(bkg, threshold, selectionMethod="median", interpM
 		"Polynomial" : Fits a 2D polynomial surface to the image. Threshold and selectionMethod will be ignored
 
 	**Kwargs : additional arguments for the interpolation. Careful to use the appropriated keywords
+
+	Returns
+	-----------
+	img : 2D array
+		The fitted / interpolated slice
+	c : array
+		List of coefficients if interMethod=="Polynomial" (or default), None in any other case
 	"""
 	bkg = np.ma.masked_invalid(bkg)
 	# Determine non background sources : sudden spikes, high correlation with source strip, etc -> flag pixels
@@ -147,10 +146,10 @@ def SubtractSignalToBackground(bkg, threshold, selectionMethod="median", interpM
 
 	if interpMethod == "NN":
 		interp = NNExtrapolation(np.c_[x, y], z)
-		return interp(XX, YY)
+		return interp(XX, YY), None
 	elif interpMethod == "IDW":
 		interp = IDWExtrapolation(np.c_[x, y], z, **Kwargs)
-		return interp(XX, YY)
+		return interp(XX, YY), None
 	else :
 		x_r, y_r = YY.ravel(), XX.ravel()
 		# Maximum order of polynomial term in the basis.
@@ -167,7 +166,7 @@ def SubtractSignalToBackground(bkg, threshold, selectionMethod="median", interpM
 		fit = np.sum(c[:, None, None] * np.array(polynomialBasis(YY, XX, max_order))
 					 .reshape(len(basis), *YY.shape), axis=0)
 
-		return fit
+		return fit, c
 
 
 
@@ -237,7 +236,7 @@ def getPeakSlice(peaks,imin,imax):
 	return np.array([xmin,xmax]).T
 
 
-def polynomialExtrapolation(x, y, z):
+def polynomialExtrapolation(img,cA,cB):
 	"""
 	Extrapolates a full image using slices already fitted by polynomials.
 	The data is supposed to be an image with the rows such that : [.,A,x,B,.]
@@ -246,13 +245,56 @@ def polynomialExtrapolation(x, y, z):
 
 	Parameters
 	----------
-	x
-	y
-	z
+	img : 2D array
+		The image to extrapolate. Slices will be selected using np.nan
+	cA : array
+		The coefficients of the polynomial A
+	cB : array
+		The coefficients of the polynomial B
 
 	Returns
 	-------
+	img : 2D array
+		The extrapolated image
 
 	"""
-	pass
+
+	# Memo : the array img is such that for img[x,y], x (axis=0) is the vertical position, y (axis=1) is the horizontal position
+	# we thus suppose img is, along x, [.,A,.,B,.]
+
+	middle_mask = ~np.isnan(img[:, 0])
+	starting_indices = [i+1 for i in range(len(middle_mask)-1) if middle_mask[i] != middle_mask[i+1]]
+
+	upper_indices = (0,starting_indices[0])
+	lower_indices = (starting_indices[-1],len(middle_mask))
+	middle_indices = (starting_indices[1],starting_indices[2])
+
+	# Middle case
+	X,Y = np.indices(img[middle_indices[0]:middle_indices[1],:].shape)
+	x,y = X.ravel(), Y.ravel()
+
+	orderA = getPolynomialOrder(len(cA))
+	orderB = getPolynomialOrder(len(cB))
+
+	basisA = polynomialBasis(x, y, orderA)
+	basisB = polynomialBasis(x, y, orderB)
+
+	AA = np.vstack(basisA).T
+	BB = np.vstack(basisB).T
+
+	fitA = np.sum(cA[:, None, None] * np.array(polynomialBasis(Y, X, orderA))
+			 .reshape(len(basisA), *Y.shape), axis=0)
+
+	fitB = np.sum(cB[:, None, None] * np.array(polynomialBasis(Y, X, orderB))
+				  .reshape(len(basisB), *Y.shape), axis=0)
+
+	fit = (fitB + fitA)/2
+	img[middle_indices[0]:middle_indices[1],:] = fit
+
+
+	return img
+
+
+
+
 
