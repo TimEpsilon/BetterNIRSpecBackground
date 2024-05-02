@@ -46,8 +46,8 @@ def BetterBackgroundStep(name,threshold=0.4):
 		if np.any(slice_indices is None):
 			logConsole("Can't find 3 spectra. Defaulting to equal slices",source="WARNING")
 			n = data.shape[0]
-			xmin = np.array([0,int(n/3),int(2*n/3)])
-			xmax = np.array([int(n/3),int(2*n/3),n])
+			xmin = np.array([0,int(n/3),int(2*n/3)])+1
+			xmax = np.array([int(n/3),int(2*n/3),n])-1
 			slice_indices = np.array([xmin,xmax]).T
 
 		bkg_slice = []
@@ -84,7 +84,7 @@ def BetterBackgroundStep(name,threshold=0.4):
 	pass
 
 
-def AdjustModelToBackground(bkg, threshold, selectionMethod="median", interpMethod="Polynomial", **Kwargs):
+def AdjustModelToBackground(bkg, threshold=0.5, selectionMethod="median", interpMethod="Polynomial", **Kwargs):
 	"""
 	Subtracts the high value signal from the background and interpolates those flagged pixels
 
@@ -140,33 +140,40 @@ def AdjustModelToBackground(bkg, threshold, selectionMethod="median", interpMeth
 	z = master_background[non_nan]
 	z = np.ma.getdata(z)
 
-	X = np.arange(bkg.shape[0])
-	Y = np.arange(bkg.shape[1])
-	YY, XX = np.meshgrid(Y, X)
+	X,Y = np.indices(bkg.shape)
 
 	if interpMethod == "NN":
 		interp = NNExtrapolation(np.c_[x, y], z)
-		return interp(XX, YY), None
+		return interp(X, Y), None
 	elif interpMethod == "IDW":
 		interp = IDWExtrapolation(np.c_[x, y], z, **Kwargs)
-		return interp(XX, YY), None
+		return interp(X, Y), None
 	else :
-		x_r, y_r = YY.ravel(), XX.ravel()
+		x_r, y_r = Y.ravel(), X.ravel()
 		# Maximum order of polynomial term in the basis.
-		max_order = 4
-		basis = polynomialBasis(x_r, y_r, max_order)
+		rmc = 1e10
+		good_fit = None
+		good_c = None
+		for max_order in [3,4,5,6]:
+			basis = polynomialBasis(x_r, y_r, max_order)
 
-		# Linear, least-squares fit.
-		A = np.vstack(basis).T
-		bkg[np.isnan(bkg)] = 0
-		b = bkg.ravel()
-		c, r, rank, s = np.linalg.lstsq(A, b, rcond=None)
+			# Linear, least-squares fit.
+			A = np.vstack(basis).T
+			bkg[np.isnan(bkg)] = 0
+			b = bkg.ravel()
+			c, r, rank, s = np.linalg.lstsq(A, b, rcond=None)
 
-		# Calculate the fitted surface from the coefficients, c.
-		fit = np.sum(c[:, None, None] * np.array(polynomialBasis(YY, XX, max_order))
-					 .reshape(len(basis), *YY.shape), axis=0)
+			# Calculate the fitted surface from the coefficients, c.
+			fit = np.sum(c[:, None, None] * np.array(polynomialBasis(Y, X, max_order))
+						 .reshape(len(basis), *Y.shape), axis=0)
 
-		return fit, c
+			_ = np.sqrt(np.sum((fit-bkg)**2))
+			if _ < rmc:
+				rmc = _
+				good_fit = fit
+				good_c = c
+
+		return good_fit, good_c
 
 
 
@@ -206,7 +213,7 @@ def SelectSlice(data):
 		return None
 
 	# Cut horizontally at midpoint between maxima -> 3 strips
-	slice_indices = getPeakSlice(peaks,0,len(horiz_sum))
+	slice_indices = getPeakSlice(peaks,1,len(horiz_sum)-1)
 
 	return slice_indices
 
@@ -263,10 +270,9 @@ def polynomialExtrapolation(img,cA,cB):
 	# we thus suppose img is, along x, [.,A,.,B,.]
 
 	middle_mask = ~np.isnan(img[:, 0])
+	# list of starting indices of each slice
 	starting_indices = [i+1 for i in range(len(middle_mask)-1) if middle_mask[i] != middle_mask[i+1]]
 
-	upper_indices = (0,starting_indices[0])
-	lower_indices = (starting_indices[-1],len(middle_mask))
 	middle_indices = (starting_indices[1],starting_indices[2])
 
 	# Middle case
@@ -279,9 +285,6 @@ def polynomialExtrapolation(img,cA,cB):
 	basisA = polynomialBasis(x, y, orderA)
 	basisB = polynomialBasis(x, y, orderB)
 
-	AA = np.vstack(basisA).T
-	BB = np.vstack(basisB).T
-
 	fitA = np.sum(cA[:, None, None] * np.array(polynomialBasis(Y, X, orderA))
 			 .reshape(len(basisA), *Y.shape), axis=0)
 
@@ -291,7 +294,17 @@ def polynomialExtrapolation(img,cA,cB):
 	fit = (fitB + fitA)/2
 	img[middle_indices[0]:middle_indices[1],:] = fit
 
+	# Upper and lower case
 
+	non_nan = np.where(np.logical_not(np.isnan(img)))
+	x = non_nan[0]
+	y = non_nan[1]
+	z = img[non_nan]
+
+	interp = IDWExtrapolation(np.c_[x, y], z, power=4)
+	X,Y = np.indices(img.shape)
+
+	img = interp(X,Y)
 	return img
 
 

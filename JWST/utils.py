@@ -219,8 +219,8 @@ def getPolynomialOrder(coeffCount):
 	"""
 
 	order = None
-	for n in range(3,6):
-		amount = n**2 / 2 + 3*2 * n + 1
+	for n in range(3,7):
+		amount = n**2 / 2 + 3/2 * n + 1
 		if amount == coeffCount:
 			order = n
 			return order
