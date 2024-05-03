@@ -207,7 +207,7 @@ def getPolynomialOrder(coeffCount):
 	The amount of coefficients is given by n^2/2 + 3/2*n + 1, n the order
 	Parameters
 
-	The order is assumed to be somewhere between 3 and 6
+	The order is assumed to be somewhere between 0 and 6
 	----------
 	coeffCount : int
 		The amount of coefficients
@@ -219,7 +219,7 @@ def getPolynomialOrder(coeffCount):
 	"""
 
 	order = None
-	for n in range(3,7):
+	for n in range(7):
 		amount = n**2 / 2 + 3/2 * n + 1
 		if amount == coeffCount:
 			order = n

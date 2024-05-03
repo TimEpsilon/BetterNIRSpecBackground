@@ -31,12 +31,17 @@ def BetterBackgroundStep(name,threshold=0.4):
 		if not hdu.name == 'SCI':
 			continue
 		hdr = hdu.header
+		hdr.append("", end=True)
+		hdr.append("", end=True)
+		hdr.append("BB_DONE", end=True)
+
 		data = np.ma.masked_invalid(hdu.data)
 
 		#TODO : Eventually, work on error propagation
 
 		shutter_id = WhichShutterOpen(hdr)
 		if shutter_id is None:
+			hdr["BB_DONE"] = (False, "If the Better Background step succeeded")
 			continue
 
 		logConsole(f"Extension {i} is SCI. Open shutter is {shutter_id+1}",source="BetterBackground")
@@ -62,6 +67,9 @@ def BetterBackgroundStep(name,threshold=0.4):
 			bkg_slice[j][_].mask = True
 
 			new_bkg_slice, c =AdjustModelToBackground(bkg_slice[j], threshold, power=p)
+			if c == [0]:
+				hdr["BB_DONE"] = (False, "If the Better Background step succeeded")
+				continue
 			bkg_interp.append(new_bkg_slice)
 			coeff.append(c)
 
@@ -79,9 +87,6 @@ def BetterBackgroundStep(name,threshold=0.4):
 		hdu.data = np.ma.getdata(data - new_bkg)
 
 		logConsole("Writing to Header...")
-		hdr.append("", end=True)
-		hdr.append("", end=True)
-		hdr.append("BB_DONE", end=True)
 		hdr["BB_DONE"] = (True, "If the Better Background step succeeded")
 		hdr["BB_SLICE_FAIL"] = (not sliceFail,"If the Slice selection failed")
 		for i in range(len(slice_indices[:][0])):
@@ -164,9 +169,9 @@ def AdjustModelToBackground(bkg, threshold=0.5, selectionMethod="median", interp
 		x_r, y_r = Y.ravel(), X.ravel()
 		# Maximum order of polynomial term in the basis.
 		rmc = 1e10
-		good_fit = None
-		good_c = None
-		for max_order in [3,4,5,6]:
+		good_fit = np.zeros_like(bkg)
+		good_c = [0]
+		for max_order in range(7):
 			basis = polynomialBasis(x_r, y_r, max_order)
 
 			# Linear, least-squares fit.
