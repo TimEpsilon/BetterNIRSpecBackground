@@ -67,9 +67,8 @@ def BetterBackgroundStep(name,threshold=0.4):
 			bkg_slice[j][_].mask = True
 
 			new_bkg_slice, c =AdjustModelToBackground(bkg_slice[j], threshold, power=p)
-			if c == [0]:
+			if np.all(c == 0):
 				hdr["BB_DONE"] = (False, "If the Better Background step succeeded")
-				continue
 			bkg_interp.append(new_bkg_slice)
 			coeff.append(c)
 
