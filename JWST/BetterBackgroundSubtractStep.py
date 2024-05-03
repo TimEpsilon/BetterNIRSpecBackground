@@ -43,7 +43,8 @@ def BetterBackgroundStep(name,threshold=0.4):
 
 		slice_indices = SelectSlice(data)
 
-		if np.any(slice_indices is None):
+		sliceFail = np.any(slice_indices is None)
+		if sliceFail:
 			logConsole("Can't find 3 spectra. Defaulting to equal slices",source="WARNING")
 			n = data.shape[0]
 			xmin = np.array([0,int(n/3),int(2*n/3)])+1
@@ -76,7 +77,18 @@ def BetterBackgroundStep(name,threshold=0.4):
 		new_bkg = polynomialExtrapolation(new_bkg,*coeff)
 
 		hdu.data = np.ma.getdata(data - new_bkg)
-		
+
+		logConsole("Writing to Header...")
+		hdr.append("", end=True)
+		hdr.append("", end=True)
+		hdr.append("BB_DONE", end=True)
+		hdr["BB_DONE"] = (True, "If the Better Background step succeeded")
+		hdr["BB_SLICE_FAIL"] = (not sliceFail,"If the Slice selection failed")
+		for i in range(len(slice_indices[:][0])):
+			hdr[f"BB_START_SLICE{i}"] = slice_indices[i][0]
+			hdr[f"BB_END_SLICE{i}"] = slice_indices[i][1]
+
+		hdu.header = hdr
 
 	logConsole(f"Saving File {name.split('/')[-1]}",source="BetterBackground")
 	multi_hdu.writeto(name.replace("_srctype","_bkg"),overwrite=True)

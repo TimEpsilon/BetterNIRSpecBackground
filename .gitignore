@@ -11,6 +11,7 @@
 *.npy
 *.json
 *-checkpoint*
+*.txt
 
 jwst-pipeline-readthedocs-io-en-latest.pdf
 download_MAST_data.py
