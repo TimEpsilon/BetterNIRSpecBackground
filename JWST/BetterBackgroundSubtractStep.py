@@ -66,7 +66,7 @@ def BetterBackgroundStep(name,threshold=0.4):
 			bkg_slice[j][_] = np.nan
 			bkg_slice[j][_].mask = True
 
-			new_bkg_slice, c =AdjustModelToBackground(bkg_slice[j], threshold, power=p)
+			new_bkg_slice, c = AdjustModelToBackground(bkg_slice[j], threshold, power=p)
 			if np.all(c == 0):
 				hdr["BB_DONE"] = (False, "If the Better Background step succeeded")
 			bkg_interp.append(new_bkg_slice)
@@ -301,10 +301,16 @@ def polynomialExtrapolation(img,cA,cB,slices,shutter_id):
 	basisA = polynomialBasis(x, y, orderA)
 	basisB = polynomialBasis(x, y, orderB)
 
-	fitA = np.sum(cA[:, None, None] * np.array(polynomialBasis(Y, X, orderA))
+	if len(cA) == 1:
+		fitA = np.ones_like(img[signal_indices[0]:signal_indices[1],:]) * cA[0]
+	else:
+		fitA = np.sum(cA[:, None, None] * np.array(polynomialBasis(Y, X, orderA))
 			 .reshape(len(basisA), *Y.shape), axis=0)
 
-	fitB = np.sum(cB[:, None, None] * np.array(polynomialBasis(Y, X, orderB))
+	if len(cB) == 1:
+		fitB = np.ones_like(img[signal_indices[0]:signal_indices[1],:]) * cB[0]
+	else:
+		fitB = np.sum(cB[:, None, None] * np.array(polynomialBasis(Y, X, orderB))
 				  .reshape(len(basisB), *Y.shape), axis=0)
 
 	fit = (fitB + fitA)/2
