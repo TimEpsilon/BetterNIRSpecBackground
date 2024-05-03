@@ -47,8 +47,8 @@ def BetterBackgroundStep(name,threshold=0.4):
 		if sliceFail:
 			logConsole("Can't find 3 spectra. Defaulting to equal slices",source="WARNING")
 			n = data.shape[0]
-			xmin = np.array([0,int(n/3),int(2*n/3)])+1
-			xmax = np.array([int(n/3),int(2*n/3),n])-1
+			xmin = np.array([0,int(n/3),int(2*n/3)])
+			xmax = np.array([int(n/3),int(2*n/3),n])
 			slice_indices = np.array([xmin,xmax]).T
 
 		bkg_slice = []
@@ -74,7 +74,7 @@ def BetterBackgroundStep(name,threshold=0.4):
 		new_bkg[slice_indices[shutter_id-1][0]:slice_indices[shutter_id-1][1],:] = bkg_interp[0]
 		new_bkg[slice_indices[shutter_id-2][0]:slice_indices[shutter_id-2][1],:] = bkg_interp[1]
 
-		new_bkg = polynomialExtrapolation(new_bkg,*coeff)
+		new_bkg = polynomialExtrapolation(new_bkg,*coeff,slice_indices,shutter_id)
 
 		hdu.data = np.ma.getdata(data - new_bkg)
 
@@ -225,7 +225,7 @@ def SelectSlice(data):
 		return None
 
 	# Cut horizontally at midpoint between maxima -> 3 strips
-	slice_indices = getPeakSlice(peaks,1,len(horiz_sum)-1)
+	slice_indices = getPeakSlice(peaks,0,len(horiz_sum))
 
 	return slice_indices
 
@@ -255,21 +255,25 @@ def getPeakSlice(peaks,imin,imax):
 	return np.array([xmin,xmax]).T
 
 
-def polynomialExtrapolation(img,cA,cB):
+def polynomialExtrapolation(img,cA,cB,slices,shutter_id):
 	"""
 	Extrapolates a full image using slices already fitted by polynomials.
 	The data is supposed to be an image with the rows such that : [.,A,x,B,.]
 	Where A and B have been fitted by a polynomial.
-	x will then be calculated as a weighted sum of both A and B coefficients
+	x will then be calculated as a weighted sum of both A and B coefficients.
 
 	Parameters
 	----------
 	img : 2D array
-		The image to extrapolate. Slices will be selected using np.nan
+		The image to extrapolate
 	cA : array
 		The coefficients of the polynomial A
 	cB : array
 		The coefficients of the polynomial B
+	slices : array
+		A 2D array of coordinates of vertical slices. 1st index is the slice number, 2nd index is the starting/end point
+	shutter_id : int
+		An int between 0, 1 and 2, indicating which slice is x and which are A and B
 
 	Returns
 	-------
@@ -281,14 +285,10 @@ def polynomialExtrapolation(img,cA,cB):
 	# Memo : the array img is such that for img[x,y], x (axis=0) is the vertical position, y (axis=1) is the horizontal position
 	# we thus suppose img is, along x, [.,A,.,B,.]
 
-	middle_mask = ~np.isnan(img[:, 0])
-	# list of starting indices of each slice
-	starting_indices = [i+1 for i in range(len(middle_mask)-1) if middle_mask[i] != middle_mask[i+1]]
-
-	middle_indices = (starting_indices[1],starting_indices[2])
+	signal_indices = (slices[shutter_id][0],slices[shutter_id][1])
 
 	# Middle case
-	X,Y = np.indices(img[middle_indices[0]:middle_indices[1],:].shape)
+	X,Y = np.indices(img[signal_indices[0]:signal_indices[1],:].shape)
 	x,y = X.ravel(), Y.ravel()
 
 	orderA = getPolynomialOrder(len(cA))
@@ -304,7 +304,7 @@ def polynomialExtrapolation(img,cA,cB):
 				  .reshape(len(basisB), *Y.shape), axis=0)
 
 	fit = (fitB + fitA)/2
-	img[middle_indices[0]:middle_indices[1],:] = fit
+	img[signal_indices[0]:signal_indices[1],:] = fit
 
 	# Upper and lower case
 
