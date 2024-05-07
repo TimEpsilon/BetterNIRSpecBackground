@@ -50,8 +50,8 @@ def gaussian(x,x0,A,s):
 """
 Slitlet model : 3 gaussians of same sigma
 """
-def slitletModel(x,x1,x2,x3,A1,A2,A3,s):
-	return gaussian(x,x1,A1,s) + gaussian(x,x2,A2,s) + gaussian(x,x3,A3,s)
+def slitletModel(x,x1,x2,x3,A1,A2,A3,s,c):
+	return gaussian(x,x1,A1,s) + gaussian(x,x2,A2,s) + gaussian(x,x3,A3,s) + c
 
 
 def IDWExtrapolation(xy, ui, power=2):

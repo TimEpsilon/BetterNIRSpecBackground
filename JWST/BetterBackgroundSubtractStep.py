@@ -239,7 +239,7 @@ def getPeaksPrecise(x,y,peaks):
 	Returns the sub-pixel peaks
 	"""
 	try :
-		coeff, err, info, msg, ier = cfit(slitletModel, x, y, p0=[*peaks,*y[peaks],0.5],full_output=True)
+		coeff, err, info, msg, ier = cfit(slitletModel, x, y, p0=[*peaks,*y[peaks],0.5,0],full_output=True)
 	except :
 		logConsole("Can't find appropriate fit. Defaulting to input","ERROR")
 		return peaks
