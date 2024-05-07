@@ -170,7 +170,7 @@ def AdjustModelToBackground(bkg, threshold=0.5, selectionMethod="median", interp
 		rmc = 1e10
 		good_fit = np.zeros_like(bkg)
 		good_c = [0]
-		for max_order in range(7):
+		for max_order in range(5):
 			basis = polynomialBasis(x_r, y_r, max_order)
 
 			# Linear, least-squares fit.
