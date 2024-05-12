@@ -211,6 +211,7 @@ def SelectSlice(data):
 	"""
 	# Get vertical cross section by summing horizontally
 	horiz_sum = np.mean(data,axis=1)
+	horiz_err = np.std(data, axis=1)
 
 	# Determine 3 maxima for 3 slits
 	peaks = []
@@ -223,7 +224,7 @@ def SelectSlice(data):
 	if not len(peaks) == 3:
 		return None
 	# Subpixel peaks
-	peaks = np.sort(getPeaksPrecise(range(len(horiz_sum)),horiz_sum,peaks))
+	peaks = np.sort(getPeaksPrecise(range(len(horiz_sum)),horiz_sum,horiz_err,peaks))
 
 	if np.any(peaks > len(horiz_sum)) or np.any(peaks < 0):
 		return None
@@ -234,12 +235,12 @@ def SelectSlice(data):
 	return slice_indices
 
 
-def getPeaksPrecise(x,y,peaks):
+def getPeaksPrecise(x,y,err,peaks):
 	"""
 	Returns the sub-pixel peaks
 	"""
 	try :
-		coeff, err, info, msg, ier = cfit(slitletModel, x, y, p0=[*peaks,*y[peaks],0.5,0],full_output=True)
+		coeff, err, info, msg, ier = cfit(slitletModel, x, y,sigma=err, p0=[*peaks,*y[peaks],0.5,0],full_output=True)
 	except :
 		logConsole("Can't find appropriate fit. Defaulting to input","ERROR")
 		return peaks
