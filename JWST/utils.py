@@ -226,3 +226,25 @@ def getPolynomialOrder(coeffCount):
 			return order
 
 	return order
+
+
+def smartRound(x, signal):
+	"""
+	Rounds x to the closest integer which minimizes the signal
+	Parameters
+	----------
+	x : float
+	signal : array
+
+	Returns
+	a int between floor(x) and ceil(x)
+	-------
+
+	"""
+	x_low = int(x)
+	x_high = x_low + 1
+
+	if signal[x_low] < signal[x_high]:
+		return x_low
+	else:
+		return x_high

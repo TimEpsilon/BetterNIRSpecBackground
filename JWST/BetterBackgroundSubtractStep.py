@@ -229,7 +229,7 @@ def SelectSlice(data):
 		return None
 
 	# Cut horizontally at midpoint between maxima -> 3 strips
-	slice_indices = getPeakSlice(peaks,0,len(horiz_sum))
+	slice_indices = getPeakSlice(peaks,0,len(horiz_sum),horiz_sum)
 
 	return slice_indices
 
@@ -246,15 +246,25 @@ def getPeaksPrecise(x,y,peaks):
 	return np.array(coeff[:3])
 
 
-def getPeakSlice(peaks,imin,imax):
+def getPeakSlice(peaks,imin,imax,signal):
 	"""
 	Returns slices for a set of peaks
 	"""
 	d1 = (peaks[1] - peaks[0])/2
 	d2 = (peaks[2] - peaks[1])/2
 
-	xmin = np.array([round(max(imin,peaks[0]-d1)),round(peaks[1]-d1),round(peaks[2]-d2)])
-	xmax = np.array([round(peaks[0]+d1), round(peaks[1]+d2), round(min(imax,peaks[2]+d2))])
+	xmin = np.array([
+		smartRound(max(imin,peaks[0]-d1),signal),
+		smartRound(peaks[1]-d1,signal),
+		smartRound(peaks[2]-d2)],signal)
+
+	xmax = np.array([
+		smartRound(peaks[0]+d1,signal),
+		smartRound(peaks[1]+d2,signal),
+		smartRound(min(imax,peaks[2]+d2),signal)])
+
+	if xmax[-1] > imax:
+		xmax[-1] = imax
 
 	return np.array([xmin,xmax]).T
 
