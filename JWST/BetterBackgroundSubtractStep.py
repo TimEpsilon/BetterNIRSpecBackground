@@ -81,6 +81,9 @@ def BetterBackgroundStep(name):
 
 
 		# Remove pixels + interpolate on a given strip (ignore source strip)
+		if None in coeff:
+			continue
+
 		new_bkg = np.copy(data)
 		new_bkg[:,:] = np.nan
 
@@ -146,10 +149,14 @@ def AdjustModelToBackground(bkg):
 		1, # order 3
 		1 # order 4
 	]
-	coeff, err = cfit(betterPolynomial,[X,Y], bkg.ravel(), p0=p0)
-	fit = betterPolynomial([X,Y],*coeff).reshape(bkg.shape)
+	try :
+		coeff, err = cfit(betterPolynomial,[X,Y], bkg.ravel(), p0=p0)
+		fit = betterPolynomial([X, Y], *coeff).reshape(bkg.shape)
+		return fit, coeff
+	except :
+		logConsole("Optimal parameters not Found. Skipping")
+		return None, None
 
-	return fit, coeff
 
 
 
