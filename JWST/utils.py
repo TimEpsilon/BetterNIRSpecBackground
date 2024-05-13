@@ -244,6 +244,9 @@ def smartRound(x, signal):
 	x_low = int(x)
 	x_high = x_low + 1
 
+	if x_high >= len(signal):
+		return x_low
+
 	if signal[x_low] < signal[x_high]:
 		return x_low
 	else:
