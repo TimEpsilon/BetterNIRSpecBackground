@@ -3,9 +3,10 @@ from astropy.io import fits
 from scipy.signal import find_peaks_cwt
 from utils import *
 from scipy.optimize import curve_fit as cfit
+#import matplotlib.pyplot as plt
 
 
-def BetterBackgroundStep(name,threshold=0.4):
+def BetterBackgroundStep(name):
 	"""
 	 Creates a _bkg file from a _srctype file
 
@@ -59,6 +60,8 @@ def BetterBackgroundStep(name,threshold=0.4):
 		bkg_slice = []
 		bkg_interp = []
 		coeff = []
+
+		#plt.figure()
 		for j in range(2):
 			# Get 2 background strips
 			bkg_slice.append(data[slice_indices[shutter_id-j-1][0]:slice_indices[shutter_id-j-1][1],:])
@@ -66,11 +69,14 @@ def BetterBackgroundStep(name,threshold=0.4):
 			bkg_slice[j][_] = np.nan
 			bkg_slice[j][_].mask = True
 
-			new_bkg_slice, c = AdjustModelToBackground(bkg_slice[j], threshold, power=p)
+			new_bkg_slice, c = AdjustModelToBackground(bkg_slice[j])
 			if np.all(c == 0):
 				hdr["BB_DONE"] = (False, "If the Better Background step succeeded")
 			bkg_interp.append(new_bkg_slice)
 			coeff.append(c)
+
+			#plt.subplot(5,1,j+1)
+			#plt.imshow(new_bkg_slice,origin="lower")
 
 
 
@@ -83,7 +89,17 @@ def BetterBackgroundStep(name,threshold=0.4):
 
 		new_bkg = polynomialExtrapolation(new_bkg,*coeff,slice_indices,shutter_id)
 
+		#plt.subplot(5,1,3)
+		#plt.imshow(data,origin="lower")
+
+		#plt.subplot(5, 1, 4)
+		#plt.imshow(new_bkg, origin="lower")
+
 		hdu.data = np.ma.getdata(data - new_bkg)
+
+		#plt.subplot(5,1,5)
+		#plt.imshow(hdu.data,origin="lower")
+		#plt.show()
 
 		logConsole("Writing to Header...")
 		hdr["BB_DONE"] = (True, "If the Better Background step succeeded")
@@ -100,7 +116,7 @@ def BetterBackgroundStep(name,threshold=0.4):
 	pass
 
 
-def AdjustModelToBackground(bkg, threshold=0.5, selectionMethod="median", interpMethod="Polynomial", **Kwargs):
+def AdjustModelToBackground(bkg):
 	"""
 	Subtracts the high value signal from the background and interpolates those flagged pixels
 
@@ -109,87 +125,31 @@ def AdjustModelToBackground(bkg, threshold=0.5, selectionMethod="median", interp
 	bkg : 2D array
 		The background strip
 
-	threshold : float
-
-	selectionMethod : str
-		Either "median" or "minmax". This will be ignored if interpMethod = Polynomial
-		"median" means that the selection uses the q-th quantile, q the threshold.
-		If threshold = 0.3, we keep 30% of the lowest values. This is useful if we want a set amount of pixels
-		"minmax" means that the selection is based on the range between the min and max value.
-		If threshold = 0.3, we keep all values below 30% of the range. This is useful if we want a max pixel value.
-
-	interpMethod : str
-		Either "IDW", "NN" or Polynomial
-		"IDW" is Inverse Distance Weighting, a weighted average interpolation method based on the distance to known points.
-			Additional arguments are "power"
-		"NN" is Nearest Neighbour, which assigns to each unknown point the value of the nearest known point. Unpractical
-		"Polynomial" : Fits a 2D polynomial surface to the image. Threshold and selectionMethod will be ignored
-
-	**Kwargs : additional arguments for the interpolation. Careful to use the appropriated keywords
-
 	Returns
 	-----------
 	img : 2D array
 		The fitted / interpolated slice
 	c : array
-		List of coefficients if interMethod=="Polynomial" (or default), None in any other case
+		List of coefficients
 	"""
-	bkg = np.ma.masked_invalid(bkg)
-	# Determine non background sources : sudden spikes, high correlation with source strip, etc -> flag pixels
-	if selectionMethod == "median":
-		mask = bkg < np.nanquantile(bkg.compressed(), threshold)
-	elif selectionMethod == "minmax":
-		mask = bkg < bkg.min() + (bkg.max() - bkg.min()) * threshold
-	else :
-		logConsole(f"Unknown selectionMethod {selectionMethod}, defaulting to median",source="WARNING")
-		mask = bkg < np.nanquantile(bkg.compressed(), threshold)
+	bkg[np.isnan(bkg)] = 0
 
-	mask = np.ma.getdata(mask)
+	Y,X = np.indices(bkg.shape)
 
-	logConsole(f"Ratio of kept pixels is {round(mask.sum()/len(bkg.ravel()),3)}")
+	# Starting parameter
+	p0 = [
+		4, # sigma
+		bkg.shape[0]/2, # y0
+		bkg.mean(), # constant shift, order 0 polynomial
+		1, # order 1
+		1, # order 2
+		1, # order 3
+		1 # order 4
+	]
+	coeff, err = cfit(betterPolynomial,[X,Y], bkg.ravel(), p0=p0)
+	fit = betterPolynomial([X,Y],*coeff).reshape(bkg.shape)
 
-	master_background = np.ma.array(bkg,mask=np.logical_not(mask),fill_value=np.nan)
-
-	non_nan = np.where(mask)
-	x = non_nan[0]
-	y = non_nan[1]
-	z = master_background[non_nan]
-	z = np.ma.getdata(z)
-
-	X,Y = np.indices(bkg.shape)
-
-	if interpMethod == "NN":
-		interp = NNExtrapolation(np.c_[x, y], z)
-		return interp(X, Y), None
-	elif interpMethod == "IDW":
-		interp = IDWExtrapolation(np.c_[x, y], z, **Kwargs)
-		return interp(X, Y), None
-	else :
-		x_r, y_r = Y.ravel(), X.ravel()
-		# Maximum order of polynomial term in the basis.
-		rmc = 1e10
-		good_fit = np.zeros_like(bkg)
-		good_c = [0]
-		for max_order in range(5):
-			basis = polynomialBasis(x_r, y_r, max_order)
-
-			# Linear, least-squares fit.
-			A = np.vstack(basis).T
-			bkg[np.isnan(bkg)] = 0
-			b = bkg.ravel()
-			c, r, rank, s = np.linalg.lstsq(A, b, rcond=None)
-
-			# Calculate the fitted surface from the coefficients, c.
-			fit = np.sum(c[:, None, None] * np.array(polynomialBasis(Y, X, max_order))
-						 .reshape(len(basis), *Y.shape), axis=0)
-
-			_ = np.sqrt(np.sum((fit-bkg)**2))
-			if _ < rmc:
-				rmc = _
-				good_fit = fit
-				good_c = c
-
-		return good_fit, good_c
+	return fit, coeff
 
 
 
@@ -257,7 +217,7 @@ def getPeakSlice(peaks,imin,imax,signal):
 	xmin = np.array([
 		smartRound(max(imin,peaks[0]-d1),signal),
 		smartRound(peaks[1]-d1,signal),
-		smartRound(peaks[2]-d2)],signal)
+		smartRound(peaks[2]-d2,signal)])
 
 	xmax = np.array([
 		smartRound(peaks[0]+d1,signal),
@@ -303,44 +263,56 @@ def polynomialExtrapolation(img,cA,cB,slices,shutter_id):
 	signal_indices = (slices[shutter_id][0],slices[shutter_id][1])
 
 	# Middle case
-	X,Y = np.indices(img[signal_indices[0]:signal_indices[1],:].shape)
-	x,y = X.ravel(), Y.ravel()
+	Y,X = np.indices(img[signal_indices[0]:signal_indices[1],:].shape)
 
-	orderA = getPolynomialOrder(len(cA))
-	orderB = getPolynomialOrder(len(cB))
-
-	basisA = polynomialBasis(x, y, orderA)
-	basisB = polynomialBasis(x, y, orderB)
-
-	if len(cA) == 1:
-		fitA = np.ones_like(img[signal_indices[0]:signal_indices[1],:]) * cA[0]
-	else:
-		fitA = np.sum(cA[:, None, None] * np.array(polynomialBasis(Y, X, orderA))
-			 .reshape(len(basisA), *Y.shape), axis=0)
-
-	if len(cB) == 1:
-		fitB = np.ones_like(img[signal_indices[0]:signal_indices[1],:]) * cB[0]
-	else:
-		fitB = np.sum(cB[:, None, None] * np.array(polynomialBasis(Y, X, orderB))
-				  .reshape(len(basisB), *Y.shape), axis=0)
+	fitA = betterPolynomial([X,Y],*cA).reshape(X.shape)
+	fitB = betterPolynomial([X,Y],*cB).reshape(X.shape)
 
 	fit = (fitB + fitA)/2
 	img[signal_indices[0]:signal_indices[1],:] = fit
 
-	# Upper and lower case
+	img[np.isnan(img)] = 0
 
-	non_nan = np.where(np.logical_not(np.isnan(img)))
-	x = non_nan[0]
-	y = non_nan[1]
-	z = img[non_nan]
-
-	interp = IDWExtrapolation(np.c_[x, y], z, power=4)
-	X,Y = np.indices(img.shape)
-
-	img = interp(X,Y)
 	return img
 
+def betterPolynomial(X,s,y0,*coeffs):
+	"""
+	We admit the convention that x is the horizontal direction, y the vertical direction
+	Returns a 2D array, where the profile along Y is a gaussian, and the profile along X is a polynomial
+	Those 2 profiles are then multiplied together
 
+	Parameters
+	----------
+	X : [x,y
+	s : gaussian sigma
+	y0 : gaussian position
+	coeffs : m=n+1 coeffs of the polynomial. We assume that coeffs[i] is such that we have coeffs[i] * x**i
 
+	Returns
+	-------
+	2D array
+	"""
+	coeffs = np.array(coeffs)
+	x,y = X
+
+	# gaussian
+	img = np.exp(-(y0-y)**2/(2*s**2))
+
+	# repeat m times the X 2D array along 1st axis
+	m = len(coeffs)
+	x = x[np.newaxis, :, :]
+	x = np.repeat(x, m, axis=0)
+
+	# Make power series to the right shape
+	power = np.arange(m)
+	power = power[:, np.newaxis, np.newaxis]
+
+	# Take the power along the 1st axis, multiply by coeffs along the same axis, sum along the axis
+	polyn = np.power(x,power)
+	polyn = polyn * coeffs[:, None, None]
+	polyn = polyn.sum(axis=0)
+
+	img = img * polyn
+	return img.ravel()
 
 
