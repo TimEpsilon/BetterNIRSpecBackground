@@ -81,7 +81,7 @@ def BetterBackgroundStep(name):
 
 
 		# Remove pixels + interpolate on a given strip (ignore source strip)
-		if np.any(None in coeff):
+		if coeff[0] is None or coeff[1] is None:
 			continue
 
 		new_bkg = np.copy(data)
