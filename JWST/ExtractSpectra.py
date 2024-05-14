@@ -13,7 +13,7 @@ folders = glob(working_dir+'*')
 
 def IterateOverFolders(folders):
 	for folder in folders:
-		path = folder + "/Final/"
+		path = folder + "/BetterPolyn/"
 		if os.path.exists(path):
 			logConsole(f"Working on {folder}")
 			for file in glob(path + "*_s2d.fits"):
@@ -80,3 +80,5 @@ def makeExtraction(file):
 		name = file.split("/")[-1].replace("_s2d.fits", ".png")
 		logConsole(f"Saving {name}")
 		plt.savefig(file.replace("_s2d.fits", ".png"))
+
+IterateOverFolders(folders)
