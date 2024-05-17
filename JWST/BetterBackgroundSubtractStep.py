@@ -3,7 +3,7 @@ from astropy.io import fits
 from scipy.signal import find_peaks_cwt
 from utils import *
 from scipy.optimize import curve_fit as cfit
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 
 def BetterBackgroundStep(name):
@@ -18,7 +18,6 @@ def BetterBackgroundStep(name):
 		A number between 0 and 1. Represents the proportion of high intensity pixels that will be cutoff,
 		1 being no pixels removed, 0 being every pixel removed
 	"""
-	p = 2
 	if not "_srctype" in name:
 		logConsole(f"{name.split('/')[-1]} not a _srctype file. Skipping...",source="WARNING")
 		pass
@@ -61,7 +60,6 @@ def BetterBackgroundStep(name):
 		bkg_interp = []
 		coeff = []
 
-		#plt.figure()
 		for j in range(2):
 			# Get 2 background strips
 			bkg_slice.append(data[slice_indices[shutter_id-j-1][0]:slice_indices[shutter_id-j-1][1],:])
@@ -75,12 +73,10 @@ def BetterBackgroundStep(name):
 			bkg_interp.append(new_bkg_slice)
 			coeff.append(c)
 
-			#plt.subplot(5,1,j+1)
-			#plt.imshow(new_bkg_slice,origin="lower")
-
 
 
 		# Remove pixels + interpolate on a given strip (ignore source strip)
+		print(coeff)
 		if coeff[0] is None or coeff[1] is None:
 			continue
 
@@ -92,17 +88,7 @@ def BetterBackgroundStep(name):
 
 		new_bkg = polynomialExtrapolation(new_bkg,*coeff,slice_indices,shutter_id)
 
-		#plt.subplot(5,1,3)
-		#plt.imshow(data,origin="lower")
-
-		#plt.subplot(5, 1, 4)
-		#plt.imshow(new_bkg, origin="lower")
-
 		hdu.data = np.ma.getdata(data - new_bkg)
-
-		#plt.subplot(5,1,5)
-		#plt.imshow(hdu.data,origin="lower")
-		#plt.show()
 
 		logConsole("Writing to Header...")
 		hdr["BB_DONE"] = (True, "If the Better Background step succeeded")

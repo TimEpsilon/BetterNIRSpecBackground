@@ -4,6 +4,8 @@
 /JWST/__pycache__/
 /JWST/.idea/
 /Topcat/
+/CIGALE/
+/prism/
 
 # Ignore Images
 *.png
@@ -12,6 +14,9 @@
 *.json
 *-checkpoint*
 *.txt
+*.mp4
+*.pdf
+*.pptx
+
 
 jwst-pipeline-readthedocs-io-en-latest.pdf
-download_MAST_data.py
