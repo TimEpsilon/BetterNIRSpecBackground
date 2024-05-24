@@ -13,11 +13,13 @@ folders = glob(working_dir+'*')
 
 def IterateOverFolders(folders):
 	for folder in folders:
-		path = folder + "/Final/"
+		path = folder + "/BetterPolyn/"
 		if os.path.exists(path):
 			logConsole(f"Working on {folder}")
 			for file in glob(path + "*_s2d.fits"):
 				logConsole(f"Working on {file}")
+				if "10318" not in file:
+					continue
 				makeExtraction(file)
 
 
@@ -76,7 +78,11 @@ def makeExtraction(file):
 		# The spectrum plot
 		ax[1].errorbar(wavelength, spectrum, yerr=err, marker='.', color="k", linewidth=0.3)
 		ax[1].grid(True)
+		ax[1].set_xlabel(r"$\lambda$ measured (µm)")
+		ax[1].set_ylabel(r"$F_\nu$ (MJy)")
 
 		name = file.split("/")[-1].replace("_s2d.fits", ".png")
 		logConsole(f"Saving {name}")
 		plt.savefig(file.replace("_s2d.fits", ".png"))
+
+IterateOverFolders(folders)

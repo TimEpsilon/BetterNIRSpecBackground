@@ -1,11 +1,14 @@
 import numpy as np
-from astropy.io import fits
 from scipy.signal import find_peaks_cwt
 from utils import *
 from scipy.optimize import curve_fit as cfit
+import matplotlib.pyplot as plt
+import stdatamodels.jwst.datamodels as dm
+from scipy.ndimage import rotate
+from scipy import interpolate
 
 
-def BetterBackgroundStep(name,threshold=0.4):
+def BetterBackgroundStep(name):
 	"""
 	 Creates a _bkg file from a _srctype file
 
@@ -13,52 +16,44 @@ def BetterBackgroundStep(name,threshold=0.4):
 	 ---------
 	 name : str
 		Path to the file to open. Must be a _srctype
-	 threshold : float
-		A number between 0 and 1. Represents the proportion of high intensity pixels that will be cutoff,
-		1 being no pixels removed, 0 being every pixel removed
 	"""
-	p = 2
 	if not "_srctype" in name:
 		logConsole(f"{name.split('/')[-1]} not a _srctype file. Skipping...",source="WARNING")
 		pass
 
 	# 1st draft Algorithm :
 	logConsole(f"Starting Custom Background Substraction on {name.split('/')[-1]}",source="BetterBackground")
-	multi_hdu = fits.open(name)
+	multi_hdu = dm.open(name)
 
-	# For a given _srctype, for every SCI inside
-	for i,hdu in enumerate(multi_hdu):
-		if not hdu.name == 'SCI':
-			continue
-		hdr = hdu.header
-		hdr.append("", end=True)
-		hdr.append("", end=True)
-		hdr.append("BB_DONE", end=True)
-
-		data = np.ma.masked_invalid(hdu.data)
+	# For a given _srctype, for every slit
+	for slit in multi_hdu.slits:
+		logConsole(f"Opened slitlet {slit.slitlet_id}")
+		data = np.ma.masked_invalid(slit.data)
 
 		#TODO : Eventually, work on error propagation
 
-		shutter_id = WhichShutterOpen(hdr)
+		shutter_id = WhichShutterOpen(slit.shutter_state)
 		if shutter_id is None:
-			hdr["BB_DONE"] = (False, "If the Better Background step succeeded")
+			logConsole("Not a 3 shutter slit!")
 			continue
 
-		logConsole(f"Extension {i} is SCI. Open shutter is {shutter_id+1}",source="BetterBackground")
-
-		slice_indices = SelectSlice(data)
+		slice_indices, rotated = SelectSlice(slit)
 
 		sliceFail = np.any(slice_indices is None)
 		if sliceFail:
 			logConsole("Can't find 3 spectra. Defaulting to equal slices",source="WARNING")
-			n = data.shape[0]
-			xmin = np.array([0,int(n/3),int(2*n/3)])
-			xmax = np.array([int(n/3),int(2*n/3),n])
+			first_column = data[:,int(data.shape[1]/2)]
+			start_indice = np.where(first_column > 0)[0][0]
+			end_indice = np.where(first_column > 0)[0][-1]
+			n = end_indice - start_indice
+			xmin = np.array([0,int(n/3),int(2*n/3)]) + start_indice
+			xmax = np.array([int(n/3),int(2*n/3),n]) + start_indice
 			slice_indices = np.array([xmin,xmax]).T
 
 		bkg_slice = []
 		bkg_interp = []
 		coeff = []
+
 		for j in range(2):
 			# Get 2 background strips
 			bkg_slice.append(data[slice_indices[shutter_id-j-1][0]:slice_indices[shutter_id-j-1][1],:])
@@ -66,15 +61,13 @@ def BetterBackgroundStep(name,threshold=0.4):
 			bkg_slice[j][_] = np.nan
 			bkg_slice[j][_].mask = True
 
-			new_bkg_slice, c = AdjustModelToBackground(bkg_slice[j], threshold, power=p)
-			if np.all(c == 0):
-				hdr["BB_DONE"] = (False, "If the Better Background step succeeded")
+			new_bkg_slice, c = AdjustModelToBackground(bkg_slice[j])
 			bkg_interp.append(new_bkg_slice)
 			coeff.append(c)
 
+		if coeff[0] is None or coeff[1] is None:
+			continue
 
-
-		# Remove pixels + interpolate on a given strip (ignore source strip)
 		new_bkg = np.copy(data)
 		new_bkg[:,:] = np.nan
 
@@ -83,16 +76,7 @@ def BetterBackgroundStep(name,threshold=0.4):
 
 		new_bkg = polynomialExtrapolation(new_bkg,*coeff,slice_indices,shutter_id)
 
-		hdu.data = np.ma.getdata(data - new_bkg)
-
-		logConsole("Writing to Header...")
-		hdr["BB_DONE"] = (True, "If the Better Background step succeeded")
-		hdr["BB_SLICE_FAIL"] = (not sliceFail,"If the Slice selection failed")
-		for i in range(len(slice_indices[:][0])):
-			hdr[f"BB_START_SLICE{i}"] = slice_indices[i][0]
-			hdr[f"BB_END_SLICE{i}"] = slice_indices[i][1]
-
-		hdu.header = hdr
+		slit.data = np.ma.getdata(data - new_bkg)
 
 	logConsole(f"Saving File {name.split('/')[-1]}",source="BetterBackground")
 	multi_hdu.writeto(name.replace("_srctype","_bkg"),overwrite=True)
@@ -100,139 +84,135 @@ def BetterBackgroundStep(name,threshold=0.4):
 	pass
 
 
-def AdjustModelToBackground(bkg, threshold=0.5, selectionMethod="median", interpMethod="Polynomial", **Kwargs):
+def AdjustModelToBackground(bkg):
 	"""
-	Subtracts the high value signal from the background and interpolates those flagged pixels
 
 	Params
 	-----------
 	bkg : 2D array
 		The background strip
 
-	threshold : float
-
-	selectionMethod : str
-		Either "median" or "minmax". This will be ignored if interpMethod = Polynomial
-		"median" means that the selection uses the q-th quantile, q the threshold.
-		If threshold = 0.3, we keep 30% of the lowest values. This is useful if we want a set amount of pixels
-		"minmax" means that the selection is based on the range between the min and max value.
-		If threshold = 0.3, we keep all values below 30% of the range. This is useful if we want a max pixel value.
-
-	interpMethod : str
-		Either "IDW", "NN" or Polynomial
-		"IDW" is Inverse Distance Weighting, a weighted average interpolation method based on the distance to known points.
-			Additional arguments are "power"
-		"NN" is Nearest Neighbour, which assigns to each unknown point the value of the nearest known point. Unpractical
-		"Polynomial" : Fits a 2D polynomial surface to the image. Threshold and selectionMethod will be ignored
-
-	**Kwargs : additional arguments for the interpolation. Careful to use the appropriated keywords
-
 	Returns
 	-----------
 	img : 2D array
 		The fitted / interpolated slice
 	c : array
-		List of coefficients if interMethod=="Polynomial" (or default), None in any other case
+		List of coefficients
 	"""
-	bkg = np.ma.masked_invalid(bkg)
-	# Determine non background sources : sudden spikes, high correlation with source strip, etc -> flag pixels
-	if selectionMethod == "median":
-		mask = bkg < np.nanquantile(bkg.compressed(), threshold)
-	elif selectionMethod == "minmax":
-		mask = bkg < bkg.min() + (bkg.max() - bkg.min()) * threshold
-	else :
-		logConsole(f"Unknown selectionMethod {selectionMethod}, defaulting to median",source="WARNING")
-		mask = bkg < np.nanquantile(bkg.compressed(), threshold)
+	Y,X = np.indices(bkg.shape)
 
-	mask = np.ma.getdata(mask)
-
-	logConsole(f"Ratio of kept pixels is {round(mask.sum()/len(bkg.ravel()),3)}")
-
-	master_background = np.ma.array(bkg,mask=np.logical_not(mask),fill_value=np.nan)
-
-	non_nan = np.where(mask)
-	x = non_nan[0]
-	y = non_nan[1]
-	z = master_background[non_nan]
-	z = np.ma.getdata(z)
-
-	X,Y = np.indices(bkg.shape)
-
-	if interpMethod == "NN":
-		interp = NNExtrapolation(np.c_[x, y], z)
-		return interp(X, Y), None
-	elif interpMethod == "IDW":
-		interp = IDWExtrapolation(np.c_[x, y], z, **Kwargs)
-		return interp(X, Y), None
-	else :
-		x_r, y_r = Y.ravel(), X.ravel()
-		# Maximum order of polynomial term in the basis.
-		rmc = 1e10
-		good_fit = np.zeros_like(bkg)
-		good_c = [0]
-		for max_order in range(5):
-			basis = polynomialBasis(x_r, y_r, max_order)
-
-			# Linear, least-squares fit.
-			A = np.vstack(basis).T
-			bkg[np.isnan(bkg)] = 0
-			b = bkg.ravel()
-			c, r, rank, s = np.linalg.lstsq(A, b, rcond=None)
-
-			# Calculate the fitted surface from the coefficients, c.
-			fit = np.sum(c[:, None, None] * np.array(polynomialBasis(Y, X, max_order))
-						 .reshape(len(basis), *Y.shape), axis=0)
-
-			_ = np.sqrt(np.sum((fit-bkg)**2))
-			if _ < rmc:
-				rmc = _
-				good_fit = fit
-				good_c = c
-
-		return good_fit, good_c
+	# Starting parameter
+	p0 = [
+		4, # sigma
+		bkg.shape[0]/2, # y0
+		bkg.mean(), # constant shift, order 0 polynomial
+		1, # order 1
+		1, # order 2
+		1, # order 3
+		1 # order 4
+	]
+	try :
+		coeff, err = cfit(betterPolynomial,[X,Y], bkg.ravel(), p0=p0)
+		fit = betterPolynomial([X, Y], *coeff).reshape(bkg.shape)
+		return fit, coeff
+	except :
+		logConsole("Optimal parameters not Found. Skipping")
+		return None, None
 
 
+def rotateSlit(slit):
+	"""
+	Rotates the slit in order to have horizontal strips
 
-def SelectSlice(data):
+	Parameters
+	----------
+	slit
+
+	Returns
+	-------
+	(data,
+	wavelength,
+	ra,
+	dec,
+	err)
+	"""
+	data = slit.data
+	# Maps the WCS info
+	Y, X = np.indices(slit.data.shape)
+	ra, dec, wavelength = slit.meta.wcs.transform('detector', 'world', X, Y)
+	ra[np.isnan(ra)] = 0
+	dec[np.isnan(dec)] = 0
+	data[np.isnan(wavelength)] = 0
+	wavelength[np.isnan(wavelength)] = 0
+
+	# 0.2'' < 0.46'' the cross dispersion size of a single shutter
+	# This is in order to select a thin 1-2 pixels wide line, centered on the object
+	eps = 0.2 / 3600
+	distance = np.sqrt((slit.source_dec - dec) ** 2 + (slit.source_ra - ra) ** 2)
+	distance[np.isnan(distance)] = 1000
+
+	mask = np.logical_and(
+		np.logical_not(np.isnan(slit.wavelength)),
+		distance < eps
+	)
+	y, x = np.where(mask)
+	# We fit a line and take the angle of the slope
+	coeff, _ = cfit(lambda x, a, b: a * x + b, x, y)
+	alpha = np.arctan(coeff[0]) * 180 / np.pi
+
+	return (rotate(data, alpha, mode='constant',order=1),
+			rotate(wavelength, alpha, mode='constant',order=1),
+			rotate(ra, alpha, mode='constant',order=1),
+			rotate(dec, alpha, mode='constant',order=1),
+			rotate(slit.err, alpha, mode='constant',order=1))
+
+
+
+def SelectSlice(slit):
 	"""
 	Selects 3 slices (2 background, 1 signal) by analysing a cross section, finding a pixel position for each peak,
 	searching for a subpixel position, and slicing at the midpoints
 
 	Params
 	---------
-	data : 2D array
-		An individual image obtained from an individual "SCI" extension in a fits
+	slit
 
 	Returns
 	---------
 	slice_indices : list of arrays
 		A list containing the lower and upper bound of each slit
+	rotated : tuple of arrays
 
 	"""
+	rotated = rotateSlit(slit)
+	data = rotated[0]
+	data = np.ma.masked_invalid(data)
+
 	# Get vertical cross section by summing horizontally
-	horiz_sum = np.mean(data,axis=1)
-	horiz_err = np.std(data, axis=1)
+	horiz_sum = np.ma.mean(data,axis=1)
+	horiz_err = np.ma.std(data, axis=1)
 
 	# Determine 3 maxima for 3 slits
 	peaks = []
 	j = 2
+
 	while not len(peaks) == 3:
 		if j > 6:
 			break
 		peaks = find_peaks_cwt(horiz_sum,j)
 		j += 1
 	if not len(peaks) == 3:
-		return None
+		return None, rotated
 	# Subpixel peaks
 	peaks = np.sort(getPeaksPrecise(range(len(horiz_sum)),horiz_sum,horiz_err,peaks))
 
 	if np.any(peaks > len(horiz_sum)) or np.any(peaks < 0):
-		return None
+		return None, rotated
 
 	# Cut horizontally at midpoint between maxima -> 3 strips
 	slice_indices = getPeakSlice(peaks,0,len(horiz_sum),horiz_sum)
 
-	return slice_indices
+	return slice_indices, rotated
 
 
 def getPeaksPrecise(x,y,err,peaks):
@@ -257,7 +237,7 @@ def getPeakSlice(peaks,imin,imax,signal):
 	xmin = np.array([
 		smartRound(max(imin,peaks[0]-d1),signal),
 		smartRound(peaks[1]-d1,signal),
-		smartRound(peaks[2]-d2)],signal)
+		smartRound(peaks[2]-d2,signal)])
 
 	xmax = np.array([
 		smartRound(peaks[0]+d1,signal),
@@ -303,44 +283,56 @@ def polynomialExtrapolation(img,cA,cB,slices,shutter_id):
 	signal_indices = (slices[shutter_id][0],slices[shutter_id][1])
 
 	# Middle case
-	X,Y = np.indices(img[signal_indices[0]:signal_indices[1],:].shape)
-	x,y = X.ravel(), Y.ravel()
+	Y,X = np.indices(img[signal_indices[0]:signal_indices[1],:].shape)
 
-	orderA = getPolynomialOrder(len(cA))
-	orderB = getPolynomialOrder(len(cB))
-
-	basisA = polynomialBasis(x, y, orderA)
-	basisB = polynomialBasis(x, y, orderB)
-
-	if len(cA) == 1:
-		fitA = np.ones_like(img[signal_indices[0]:signal_indices[1],:]) * cA[0]
-	else:
-		fitA = np.sum(cA[:, None, None] * np.array(polynomialBasis(Y, X, orderA))
-			 .reshape(len(basisA), *Y.shape), axis=0)
-
-	if len(cB) == 1:
-		fitB = np.ones_like(img[signal_indices[0]:signal_indices[1],:]) * cB[0]
-	else:
-		fitB = np.sum(cB[:, None, None] * np.array(polynomialBasis(Y, X, orderB))
-				  .reshape(len(basisB), *Y.shape), axis=0)
+	fitA = betterPolynomial([X,Y],*cA).reshape(X.shape)
+	fitB = betterPolynomial([X,Y],*cB).reshape(X.shape)
 
 	fit = (fitB + fitA)/2
 	img[signal_indices[0]:signal_indices[1],:] = fit
 
-	# Upper and lower case
+	img[np.isnan(img)] = 0
 
-	non_nan = np.where(np.logical_not(np.isnan(img)))
-	x = non_nan[0]
-	y = non_nan[1]
-	z = img[non_nan]
-
-	interp = IDWExtrapolation(np.c_[x, y], z, power=4)
-	X,Y = np.indices(img.shape)
-
-	img = interp(X,Y)
 	return img
 
+def betterPolynomial(X,s,y0,*coeffs):
+	"""
+	We admit the convention that x is the horizontal direction, y the vertical direction
+	Returns a 2D array, where the profile along Y is a gaussian, and the profile along X is a polynomial
+	Those 2 profiles are then multiplied together
 
+	Parameters
+	----------
+	X : [x,y
+	s : gaussian sigma
+	y0 : gaussian position
+	coeffs : m=n+1 coeffs of the polynomial. We assume that coeffs[i] is such that we have coeffs[i] * x**i
 
+	Returns
+	-------
+	2D array
+	"""
+	coeffs = np.array(coeffs)
+	x,y = X
+
+	# gaussian
+	img = np.exp(-(y0-y)**2/(2*s**2))
+
+	# repeat m times the X 2D array along 1st axis
+	m = len(coeffs)
+	x = x[np.newaxis, :, :]
+	x = np.repeat(x, m, axis=0)
+
+	# Make power series to the right shape
+	power = np.arange(m)
+	power = power[:, np.newaxis, np.newaxis]
+
+	# Take the power along the 1st axis, multiply by coeffs along the same axis, sum along the axis
+	polyn = np.power(x,power)
+	polyn = polyn * coeffs[:, None, None]
+	polyn = polyn.sum(axis=0)
+
+	img = img * polyn
+	return img.ravel()
 
 
