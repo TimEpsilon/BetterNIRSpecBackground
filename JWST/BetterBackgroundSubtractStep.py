@@ -1,9 +1,11 @@
 import numpy as np
-from astropy.io import fits
 from scipy.signal import find_peaks_cwt
 from utils import *
 from scipy.optimize import curve_fit as cfit
 import matplotlib.pyplot as plt
+import stdatamodels.jwst.datamodels as dm
+from scipy.ndimage import rotate
+from scipy import interpolate
 
 
 def BetterBackgroundStep(name):
@@ -14,9 +16,6 @@ def BetterBackgroundStep(name):
 	 ---------
 	 name : str
 		Path to the file to open. Must be a _srctype
-	 threshold : float
-		A number between 0 and 1. Represents the proportion of high intensity pixels that will be cutoff,
-		1 being no pixels removed, 0 being every pixel removed
 	"""
 	if not "_srctype" in name:
 		logConsole(f"{name.split('/')[-1]} not a _srctype file. Skipping...",source="WARNING")
@@ -24,36 +23,31 @@ def BetterBackgroundStep(name):
 
 	# 1st draft Algorithm :
 	logConsole(f"Starting Custom Background Substraction on {name.split('/')[-1]}",source="BetterBackground")
-	multi_hdu = fits.open(name)
+	multi_hdu = dm.open(name)
 
-	# For a given _srctype, for every SCI inside
-	for i,hdu in enumerate(multi_hdu):
-		if not hdu.name == 'SCI':
-			continue
-		hdr = hdu.header
-		hdr.append("", end=True)
-		hdr.append("", end=True)
-		hdr.append("BB_DONE", end=True)
-
-		data = np.ma.masked_invalid(hdu.data)
+	# For a given _srctype, for every slit
+	for slit in multi_hdu.slits:
+		logConsole(f"Opened slitlet {slit.slitlet_id}")
+		data = np.ma.masked_invalid(slit.data)
 
 		#TODO : Eventually, work on error propagation
 
-		shutter_id = WhichShutterOpen(hdr)
+		shutter_id = WhichShutterOpen(slit.shutter_state)
 		if shutter_id is None:
-			hdr["BB_DONE"] = (False, "If the Better Background step succeeded")
+			logConsole("Not a 3 shutter slit!")
 			continue
 
-		logConsole(f"Extension {i} is SCI. Open shutter is {shutter_id+1}",source="BetterBackground")
-
-		slice_indices = SelectSlice(data)
+		slice_indices, rotated = SelectSlice(slit)
 
 		sliceFail = np.any(slice_indices is None)
 		if sliceFail:
 			logConsole("Can't find 3 spectra. Defaulting to equal slices",source="WARNING")
-			n = data.shape[0]
-			xmin = np.array([0,int(n/3),int(2*n/3)])
-			xmax = np.array([int(n/3),int(2*n/3),n])
+			first_column = data[:,int(data.shape[1]/2)]
+			start_indice = np.where(first_column > 0)[0][0]
+			end_indice = np.where(first_column > 0)[0][-1]
+			n = end_indice - start_indice
+			xmin = np.array([0,int(n/3),int(2*n/3)]) + start_indice
+			xmax = np.array([int(n/3),int(2*n/3),n]) + start_indice
 			slice_indices = np.array([xmin,xmax]).T
 
 		bkg_slice = []
@@ -68,15 +62,9 @@ def BetterBackgroundStep(name):
 			bkg_slice[j][_].mask = True
 
 			new_bkg_slice, c = AdjustModelToBackground(bkg_slice[j])
-			if np.all(c == 0):
-				hdr["BB_DONE"] = (False, "If the Better Background step succeeded")
 			bkg_interp.append(new_bkg_slice)
 			coeff.append(c)
 
-
-
-		# Remove pixels + interpolate on a given strip (ignore source strip)
-		print(coeff)
 		if coeff[0] is None or coeff[1] is None:
 			continue
 
@@ -88,16 +76,7 @@ def BetterBackgroundStep(name):
 
 		new_bkg = polynomialExtrapolation(new_bkg,*coeff,slice_indices,shutter_id)
 
-		hdu.data = np.ma.getdata(data - new_bkg)
-
-		logConsole("Writing to Header...")
-		hdr["BB_DONE"] = (True, "If the Better Background step succeeded")
-		hdr["BB_SLICE_FAIL"] = (not sliceFail,"If the Slice selection failed")
-		for i in range(len(slice_indices[:][0])):
-			hdr[f"BB_START_SLICE{i}"] = slice_indices[i][0]
-			hdr[f"BB_END_SLICE{i}"] = slice_indices[i][1]
-
-		hdu.header = hdr
+		slit.data = np.ma.getdata(data - new_bkg)
 
 	logConsole(f"Saving File {name.split('/')[-1]}",source="BetterBackground")
 	multi_hdu.writeto(name.replace("_srctype","_bkg"),overwrite=True)
@@ -107,7 +86,6 @@ def BetterBackgroundStep(name):
 
 def AdjustModelToBackground(bkg):
 	"""
-	Subtracts the high value signal from the background and interpolates those flagged pixels
 
 	Params
 	-----------
@@ -121,8 +99,6 @@ def AdjustModelToBackground(bkg):
 	c : array
 		List of coefficients
 	"""
-	bkg[np.isnan(bkg)] = 0
-
 	Y,X = np.indices(bkg.shape)
 
 	# Starting parameter
@@ -144,48 +120,99 @@ def AdjustModelToBackground(bkg):
 		return None, None
 
 
+def rotateSlit(slit):
+	"""
+	Rotates the slit in order to have horizontal strips
+
+	Parameters
+	----------
+	slit
+
+	Returns
+	-------
+	(data,
+	wavelength,
+	ra,
+	dec,
+	err)
+	"""
+	data = slit.data
+	# Maps the WCS info
+	Y, X = np.indices(slit.data.shape)
+	ra, dec, wavelength = slit.meta.wcs.transform('detector', 'world', X, Y)
+	ra[np.isnan(ra)] = 0
+	dec[np.isnan(dec)] = 0
+	data[np.isnan(wavelength)] = 0
+	wavelength[np.isnan(wavelength)] = 0
+
+	# 0.2'' < 0.46'' the cross dispersion size of a single shutter
+	# This is in order to select a thin 1-2 pixels wide line, centered on the object
+	eps = 0.2 / 3600
+	distance = np.sqrt((slit.source_dec - dec) ** 2 + (slit.source_ra - ra) ** 2)
+	distance[np.isnan(distance)] = 1000
+
+	mask = np.logical_and(
+		np.logical_not(np.isnan(slit.wavelength)),
+		distance < eps
+	)
+	y, x = np.where(mask)
+	# We fit a line and take the angle of the slope
+	coeff, _ = cfit(lambda x, a, b: a * x + b, x, y)
+	alpha = np.arctan(coeff[0]) * 180 / np.pi
+
+	return (rotate(data, alpha, mode='constant',order=1),
+			rotate(wavelength, alpha, mode='constant',order=1),
+			rotate(ra, alpha, mode='constant',order=1),
+			rotate(dec, alpha, mode='constant',order=1),
+			rotate(slit.err, alpha, mode='constant',order=1))
 
 
-def SelectSlice(data):
+
+def SelectSlice(slit):
 	"""
 	Selects 3 slices (2 background, 1 signal) by analysing a cross section, finding a pixel position for each peak,
 	searching for a subpixel position, and slicing at the midpoints
 
 	Params
 	---------
-	data : 2D array
-		An individual image obtained from an individual "SCI" extension in a fits
+	slit
 
 	Returns
 	---------
 	slice_indices : list of arrays
 		A list containing the lower and upper bound of each slit
+	rotated : tuple of arrays
 
 	"""
+	rotated = rotateSlit(slit)
+	data = rotated[0]
+	data = np.ma.masked_invalid(data)
+
 	# Get vertical cross section by summing horizontally
-	horiz_sum = np.mean(data,axis=1)
-	horiz_err = np.std(data, axis=1)
+	horiz_sum = np.ma.mean(data,axis=1)
+	horiz_err = np.ma.std(data, axis=1)
 
 	# Determine 3 maxima for 3 slits
 	peaks = []
 	j = 2
+
 	while not len(peaks) == 3:
 		if j > 6:
 			break
 		peaks = find_peaks_cwt(horiz_sum,j)
 		j += 1
 	if not len(peaks) == 3:
-		return None
+		return None, rotated
 	# Subpixel peaks
 	peaks = np.sort(getPeaksPrecise(range(len(horiz_sum)),horiz_sum,horiz_err,peaks))
 
 	if np.any(peaks > len(horiz_sum)) or np.any(peaks < 0):
-		return None
+		return None, rotated
 
 	# Cut horizontally at midpoint between maxima -> 3 strips
 	slice_indices = getPeakSlice(peaks,0,len(horiz_sum),horiz_sum)
 
-	return slice_indices
+	return slice_indices, rotated
 
 
 def getPeaksPrecise(x,y,err,peaks):

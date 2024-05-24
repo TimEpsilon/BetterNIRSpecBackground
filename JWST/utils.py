@@ -13,7 +13,6 @@ def logConsole(text, source=None):
 	 Source can be WARNING, ERROR, DEBUG or None / INFO / any other string,
 	 in which case it will be considered an INFO log
 	"""
-	#curr_time = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
 	text = f" - [BetterBackground]  : {text}"
 	logType = {"WARNING": lambda : logger.warning(text),
 			   "ERROR": lambda : logger.error(text),
@@ -24,17 +23,16 @@ def logConsole(text, source=None):
 
 
 
-def WhichShutterOpen(hdr):
+def WhichShutterOpen(shutter_state):
 	"""
 	 Gets the id of which shutter is open in the slitlet.
 	 If SHUTSTA is unusual (i.e. only one shutter is open), returns None
 	"""
-	_ = hdr["SHUTSTA"]
-	if _ == "11x":
+	if shutter_state == "11x":
 		return 2
-	elif _ == "1x1":
+	elif shutter_state == "1x1":
 		return 1
-	elif _ == "x11":
+	elif shutter_state == "x11":
 		return 0
 	else:
 		return None
