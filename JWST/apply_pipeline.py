@@ -114,7 +114,7 @@ for folder in folders:
 			BkgSubtractStep.BetterBackgroundStep(rate.replace("_rate", "_srctype"))
 
 		bkg = rate.replace("_rate","_bkg")
-		spec2 = None
+		del spec2
 
 		if not os.path.exists(bkg.replace("_bkg","_bkg_photomstep")):
 			logConsole("Restarting Pipeline Stage 2")
