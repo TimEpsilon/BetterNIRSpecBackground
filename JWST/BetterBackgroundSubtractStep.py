@@ -63,7 +63,7 @@ def BetterBackgroundStep(name,saveBackgroundImage=False):
 		slice_indices = SelectSlice(slit)
 		if slice_indices is None:
 			logConsole("Data is empty")
-			precal[i].data = np.zeros_like(precal[i].data)
+			precal.slits[i].data = np.zeros_like(precal.slits[i].data)
 			continue
 		slice_indices = np.clip(slice_indices,0,slit.data.shape[0])
 
@@ -124,24 +124,19 @@ def BetterBackgroundStep(name,saveBackgroundImage=False):
 			plt.savefig(f"{precal[i].slitlet_id}.png")
 			plt.close()
 
-		precal[i].data = fitted
+		precal.slits[i].data = fitted
 		logConsole("Background Calculated!")
 
 	# Reverse the calibration
 	logConsole("Reversing the Pre-Calibration...")
-	print(precal[3].data[~np.isnan(precal[3].data)].mean())
 	background = PhotomStep.call(precal, inverse=True, source_type="EXTENDED")
-	print(background[3].data[~np.isnan(background[3].data)].mean())
 	background = BarShadowStep.call(background, inverse=True, source_type="EXTENDED")
-	print(background[3].data[~np.isnan(background[3].data)].mean())
 	background = PathLossStep.call(background, inverse=True, source_type="EXTENDED")
-	print(background[3].data[~np.isnan(background[3].data)].mean())
 	background = FlatFieldStep.call(background, inverse=True)
-	print(background[3].data[~np.isnan(background[3].data)].mean())
 
 	# The result is somehow inverted?
 	background.write(name.replace("srctype","background"))
-	result = nirspec_utils.apply_master_background(multi_hdu, background, inverse=True)
+	result = nirspec_utils.apply_master_background(multi_hdu, background)
 
 	multi_hdu.close()
 	del multi_hdu
@@ -240,4 +235,4 @@ def getPeakSlice(peaks,n):
 
 	return np.array([xmin,xmax]).T
 
-BetterBackgroundStep("./mastDownload/JWST/CEERS-NIRSPEC-P5-PRISM-MSATA/jw01345063001_03101_00001_nrs1_srctype.fits",True)
+#BetterBackgroundStep("./mastDownload/JWST/CEERS-NIRSPEC-P5-PRISM-MSATA/jw01345063001_03101_00001_nrs1_srctype.fits",True)
