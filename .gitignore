@@ -19,5 +19,61 @@
 *.pdf
 *.pptx
 
+*.pdf
 
-jwst-pipeline-readthedocs-io-en-latest.pdf
+# LaTeX
+
+## Core latex/pdflatex auxiliary files:
+Rapport/*.aux
+Rapport/*.lof
+Rapport/*.log
+Rapport/*.lot
+Rapport/*.fls
+Rapport/*.out
+Rapport/*.toc
+Rapport/*.fmt
+Rapport/*.fot
+Rapport/*.cb
+Rapport/*.cb2
+Rapport/.*.lb
+
+## Build tool auxiliary files:
+Rapport/*.fdb_latexmk
+Rapport/*.synctex
+Rapport/*.synctex(busy)
+Rapport/*.synctex.gz
+Rapport/*.synctex.gz(busy)
+Rapport/*.pdfsync
+
+## Intermediate documents:
+Rapport/*.dvi
+Rapport/*.xdv
+Rapport/*-converted-to.*
+
+## Bibliography auxiliary files (bibtex/biblatex/biber):
+Rapport/*.bbl
+Rapport/*.bcf
+Rapport/*.blg
+Rapport/*-blx.aux
+Rapport/*-blx.bib
+Rapport/*.run.xml
+
+# glossaries
+Rapport/*.acn
+Rapport/*.acr
+Rapport/*.glg
+Rapport/*.glo
+Rapport/*.gls
+Rapport/*.glsdefs
+Rapport/*.lzo
+Rapport/*.lzs
+Rapport/*.slg
+Rapport/*.slo
+Rapport/*.sls
+Rapport/main.aux
+Rapport/main.pdf
+Rapport/main.log
+Rapport/main.ist
+Rapport/main.fls
+Rapport/main.fdb_latexmk
+Rapport/main.aux
