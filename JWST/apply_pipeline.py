@@ -76,7 +76,7 @@ for folder in folders:
 		det1.output_dir = path
 		det1.run(uncal)
 		
-		det1 = None
+		del det1
 
 ##########
 # Stage 2
@@ -176,7 +176,14 @@ for folder in folders:
 			final = path + "Final/"
 			if not os.path.exists(final):
 				os.makedirs(final)
-			Spec3Pipeline.call(asn,save_results=True,output_dir=final)
+
+			steps = {'extract_1d': {'extract_width': 5}}
+			spec3 = Spec3Pipeline(steps=steps)
+			spec3.save_results = True
+			spec3.output_dir = final
+			spec3.run(asn)
+			
+			del spec3
 
 		# Creates a file signifying that the pipeline has finished
 		# As a bonus, this file acts as a table containing the names of the files mentioned in slits_with_double_object.dat

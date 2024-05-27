@@ -1,3 +1,7 @@
+import os
+os.environ['CRDS_PATH'] = './crds_cache'
+os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
+
 import numpy as np
 from scipy.signal import find_peaks_cwt
 from utils import *
@@ -13,9 +17,10 @@ from jwst.photom import PhotomStep
 from jwst.resample import ResampleSpecStep
 from scipy import interpolate
 from jwst.master_background import nirspec_utils
+from astropy.visualization import ZScaleInterval
 
 
-def BetterBackgroundStep(name):
+def BetterBackgroundStep(name,saveBackgroundImage=False):
 	"""
 	 Creates a _bkg file from a _srctype file
 
@@ -32,6 +37,7 @@ def BetterBackgroundStep(name):
 	logConsole(f"Starting Custom Background Substraction on {name.split('/')[-1]}",source="BetterBackground")
 	multi_hdu = dm.open(name)
 	logConsole("Applying Pre-Calibration...")
+
 	precal = FlatFieldStep.call(multi_hdu)
 	precal = PathLossStep.call(precal,source_type="EXTENDED")
 	precal = BarShadowStep.call(precal,source_type="EXTENDED")
@@ -49,11 +55,17 @@ def BetterBackgroundStep(name):
 		shutter_id = WhichShutterOpen(slit.shutter_state)
 		if shutter_id is None:
 			logConsole("Not a 3 shutter slit!")
+			precal[i].data = np.zeros_like(precal[i].data)
 			continue
 
 		# The slices are NOT the size of the individual shutter dispersion
 		# They are chosen by analysing the vertical maxima and choosing a radius of lines above and beyond those maxima
 		slice_indices = SelectSlice(slit)
+		if slice_indices is None:
+			logConsole("Data is empty")
+			precal[i].data = np.zeros_like(precal[i].data)
+			continue
+		slice_indices = np.clip(slice_indices,0,slit.data.shape[0])
 
 		logConsole("Starting on modeling of background")
 		Y, X = np.indices(slit.data.shape)
@@ -99,106 +111,48 @@ def BetterBackgroundStep(name):
 		Y, X = np.indices(precal[i].data.shape)
 		_, _, lamb = precal[i].meta.wcs.transform("detector", "world", X, Y)
 		fitted = interp(lamb)
+		fitted[np.isnan(fitted)] = 0
+
+		if saveBackgroundImage:
+			z = ZScaleInterval()
+			z1, z2 = z.get_limits(slit.data)
+			plt.figure(figsize=(16,4))
+			plt.subplot(2,1,1)
+			plt.imshow(precal[i].data,origin="lower",interpolation="none",vmin=z1,vmax=z2)
+			plt.subplot(2, 1, 2)
+			plt.imshow(fitted, origin="lower", interpolation="none", vmin=z1, vmax=z2)
+			plt.savefig(f"{precal[i].slitlet_id}.png")
+			plt.close()
+
 		precal[i].data = fitted
 		logConsole("Background Calculated!")
 
 	# Reverse the calibration
 	logConsole("Reversing the Pre-Calibration...")
-	background = PhotomStep.call(precal, inverse=True)
-	background = BarShadowStep.call(background, inverse=True)
-	background = PathLossStep.call(background, inverse=True)
+	print(precal[3].data[~np.isnan(precal[3].data)].mean())
+	background = PhotomStep.call(precal, inverse=True, source_type="EXTENDED")
+	print(background[3].data[~np.isnan(background[3].data)].mean())
+	background = BarShadowStep.call(background, inverse=True, source_type="EXTENDED")
+	print(background[3].data[~np.isnan(background[3].data)].mean())
+	background = PathLossStep.call(background, inverse=True, source_type="EXTENDED")
+	print(background[3].data[~np.isnan(background[3].data)].mean())
 	background = FlatFieldStep.call(background, inverse=True)
+	print(background[3].data[~np.isnan(background[3].data)].mean())
 
-	result = nirspec_utils.apply_master_background(multi_hdu, background)
+	# The result is somehow inverted?
+	background.write(name.replace("srctype","background"))
+	result = nirspec_utils.apply_master_background(multi_hdu, background, inverse=True)
 
+	multi_hdu.close()
+	del multi_hdu
 	del background
 	del resampled
 	del precal
 
-	result.write(name.replace("srctype","_bkg"))
-	logConsole(f"Saving File {name.split('/')[-1]}")
+	result.write(name.replace("srctype","bkg"))
+	logConsole(f"Saving File {name.replace('srctype','bkg').split('/')[-1]}")
 
 	pass
-
-
-def AdjustModelToBackground(bkg):
-	"""
-
-	Params
-	-----------
-	bkg : 2D array
-		The background strip
-
-	Returns
-	-----------
-	img : 2D array
-		The fitted / interpolated slice
-	c : array
-		List of coefficients
-	"""
-	Y,X = np.indices(bkg.shape)
-
-	# Starting parameter
-	p0 = [
-		4, # sigma
-		bkg.shape[0]/2, # y0
-		bkg.mean(), # constant shift, order 0 polynomial
-		1, # order 1
-		1, # order 2
-		1, # order 3
-		1 # order 4
-	]
-	try :
-		coeff, err = cfit(betterPolynomial,[X,Y], bkg.ravel(), p0=p0)
-		fit = betterPolynomial([X, Y], *coeff).reshape(bkg.shape)
-		return fit, coeff
-	except :
-		logConsole("Optimal parameters not Found. Skipping")
-		return None, None
-
-
-def rotateSlit(slit):
-	"""
-	Rotates the slit in order to have horizontal strips
-
-	Parameters
-	----------
-	slit
-
-	Returns
-	-------
-	(data,
-	wavelength,
-	ra,
-	dec,
-	err)
-	"""
-	data = slit.data
-	# Maps the WCS info
-	Y, X = np.indices(slit.data.shape)
-	ra, dec, wavelength = slit.meta.wcs.transform('detector', 'world', X, Y)
-
-	# 0.2'' < 0.46'' the cross dispersion size of a single shutter
-	# This is in order to select a thin 1-2 pixels wide line, centered on the object
-	eps = 0.2 / 3600
-	distance = np.sqrt((slit.source_dec - dec) ** 2 + (slit.source_ra - ra) ** 2)
-	distance[np.isnan(distance)] = 1000
-
-	mask = np.logical_and(
-		np.logical_not(np.isnan(slit.wavelength)),
-		distance < eps
-	)
-	y, x = np.where(mask)
-	# We fit a line and take the angle of the slope
-	coeff, _ = cfit(lambda x, a, b: a * x + b, x, y)
-	alpha = np.arctan(coeff[0]) * 180 / np.pi
-
-	return (np.ma.masked_invalid(rotate(data, alpha, mode='constant',cval=np.nan,order=1)),
-			np.ma.masked_invalid(rotate(wavelength, alpha, mode='constant',cval=np.nan,order=1)),
-			np.ma.masked_invalid(rotate(ra, alpha, mode='constant',cval=np.nan,order=1)),
-			np.ma.masked_invalid(rotate(dec, alpha, mode='constant',cval=np.nan,order=1)),
-			np.ma.masked_invalid(rotate(slit.err, alpha, mode='constant',cval=np.nan,order=1)))
-
 
 
 def SelectSlice(slit):
@@ -236,11 +190,14 @@ def SelectSlice(slit):
 		j += 1
 	if not len(peaks) == 3 or np.any(peaks > len(horiz_sum)) or np.any(peaks < 0):
 		logConsole("Can't find 3 spectra. Defaulting to equal slices", source="WARNING")
-		start_indice = np.where(horiz_sum > 0)[0][0]
-		end_indice = np.where(horiz_sum > 0)[0][-1]
-		n = end_indice - start_indice
-		xmin = np.array([round(n / 6)-radius, round(n/2)-radius, round(5*n/6)-radius]) + start_indice
-		xmax = np.array([round(n / 6)+radius, round(n/2)+radius, round(5*n/6)+radius]) + start_indice + 1
+		# Somehow this edge case exists
+		if np.all(horiz_sum == 0):
+			return None
+		start_index = np.where(horiz_sum > 0)[0][0]
+		end_index = np.where(horiz_sum > 0)[0][-1]
+		n = end_index - start_index
+		xmin = np.array([round(n / 6)-radius, round(n/2)-radius, round(5*n/6)-radius]) + start_index
+		xmax = np.array([round(n / 6)+radius, round(n/2)+radius, round(5*n/6)+radius]) + start_index + 1
 		slice_indices = np.array([xmin, xmax]).T
 		return slice_indices
 
@@ -283,90 +240,4 @@ def getPeakSlice(peaks,n):
 
 	return np.array([xmin,xmax]).T
 
-
-def polynomialExtrapolation(img,cA,cB,slices,shutter_id):
-	"""
-	Extrapolates a full image using slices already fitted by polynomials.
-	The data is supposed to be an image with the rows such that : [.,A,x,B,.]
-	Where A and B have been fitted by a polynomial.
-	x will then be calculated as a weighted sum of both A and B coefficients.
-
-	Parameters
-	----------
-	img : 2D array
-		The image to extrapolate
-	cA : array
-		The coefficients of the polynomial A
-	cB : array
-		The coefficients of the polynomial B
-	slices : array
-		A 2D array of coordinates of vertical slices. 1st index is the slice number, 2nd index is the starting/end point
-	shutter_id : int
-		An int between 0, 1 and 2, indicating which slice is x and which are A and B
-
-	Returns
-	-------
-	img : 2D array
-		The extrapolated image
-
-	"""
-
-	# Memo : the array img is such that for img[x,y], x (axis=0) is the vertical position, y (axis=1) is the horizontal position
-	# we thus suppose img is, along x, [.,A,.,B,.]
-
-	signal_indices = (slices[shutter_id][0],slices[shutter_id][1])
-
-	# Middle case
-	Y,X = np.indices(img[signal_indices[0]:signal_indices[1],:].shape)
-
-	fitA = betterPolynomial([X,Y],*cA).reshape(X.shape)
-	fitB = betterPolynomial([X,Y],*cB).reshape(X.shape)
-
-	fit = (fitB + fitA)/2
-	img[signal_indices[0]:signal_indices[1],:] = fit
-
-	img[np.isnan(img)] = 0
-
-	return img
-
-def betterPolynomial(X,s,y0,*coeffs):
-	"""
-	We admit the convention that x is the horizontal direction, y the vertical direction
-	Returns a 2D array, where the profile along Y is a gaussian, and the profile along X is a polynomial
-	Those 2 profiles are then multiplied together
-
-	Parameters
-	----------
-	X : [x,y
-	s : gaussian sigma
-	y0 : gaussian position
-	coeffs : m=n+1 coeffs of the polynomial. We assume that coeffs[i] is such that we have coeffs[i] * x**i
-
-	Returns
-	-------
-	2D array
-	"""
-	coeffs = np.array(coeffs)
-	x,y = X
-
-	# gaussian
-	img = np.exp(-(y0-y)**2/(2*s**2))
-
-	# repeat m times the X 2D array along 1st axis
-	m = len(coeffs)
-	x = x[np.newaxis, :, :]
-	x = np.repeat(x, m, axis=0)
-
-	# Make power series to the right shape
-	power = np.arange(m)
-	power = power[:, np.newaxis, np.newaxis]
-
-	# Take the power along the 1st axis, multiply by coeffs along the same axis, sum along the axis
-	polyn = np.power(x,power)
-	polyn = polyn * coeffs[:, None, None]
-	polyn = polyn.sum(axis=0)
-
-	img = img * polyn
-	return img.ravel()
-
-
+BetterBackgroundStep("./mastDownload/JWST/CEERS-NIRSPEC-P5-PRISM-MSATA/jw01345063001_03101_00001_nrs1_srctype.fits",True)
