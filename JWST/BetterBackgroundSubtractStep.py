@@ -105,7 +105,7 @@ def BetterBackgroundStep(name,saveBackgroundImage=False):
 		interp = interpolate.UnivariateSpline(x, y, w=w, s=0.01, k=5, check_finite=True)
 		_ = interp(np.linspace(x.min(), x.max(), 10))
 		if not np.all(np.isfinite(_)):
-			for s in 10**np.arange(-2,5):
+			for s in [0.01,0.1,1,10,100]:
 				logConsole(f"Ideal spline not found. Defaulting to a spline of s={s}",source="WARNING")
 				interp = interpolate.UnivariateSpline(x, y, w=w, s=s, k=3, check_finite=True)
 				_ = interp(np.linspace(x.min(), x.max(), 10))
