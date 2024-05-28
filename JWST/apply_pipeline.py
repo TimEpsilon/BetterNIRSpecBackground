@@ -75,7 +75,6 @@ for folder in folders:
 		det1.save_results = True
 		det1.output_dir = path
 		det1.run(uncal)
-		
 		del det1
 
 ##########
@@ -109,12 +108,13 @@ for folder in folders:
 			spec2 = Spec2Pipeline(steps=steps)
 			spec2.output_dir = path
 			spec2.run(rate)
+			del spec2
 
 		if not os.path.exists(rate.replace("rate","bkg")):
 			BkgSubtractStep.BetterBackgroundStep(rate.replace("_rate", "_srctype"))
 
 		bkg = rate.replace("_rate","_bkg")
-		del spec2
+		
 
 		if not os.path.exists(bkg.replace("_bkg","_bkg_photomstep")):
 			logConsole("Restarting Pipeline Stage 2")
@@ -177,12 +177,10 @@ for folder in folders:
 			if not os.path.exists(final):
 				os.makedirs(final)
 
-			steps = {'extract_1d': {'extract_width': 5}}
-			spec3 = Spec3Pipeline(steps=steps)
+			spec3 = Spec3Pipeline()
 			spec3.save_results = True
 			spec3.output_dir = final
 			spec3.run(asn)
-			
 			del spec3
 
 		# Creates a file signifying that the pipeline has finished

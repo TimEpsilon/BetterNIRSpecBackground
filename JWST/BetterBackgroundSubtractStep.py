@@ -1,7 +1,3 @@
-import os
-os.environ['CRDS_PATH'] = './crds_cache'
-os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
-
 import numpy as np
 from scipy.signal import find_peaks_cwt
 from utils import *
