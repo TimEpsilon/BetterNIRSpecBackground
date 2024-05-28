@@ -105,14 +105,17 @@ def BetterBackgroundStep(name,saveBackgroundImage=False):
 		interp = interpolate.UnivariateSpline(x, y, w=w, s=0.01, k=5, check_finite=True)
 		_ = interp(np.linspace(x.min(), x.max(), 10))
 		if not np.all(np.isfinite(_)):
-			logConsole("Ideal spline not found. Defaulting to a spline of s=1")
-			interp = interpolate.UnivariateSpline(x, y, w=w, s=1, k=5, check_finite=True)
+			for s in 10**np.arange(-2,5):
+				logConsole(f"Ideal spline not found. Defaulting to a spline of s={s}",source="WARNING")
+				interp = interpolate.UnivariateSpline(x, y, w=w, s=s, k=3, check_finite=True)
+				_ = interp(np.linspace(x.min(), x.max(), 10))
+				if np.all(np.isfinite(_)):
+					break
 
 		# The 2D background model obtained from the 1D spectrum
 		Y, X = np.indices(precal[i].data.shape)
 		_, _, lamb = precal[i].meta.wcs.transform("detector", "world", X, Y)
 		fitted = interp(lamb)
-		fitted[np.isnan(fitted)] = 0
 
 		if saveBackgroundImage:
 			z = ZScaleInterval()
