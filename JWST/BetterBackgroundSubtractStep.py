@@ -94,6 +94,10 @@ def BetterBackgroundStep(name,saveBackgroundImage=False):
 		w = 1 / dy
 		w /= w.mean()
 
+		if len(x) <= 5:
+			logConsole("Not Enough Points to interpolate",source="WARNING")
+			precal.slits[i].data = np.zeros_like(precal.slits[i].data)
+
 		# The s value should usually not cause the fitting to fail
 		# In the case it does, a larger, less harsh s value is used
 		# This is done by verifying if the returned function is nan on one of the 10 points in the wavelength range
