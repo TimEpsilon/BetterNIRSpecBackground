@@ -29,7 +29,7 @@ def download(obsids,path):
 	print("Successful Filtering!")
 	print(data_filtered)
 	print("Starting Download")
-	OBS.download_products(data_filtered,flat=True,download_dir=path)
+	OBS.download_products(data_filtered["obsid"],flat=True,download_dir=path)
 
 	cleanup(path)
 
