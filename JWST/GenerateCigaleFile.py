@@ -10,7 +10,7 @@ working_dir = "../mastDownload/JWST/"
 def iterateOverFolders():
 	tables = []
 	for folder in glob(working_dir + "*"):
-		folder = f"{folder}/Final/"
+		folder = f"{folder}Final/"
 		print(f"Working on {folder}")
 		_ = generateCigaleFile(folder)
 		if _ is None:
