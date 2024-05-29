@@ -1,17 +1,20 @@
 import os
 from glob import glob
 from astropy.io import fits
-from astropy.table import QTable
-from utils import logConsole
+from astropy.table import QTable, vstack
 
 
 working_dir = "./mastDownload/JWST/"
 
 def iterateOverFolders():
+	tables = []
 	for folder in glob(working_dir + "*"):
 		folder = f"{folder}/Final/"
 		print(f"Working on {folder}")
-		generateCigaleFile(folder)
+		tables.append(generateCigaleFile(folder))
+	table = vstack(tables)
+
+	table.write(working_dir + 'cigale-data.fits', overwrite=True, format="ascii")
 
 
 def generateCigaleFile(folder):
@@ -26,7 +29,7 @@ def generateCigaleFile(folder):
 		if len(data[1].header["SHUTSTA"]) != 3:
 			continue
 
-		ids.append(f"nirspec_{data[1].header['SOURCEID']}")
+		ids.append(f"nirspec_{data[1].header['SRCNAME']}")
 		paths.append(file)
 		modes.append(data[0].header["GRATING"].lower())
 
@@ -41,7 +44,8 @@ def generateCigaleFile(folder):
 
 	print("Saving Table")
 	print(table)
-	table.write(folder + 'cigale-data.fits', overwrite=True, format="ascii")
+	return table
+
 
 
 iterateOverFolders()
