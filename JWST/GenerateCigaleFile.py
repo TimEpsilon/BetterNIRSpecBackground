@@ -30,6 +30,9 @@ def generateCigaleFile(folder):
 		paths.append(file)
 		modes.append(data[0].header["GRATING"].lower())
 
+	if len(ids) == 0:
+		print("Empty folder")
+		pass
 	redshift = [-1 for _ in range(len(ids))]
 	norm = ["wave" for _ in range(len(ids))]
 
@@ -37,7 +40,7 @@ def generateCigaleFile(folder):
 				   names=('id', 'redshift', 'spectrum', 'mode', 'norm'))
 
 	print("Saving Table")
-	table.write(folder + 'cigale-data.fits', overwrite=True)
+	table.write(folder + 'fin', overwrite=True)
 
 
 iterateOverFolders()
