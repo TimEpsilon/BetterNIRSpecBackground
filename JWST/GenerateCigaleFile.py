@@ -11,7 +11,10 @@ def iterateOverFolders():
 	for folder in glob(working_dir + "*"):
 		folder = f"{folder}/Final/"
 		print(f"Working on {folder}")
-		tables.append(generateCigaleFile(folder))
+		_ = generateCigaleFile(folder)
+		if _ is None:
+			continue
+		tables.append(_)
 	table = vstack(tables)
 
 	table.write(working_dir + 'cigale-data.fits', overwrite=True, format="ascii")
