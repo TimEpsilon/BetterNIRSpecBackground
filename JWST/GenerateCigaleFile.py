@@ -40,7 +40,8 @@ def generateCigaleFile(folder):
 				   names=('id', 'redshift', 'spectrum', 'mode', 'norm'))
 
 	print("Saving Table")
-	table.write(folder + 'fin', overwrite=True)
+	print(table)
+	table.write(folder + 'fin', overwrite=True, format="ascii")
 
 
 iterateOverFolders()
