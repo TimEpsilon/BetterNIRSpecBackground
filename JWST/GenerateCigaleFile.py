@@ -10,7 +10,7 @@ working_dir = "../mastDownload/JWST/"
 def iterateOverFolders():
 	tables = []
 	for folder in glob(working_dir + "*"):
-		folder = f"{folder}Final/"
+		folder = f"{folder}/Final/"
 		print(f"Working on {folder}")
 		_ = generateCigaleFile(folder)
 		if _ is None:
@@ -36,7 +36,8 @@ def generateCigaleFile(folder):
 		if not np.any(np.logical_and(np.isfinite(data[1].data['FLUX']), np.isfinite(data[1].data['FLUX_ERROR']))):
 			continue
 
-		ids.append(f"nirspec_{data[1].header['SRCNAME']}")
+		program = folder.split("/")[-2].split("_")[-3]
+		ids.append(f"nirspec_{program}_{data[1].header['SRCNAME']}")
 		paths.append(file)
 		modes.append(data[0].header["GRATING"].lower())
 
