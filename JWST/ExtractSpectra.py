@@ -6,22 +6,25 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import os
 from utils import logConsole
 from astropy.visualization import ZScaleInterval
+from multiprocessing import Pool, cpu_count
 
 
 working_dir = "./mastDownload/JWST/"
 folders = glob(working_dir+'*')
+num_processes = min(len(folders), cpu_count())
 
 def IterateOverFolders(folders):
-	for folder in folders:
-		path = folder + "/BetterPolyn/"
-		if os.path.exists(path):
-			logConsole(f"Working on {folder}")
-			for file in glob(path + "*_s2d.fits"):
-				logConsole(f"Working on {file}")
-				if "10318" not in file:
-					continue
-				makeExtraction(file)
+	pool_obj = Pool(num_processes)
+	pool_obj.map(WorkOn1Folder,folders)
+	pool_obj.close()
 
+def WorkOn1Folder(folder):
+	path = folder + "/Final/"
+	if os.path.exists(path):
+		logConsole(f"Working on {folder}")
+		for file in glob(path + "*_s2d.fits"):
+			logConsole(f"Working on {file}")
+			makeExtraction(file)
 
 
 def makeExtraction(file):
@@ -60,7 +63,7 @@ def makeExtraction(file):
 		fig.colorbar(im, cax=cax, orientation='vertical', label=f"Flux ({mos['meta'].bunit_data})")
 
 		# The slice
-		n = 3
+		n = 2
 		x, y = mos["meta"].wcs.transform("world", "detector", s_ra, s_dec, lamb[0][0])
 		ax[0].hlines((y + n, y - n), 0, Y.shape[1], color='r', linewidth=0.5, linestyle='dashed')
 
@@ -80,6 +83,7 @@ def makeExtraction(file):
 		ax[1].grid(True)
 		ax[1].set_xlabel(r"$\lambda$ measured (µm)")
 		ax[1].set_ylabel(r"$F_\nu$ (MJy)")
+		ax[1].set_ylim(spectrum.min(), spectrum.max())
 
 		name = file.split("/")[-1].replace("_s2d.fits", ".png")
 		logConsole(f"Saving {name}")
