@@ -2,14 +2,15 @@ import os
 from glob import glob
 from astropy.io import fits
 from astropy.table import QTable, vstack
+import numpy as np
 
 
-working_dir = "./mastDownload/JWST/"
+working_dir = "../mastDownload/JWST/"
 
 def iterateOverFolders():
 	tables = []
 	for folder in glob(working_dir + "*"):
-		folder = f"{folder}/Final/"
+		folder = f"{folder}Final/"
 		print(f"Working on {folder}")
 		_ = generateCigaleFile(folder)
 		if _ is None:
@@ -30,6 +31,9 @@ def generateCigaleFile(folder):
 
 		# Ignoring none 3 shutter slits because they have not been treated
 		if len(data[1].header["SHUTSTA"]) != 3:
+			continue
+		# Excluding entirely nan arrays
+		if not np.any(np.logical_and(np.isfinite(data[1].data['FLUX']), np.isfinite(data[1].data['FLUX_ERROR']))):
 			continue
 
 		ids.append(f"nirspec_{data[1].header['SRCNAME']}")
