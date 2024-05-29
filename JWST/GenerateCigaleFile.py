@@ -32,7 +32,7 @@ def generateCigaleFile(folder):
 
 	if len(ids) == 0:
 		print("Empty folder")
-		pass
+		return
 	redshift = [-1 for _ in range(len(ids))]
 	norm = ["wave" for _ in range(len(ids))]
 
@@ -41,7 +41,7 @@ def generateCigaleFile(folder):
 
 	print("Saving Table")
 	print(table)
-	table.write(folder + 'fin', overwrite=True, format="ascii")
+	table.write(folder + 'cigale-data.fits', overwrite=True, format="ascii")
 
 
 iterateOverFolders()
