@@ -2,15 +2,24 @@
 \usepackage{graphicx}
 \usepackage{geometry}
 \usepackage[acronym]{glossaries}
+\usepackage{biblatex} %Imports biblatex package
+\usepackage[hidelinks]{hyperref}
 
+\hypersetup{
+  colorlinks   = true, %Colours links instead of ugly boxes
+  urlcolor     = blue, %Colour for external hyperlinks
+  linkcolor    = blue, %Colour of internal links
+  citecolor   = red %Colour of citations
+}
+
+\addbibresource{references.bib} %Import the bibliography file
 \makenoidxglossaries
 \loadglsentries{glossary.tex}
 
 
 
 \title{\Huge Compte Rendu de Stage Master 2\\
-\large Galaxies Pop III, premières phases de la formation des métaux et 
-poussières dans l'Univers à très grand Redshift (6 $<$ z $<$ ?)}
+\large Galaxies Pop III, premières phases de la formation des métaux et poussières dans l'Univers à très grand Redshift (6 $<$ z $<$ ?)}
 \author{Dewachter Tim}
 \date{25 Mars 2024 - 28 Juin 2024}
 
@@ -20,15 +29,44 @@ poussières dans l'Univers à très grand Redshift (6 $<$ z $<$ ?)}
 
 \newpage
 
+\tableofcontents
+
+\newpage
+
 \section{Introduction}
 
-En seulement 2 ans d'opérations, le \acrshort{jwst} nous a déjà ouvert de nombreuses 
-portes jusque là inaccessibles, et cela dans de nombreuses branches de l'astrophysique.
+\subsection{Contexte}
+
+En seulement 2 ans d'opérations, le \gls{jwst} nous a déjà ouvert de nombreuses portes jusqu'alors inaccessibles, et cela dans de nombreuses branches de l'astrophysique. Grâce à ses instruments spectroscopiques et sa sensibilité à l'infrarouge proche et moyen, il est désormais possible de sonder l'univers comme jamais auparavant. Parmi les nombreux objectifs que l'on souhaite accomplir avec ce télescope, l'un d'eux est l'étude de la formation des galaxies, de l'apparition des métaux au sein de celles-ci, et de la recherche des hypothétiques galaxies de Population III, constituées d'étoiles de métallicité nulle, formées par le gaz primordial d'Hydrogène et d'Hélium.
+
+Ce nouvel horizon sur l'univers lointain nous permet de remonter l'histoire de l'univers comme jamais auparavant. \cite{2023arXiv230600953M}
+
+
+
+\section{Méthodologie}
+
+\subsection{JWST et NIRSpec}
+
+Le \gls{jwst} est un télescope spatial de 6.5 mètres de diamètre équivalent, en orbite autour du point de Lagrange L2, et actif depuis juillet 2022 \cite{jwst_website}. Sa sensibilité dans l'infrarouge en fait un outil remarquable pour observer l'univers jeune. En effet, de par l'expansion de l'univers, la lumière des objets lointains se retrouve décalée vers le rouge : il s'agit du redshift $z$, défini comme 
+
+\begin{equation}
+    1 + z = \frac{\lambda_{obs}}{\lambda_{rest}}
+\end{equation}
+
+Avec $\lambda_{obs}$ la longueur d'onde observée, et $\lambda_{rest}$ la longueur d'onde dans le référentiel de la source (au repos). Ainsi, regarder loin dans l'espace est équivalent à regarder loin dans le passé et nécessite d'observer à des longueurs d'ondes de plus en plus grandes.
+
+Parmi les instruments du \gls{jwst}, le \gls{nirspec} est un spectromètre sur la bande 0.6 - 5.3  µm, disposant de 3 modes de résolution : prism ($R \sim 100$), medium grating ($R \sim 1000$), high grating ($R \sim 2700$). L'un des atouts principaux de \gls{nirspec} est son \gls{msa}
+
+
+
 
 
 
 
 \printnoidxglossaries
+
+\printbibliography %Prints bibliography
+
 
 
 \end{document}
