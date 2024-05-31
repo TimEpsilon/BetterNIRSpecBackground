@@ -1,23 +1,16 @@
 import os
 
+from jwst.pipeline import Spec3Pipeline
+
+import MainPipeline
+
 os.environ['CRDS_PATH'] = '/home/tdewachter/crds_cache'
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
-from jwst.pipeline import Detector1Pipeline
-from jwst.pipeline import Spec2Pipeline
-from jwst.pipeline import Spec3Pipeline
-import stdatamodels.jwst.datamodels as dm
-from jwst.wavecorr import WavecorrStep
-from jwst.flatfield import FlatFieldStep
-from jwst.pathloss import PathLossStep
-from jwst.barshadow import BarShadowStep
-from jwst.photom import PhotomStep
-from jwst.pixel_replace import PixelReplaceStep
-from jwst.resample import ResampleSpecStep
-from jwst.extract_1d import Extract1dStep
+from multiprocessing import Pool, cpu_count
 
 from glob import glob
-import BetterBackgroundSubtractStep as BkgSubtractStep
+
 import sys
 import pandas as pd
 
@@ -43,39 +36,18 @@ for folder in folders:
 
 
 	uncal_list = glob(path+"*_uncal.fits")
-	logConsole(f"Found {len(uncal_list)} uncalibrated files")
+	num_processes = min(len(uncal_list), cpu_count())
+	logConsole(f"Found {len(uncal_list)} uncalibrated files. Running on {num_processes} threads")
 
-	for n,uncal in enumerate(uncal_list):
-		logConsole(f"Starting Stage 1 ({n+1}/{len(uncal_list)})")
-		if os.path.exists(uncal.replace("_uncal","_rate")):
-			continue
-		# Steps Params By Pablo Arrabal Haro
-		steps = {
-                'jump': {'expand_large_events': True,
-                         # 1st flag groups after jump above DN threshold.
-                         'after_jump_flag_dn1': 0,
-                         # 1st flag groups after jump groups within
-                         # specified time.
-                         'after_jump_flag_time1': 0,
-                         # 2nd flag groups after jump above DN threshold.
-                         'after_jump_flag_dn2': 0,
-                         # 2nd flag groups after jump groups within
-                         # specified time.
-                         'after_jump_flag_time2': 0,
-                         # Minimum required area for the central saturation
-                         # of snowballs.
-                         'min_sat_area': 15.0,
-                         # Minimum area to trigger large events processing.
-                         'min_jump_area': 15.0,
-                         # The expansion factor for the enclosing circles
-                         # or ellipses.
-                         'expand_factor': 2.0}
-                }
-		det1 = Detector1Pipeline(steps=steps)
-		det1.save_results = True
-		det1.output_dir = path
-		det1.run(uncal)
-		del det1
+	def Stage1(file):
+		MainPipeline.Stage1(file,path)
+		return
+
+	# Open threads
+	pool_obj = Pool(num_processes)
+	pool_obj.map(Stage1, uncal_list)
+	pool_obj.close()
+
 
 ##########
 # Stage 2
@@ -88,56 +60,17 @@ for folder in folders:
 	logConsole(f"Starting on {folder}")
 
 	rate_list = glob(path+"*_rate.fits")
-	logConsole(f"Found {len(rate_list)} countrate files")
+	num_processes = min(len(rate_list), cpu_count())
+	logConsole(f"Found {len(rate_list)} countrate files. Running on {num_processes} threads")
 
-	for n,rate in enumerate(rate_list):
-		logConsole(f"Starting Stage 2 ({n+1}/{len(rate_list)})")
-		if not os.path.exists(rate.replace("rate","srctype")):
-			steps={'srctype': {'save_results':True},
-					'photom': {'skip':True},
-					'flat_field': {'skip':True},
-					'master_background_mos': {'skip':True},
-					'wavecorr': {'skip':True},
-					'pathloss': {'skip':True},
-					'barshadow': {'skip':True},
-					'pixel_replace': {'skip':True},
-					'extract_1d': {'skip':True},
-					'cube_build': {'skip':True},
-					'resample_spec': {'skip':True}}
+	def Stage2(file):
+		MainPipeline.Stage2(file,path)
+		return
 
-			spec2 = Spec2Pipeline(steps=steps)
-			spec2.output_dir = path
-			spec2.run(rate)
-			del spec2
-
-		if not os.path.exists(rate.replace("rate","bkg")):
-			BkgSubtractStep.BetterBackgroundStep(rate.replace("_rate", "_srctype"))
-
-		bkg = rate.replace("_rate","_bkg")
-		
-
-		if not os.path.exists(bkg.replace("_bkg","_bkg_photomstep")):
-			logConsole("Restarting Pipeline Stage 2")
-			# Steps :
-			# wavecorr
-			# flat field
-			# path loss
-			# bar shadow
-			# photom
-			# pixel replace
-			# rectified 2D -> Save
-			# spectral extraction -> Save
-
-			with dm.open(bkg) as data:
-				logConsole("Successfully loaded _bkg file")
-				calibrated = WavecorrStep.call(data)
-				calibrated = FlatFieldStep.call(calibrated)
-				calibrated = PathLossStep.call(calibrated)
-				calibrated = BarShadowStep.call(calibrated)
-				calibrated = PhotomStep.call(calibrated,output_dir=path,save_results=True)
-				calibrated = PixelReplaceStep.call(calibrated)
-				calibrated = ResampleSpecStep.call(calibrated,output_dir=path,save_results=True)
-				calibrated = Extract1dStep.call(calibrated,output_dir=path,save_results=True)
+	# Open threads
+	pool_obj = Pool(num_processes)
+	pool_obj.map(Stage2, rate_list)
+	pool_obj.close()
 
 
 	##########
@@ -165,10 +98,10 @@ for folder in folders:
 		logConsole(f"Starting on {folder}")
 
 		asn_list = glob(path+"*_spec3_*_asn.json")
-		logConsole(f"Found {len(asn_list)} association files")
+		num_processes = min(len(asn_list), cpu_count())
+		logConsole(f"Found {len(asn_list)} association files. Running on {num_processes} threads")
 
-
-		for n,asn in enumerate(asn_list):
+		for asn in asn_list:
 			logConsole(f"Starting Stage 3 ({n+1}/{len(asn_list)})")
 			logConsole("Modifying Stage 3 association files")
 			rewriteJSON(asn)
