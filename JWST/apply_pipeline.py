@@ -40,13 +40,11 @@ def main():
 		num_processes = min(len(uncal_list), cpu_count())
 		logConsole(f"Found {len(uncal_list)} uncalibrated files. Running on {num_processes} threads")
 
-		def Stage1(file):
-			MainPipeline.Stage1(file,path)
-			return
+		args = [(file, path) for file in uncal_list]
 
 		# Open threads
 		pool_obj = Pool(num_processes)
-		pool_obj.map(Stage1, uncal_list)
+		pool_obj.starmap(MainPipeline.Stage1, args)
 		pool_obj.close()
 
 
@@ -64,13 +62,11 @@ def main():
 		num_processes = min(len(rate_list), cpu_count())
 		logConsole(f"Found {len(rate_list)} countrate files. Running on {num_processes} threads")
 
-		def Stage2(file):
-			MainPipeline.Stage2(file,path)
-			return
+		args = [(file, path) for file in rate_list]
 
 		# Open threads
 		pool_obj = Pool(num_processes)
-		pool_obj.map(Stage2, rate_list)
+		pool_obj.starmap(MainPipeline.Stage2, args)
 		pool_obj.close()
 
 
@@ -103,7 +99,7 @@ def main():
 			logConsole(f"Found {len(asn_list)} association files. Running on {num_processes} threads")
 
 			for asn in asn_list:
-				logConsole(f"Starting Stage 3 ({n+1}/{len(asn_list)})")
+				logConsole(f"Starting Stage 3")
 				logConsole("Modifying Stage 3 association files")
 				rewriteJSON(asn)
 
