@@ -29,17 +29,20 @@ def download(obsids,path):
 	print("Successful Filtering!")
 	print(data_filtered)
 	print("Starting Download")
-	OBS.download_products(data_filtered["obsid"],flat=True,download_dir=path)
+	OBS.download_products(data_filtered,flat=True,download_dir=path)
 
 	cleanup(path)
 
 
 def cleanup(path):
-	for f in glob(path+"*.fits"):
+	for f in glob(path+"_uncal.fits"):
 		with fits.open(f) as hdul:
-			if hdul[0].header["EXP_TYPE"] != "NRS_MSASPEC":
-				print("Deleting {}".format(f))
-				os.remove(f)
+			try:
+				if hdul[0].header["EXP_TYPE"] != "NRS_MSASPEC":
+					print("Deleting {}".format(f))
+					os.remove(f)
+			except :
+				continue
 
 	for f in glob(path+"*spec2*.json"):
 		os.remove(f)
