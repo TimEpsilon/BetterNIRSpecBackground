@@ -7,7 +7,7 @@ import MainPipeline
 os.environ['CRDS_PATH'] = '/home/tdewachter/crds_cache'
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
-from multiprocessing import Pool, cpu_count
+#from multiprocessing import Pool, cpu_count
 
 from glob import glob
 
@@ -37,15 +37,10 @@ def main():
 
 
 		uncal_list = glob(path+"*_uncal.fits")
-		num_processes = min(len(uncal_list), cpu_count())
-		logConsole(f"Found {len(uncal_list)} uncalibrated files. Running on {num_processes} threads")
+		logConsole(f"Found {len(uncal_list)} uncalibrated files")
 
-		args = [(file, path) for file in uncal_list]
-
-		# Open threads
-		pool_obj = Pool(num_processes)
-		pool_obj.starmap(MainPipeline.Stage1, args)
-		pool_obj.close()
+		for file in uncal_list:
+			MainPipeline.Stage1(file,path)
 
 
 	##########
@@ -59,15 +54,10 @@ def main():
 		logConsole(f"Starting on {folder}")
 
 		rate_list = glob(path+"*_rate.fits")
-		num_processes = min(len(rate_list), cpu_count())
-		logConsole(f"Found {len(rate_list)} countrate files. Running on {num_processes} threads")
+		logConsole(f"Found {len(rate_list)} countrate files")
 
-		args = [(file, path) for file in rate_list]
-
-		# Open threads
-		pool_obj = Pool(num_processes)
-		pool_obj.starmap(MainPipeline.Stage2, args)
-		pool_obj.close()
+		for file in rate_list:
+			MainPipeline.Stage2(file,path)
 
 
 		##########
@@ -95,8 +85,7 @@ def main():
 			logConsole(f"Starting on {folder}")
 
 			asn_list = glob(path+"*_spec3_*_asn.json")
-			num_processes = min(len(asn_list), cpu_count())
-			logConsole(f"Found {len(asn_list)} association files. Running on {num_processes} threads")
+			logConsole(f"Found {len(asn_list)} association files")
 
 			for asn in asn_list:
 				logConsole(f"Starting Stage 3")
