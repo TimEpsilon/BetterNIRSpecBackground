@@ -1,9 +1,20 @@
-\documentclass[11pt, a4paper, twocolumn]{article}
+\documentclass[11pt, a4paper]{article}
 \usepackage{graphicx}
 \usepackage{geometry}
 \usepackage[acronym]{glossaries}
-\usepackage{biblatex} %Imports biblatex package
+\usepackage[sorting=none, style=nature]{biblatex} %Imports biblatex package
 \usepackage[hidelinks]{hyperref}
+\usepackage{titling}
+\usepackage{float}
+
+\renewcommand{\familydefault}{\sfdefault}
+
+\newcommand{\subtitle}[1]{%
+  \posttitle{%
+    \par\end{center}
+    \begin{center}\LARGE#1\end{center}
+    \vskip0.5em}%
+}
 
 \hypersetup{
   colorlinks   = true, %Colours links instead of ugly boxes
@@ -13,13 +24,14 @@
 }
 
 \addbibresource{references.bib} %Import the bibliography file
+
 \makenoidxglossaries
 \loadglsentries{glossary.tex}
 
 
 
-\title{\Huge Compte Rendu de Stage Master 2\\
-\large Galaxies Pop III, premières phases de la formation des métaux et poussières dans l'Univers à très grand Redshift (6 $<$ z $<$ ?)}
+\title{\textbf{ \\{\Huge Compte Rendu de Stage Master 2}}}
+\subtitle{Galaxies Pop III, premières phases de la formation des métaux et poussières dans l'Univers à très grand Redshift (6 $<$ z $<$ ?)}
 \author{Dewachter Tim}
 \date{25 Mars 2024 - 28 Juin 2024}
 
@@ -55,7 +67,17 @@ Le \gls{jwst} est un télescope spatial de 6.5 mètres de diamètre équivalent,
 
 Avec $\lambda_{obs}$ la longueur d'onde observée, et $\lambda_{rest}$ la longueur d'onde dans le référentiel de la source (au repos). Ainsi, regarder loin dans l'espace est équivalent à regarder loin dans le passé et nécessite d'observer à des longueurs d'ondes de plus en plus grandes.
 
-Parmi les instruments du \gls{jwst}, le \gls{nirspec} est un spectromètre sur la bande 0.6 - 5.3  µm, disposant de 3 modes de résolution : prism ($R \sim 100$), medium grating ($R \sim 1000$), high grating ($R \sim 2700$). L'un des atouts principaux de \gls{nirspec} est son \gls{msa}
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.25]{assets/msa_ds_new.png}
+  \caption{Disposition de MSA dans le plan focal de NIRSpec. {\tiny \copyright} Ferruit et al. \cite{2022A&A...661A..81F}}
+\end{figure}
+
+Parmi les instruments du \gls{jwst}, le \gls{nirspec} est un spectromètre sur la bande 0.6 - 5.3  µm, disposant de 3 modes de résolution : prism ($R \sim 100$), medium grating ($R \sim 1000$), high grating ($R \sim 2700$) \cite{nirspec}. L'un des atouts principaux de \gls{nirspec} est son \gls{msa}, une grille de près de 250 000 obturateurs, couvrant une surface de 3.6' x 3.4' sur le ciel, chacun pouvant être individuellement ouvert ou fermé \cite{msa}. Ceci permet d'observer dans le mode \gls{mos} de \gls{nirspec}. Comme son nom l'indique, la spectroscopie multi-objet permet d'étudier le spectre de plusieurs objets dans un même champ, mais la grille d'obturateurs apporte également un outil fondamental dans l'extraction des spectres : la soustraction du fond du ciel.
+
+\subsection{Fond du Ciel, Nodding et Slitlet}
+
+
 
 
 
@@ -66,7 +88,6 @@ Parmi les instruments du \gls{jwst}, le \gls{nirspec} est un spectromètre sur l
 \printnoidxglossaries
 
 \printbibliography %Prints bibliography
-
 
 
 \end{document}
