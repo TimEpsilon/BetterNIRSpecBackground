@@ -23,6 +23,9 @@
 *.zip
 *.pdf
 
+!assets/
+!Rapport/assets/*.png
+
 # LaTeX
 
 ## Core latex/pdflatex auxiliary files:
