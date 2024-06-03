@@ -70,12 +70,23 @@ Avec $\lambda_{obs}$ la longueur d'onde observée, et $\lambda_{rest}$ la longue
 \begin{figure}[H]
   \centering
   \includegraphics[scale=0.25]{assets/msa_ds_new.png}
-  \caption{Disposition de MSA dans le plan focal de NIRSpec. {\tiny \copyright} Ferruit et al. \cite{2022A&A...661A..81F}}
+  \label{fig:msa_shutter}
+  \caption{Disposition de MSA dans le plan focal de NIRSpec. {\tiny \copyright} \textit{Ferruit et al.} \cite{2022A&A...661A..81F}}
 \end{figure}
 
-Parmi les instruments du \gls{jwst}, le \gls{nirspec} est un spectromètre sur la bande 0.6 - 5.3  µm, disposant de 3 modes de résolution : prism ($R \sim 100$), medium grating ($R \sim 1000$), high grating ($R \sim 2700$) \cite{nirspec}. L'un des atouts principaux de \gls{nirspec} est son \gls{msa}, une grille de près de 250 000 obturateurs, couvrant une surface de 3.6' x 3.4' sur le ciel, chacun pouvant être individuellement ouvert ou fermé \cite{msa}. Ceci permet d'observer dans le mode \gls{mos} de \gls{nirspec}. Comme son nom l'indique, la spectroscopie multi-objet permet d'étudier le spectre de plusieurs objets dans un même champ, mais la grille d'obturateurs apporte également un outil fondamental dans l'extraction des spectres : la soustraction du fond du ciel.
+Parmi les instruments du \gls{jwst}, le \gls{nirspec} est un spectromètre sur la bande 0.6 - 5.3  µm, disposant de 3 modes de résolution : prism ($R \sim 100$), medium grating ($R \sim 1000$), high grating ($R \sim 2700$) \cite{nirspec}. L'un des atouts principaux de \gls{nirspec} est son \gls{msa}, une grille de près de 250 000 obturateurs, couvrant une surface de 3.6' x 3.4' sur le ciel, chacun pouvant être individuellement ouvert ou fermé \cite{msa} (voir \ref{fig:msa_shutter}). Ceci permet d'observer dans le mode \gls{mos} de \gls{nirspec}. Comme son nom l'indique, la spectroscopie multi-objet permet d'étudier le spectre de plusieurs objets dans un même champ, mais la grille d'obturateurs apporte également un outil fondamental dans l'extraction des spectres : la soustraction du fond.
 
-\subsection{Fond du Ciel, Nodding et Slitlet}
+\subsection{Fond, Nodding et Slitlet}
+
+Lorsqu'on s'intéresse à des sources de faible brillance, %TODO
+
+Que ce soit le fond diffus infrarouge, produit par des sources extragalactiques non résolues, la lumière zodiacale, produite par la poussière interplanétaire, le rayonnement de la Voie Lactée ou l'émission thermique du JWST lui-même, l'infrarouge est un domaine facilement parasité par des signaux indésirables. De plus, la nature de ses composantes fait de ce fond un signal anisotrope. Il n'est donc pas si simple d'en établir un modèle universel à soustraire de façon systématique.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.4]{assets/background_jwst.png}
+  \caption{Flux par unité d'angle solide reçu par le JWST en fonction de la longueur d'onde. On remarque qu'à mesure que $\lambda$ augmente, l'émission thermique du télescope domine. {\tiny \copyright} \textit{STScI} \cite{jwst_background}}
+\end{figure}
 
 
 
