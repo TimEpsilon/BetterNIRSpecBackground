@@ -1,6 +1,6 @@
 \documentclass[11pt, a4paper]{article}
 \usepackage{graphicx}
-\usepackage{geometry}
+\usepackage[margin=2cm]{geometry}
 \usepackage[acronym]{glossaries}
 \usepackage[sorting=none, style=nature]{biblatex} %Imports biblatex package
 \usepackage[hidelinks]{hyperref}
@@ -8,6 +8,9 @@
 \usepackage{float}
 
 \renewcommand{\familydefault}{\sfdefault}
+\newcommand{\customcite}[2]{\mbox{
+  {\small \copyright} \textit{#1} \cite{#2}}
+}
 
 \newcommand{\subtitle}[1]{%
   \posttitle{%
@@ -47,11 +50,13 @@
 
 \section{Introduction}
 
+%TODO
+
 \subsection{Contexte}
 
 En seulement 2 ans d'opérations, le \gls{jwst} nous a déjà ouvert de nombreuses portes jusqu'alors inaccessibles, et cela dans de nombreuses branches de l'astrophysique. Grâce à ses instruments spectroscopiques et sa sensibilité à l'infrarouge proche et moyen, il est désormais possible de sonder l'univers comme jamais auparavant. Parmi les nombreux objectifs que l'on souhaite accomplir avec ce télescope, l'un d'eux est l'étude de la formation des galaxies, de l'apparition des métaux au sein de celles-ci, et de la recherche des hypothétiques galaxies de Population III, constituées d'étoiles de métallicité nulle, formées par le gaz primordial d'Hydrogène et d'Hélium.
 
-Ce nouvel horizon sur l'univers lointain nous permet de remonter l'histoire de l'univers comme jamais auparavant. \cite{2023arXiv230600953M}
+Ce nouvel horizon sur l'univers lointain nous permet de remonter l'histoire de l'univers comme jamais auparavant. \cite{2023arXiv230600953M} %TODO
 
 
 
@@ -71,25 +76,34 @@ Avec $\lambda_{obs}$ la longueur d'onde observée, et $\lambda_{rest}$ la longue
   \centering
   \includegraphics[scale=0.25]{assets/msa_ds_new.png}
   \label{fig:msa_shutter}
-  \caption{Disposition de MSA dans le plan focal de NIRSpec. {\tiny \copyright} \textit{Ferruit et al.} \cite{2022A&A...661A..81F}}
+  \caption{Disposition de MSA dans le plan focal de NIRSpec. \customcite{Ferruit et al.}{2022A&A...661A..81F}}
 \end{figure}
 
 Parmi les instruments du \gls{jwst}, le \gls{nirspec} est un spectromètre sur la bande 0.6 - 5.3  µm, disposant de 3 modes de résolution : prism ($R \sim 100$), medium grating ($R \sim 1000$), high grating ($R \sim 2700$) \cite{nirspec}. L'un des atouts principaux de \gls{nirspec} est son \gls{msa}, une grille de près de 250 000 obturateurs, couvrant une surface de 3.6' x 3.4' sur le ciel, chacun pouvant être individuellement ouvert ou fermé \cite{msa} (voir \ref{fig:msa_shutter}). Ceci permet d'observer dans le mode \gls{mos} de \gls{nirspec}. Comme son nom l'indique, la spectroscopie multi-objet permet d'étudier le spectre de plusieurs objets dans un même champ, mais la grille d'obturateurs apporte également un outil fondamental dans l'extraction des spectres : la soustraction du fond.
 
 \subsection{Fond, Nodding et Slitlet}
 
-Lorsqu'on s'intéresse à des sources de faible brillance, %TODO
-
-Que ce soit le fond diffus infrarouge, produit par des sources extragalactiques non résolues, la lumière zodiacale, produite par la poussière interplanétaire, le rayonnement de la Voie Lactée ou l'émission thermique du JWST lui-même, l'infrarouge est un domaine facilement parasité par des signaux indésirables. De plus, la nature de ses composantes fait de ce fond un signal anisotrope. Il n'est donc pas si simple d'en établir un modèle universel à soustraire de façon systématique.
+Lorsqu'on s'intéresse à des sources de faible brillance, le flux lumineux mesuré peut rapidement se trouver dominer par les émissions du fond. Que ce soit le fond diffus infrarouge, produit par des sources extragalactiques non résolues, la lumière zodiacale, produite par la poussière interplanétaire, le rayonnement de la Voie Lactée ou l'émission thermique du JWST lui-même, l'infrarouge est un domaine facilement parasité par des signaux indésirables \cite{jwst_background}. De plus, la nature de ses composantes fait de ce fond un signal anisotrope. Il n'est donc pas si simple d'en établir un modèle universel à soustraire de façon systématique. On a la mesure du fond en fonction de la longueur d'onde ci dessous \ref{fig:background_jwst} : 
 
 \begin{figure}[H]
   \centering
   \includegraphics[scale=0.4]{assets/background_jwst.png}
-  \caption{Flux par unité d'angle solide reçu par le JWST en fonction de la longueur d'onde. On remarque qu'à mesure que $\lambda$ augmente, l'émission thermique du télescope domine. {\tiny \copyright} \textit{STScI} \cite{jwst_background}}
+  \label{fig:background_jwst}
+  \caption{Flux par unité d'angle solide reçu par le JWST en fonction de la longueur d'onde. On remarque qu'à mesure que $\lambda$ augmente, l'émission thermique du télescope domine. \customcite{STScI}{jwst_background}}
 \end{figure}
 
 
+Cependant, il reste tout de même envisageable de corriger ce signal parasite. En effet, en ouvrant les obturateurs à proximité de celui imageant la source, il devient possible d'extraire le fond localement autour de la source, que l'on peut alors soustraire au spectre de cette dernière.
 
+La configuration habituelle consiste en l'ouverture de 3 obturateurs dans la direction perpendiculaire à la direction de dispersion, on parlera par la suite de \textit{Slitlet}. On réalise alors 3 expositions, chacune en orientant le télescope de façon à avoir la source dans un obturateur différent : il s'agit du nodding. On résume ceci dans la figure \ref{fig:msa_slitlet}.
+
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.2]{assets/MSA_sky_strategy.png}
+  \label{fig:msa_slitlet}
+  \caption{Schéma de MSA et de slitlets. On réalise des séries de 3 images, chacune ayant la source dans un obturateur différent, et on utilise les 2 obturateurs restant pour déterminer le spectre du fond. \customcite{NIRSpec Instrument Development Team}{mos}}
+\end{figure}
 
 
 
