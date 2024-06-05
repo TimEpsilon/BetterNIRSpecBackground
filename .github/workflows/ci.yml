@@ -19,7 +19,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Set up Python
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: 3
         cache: "pip"
@@ -37,7 +37,7 @@ jobs:
         python3 -m venv env
         source ./env/bin/activate 
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r requirements.txt 
 
     - name: Run fetcher
       run: | 
