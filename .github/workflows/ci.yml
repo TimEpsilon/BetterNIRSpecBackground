@@ -37,7 +37,7 @@ jobs:
         python3 -m venv env
         source ./env/bin/activate 
         python -m pip install --upgrade --user pip
-        pip install -r requirements.txt --user
+        pip install --user -r requirements.txt
 
     - name: Run fetcher
       run: | 
