@@ -34,11 +34,12 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install --upgrade pip
         python3 -m venv env
         source env/bin/activate
-        pip3 install -r requirements.txt
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
     - name: Run fetcher
-      run: | 
+      run: |
+        source env/bin/activate
         python apply_pipeline.py
