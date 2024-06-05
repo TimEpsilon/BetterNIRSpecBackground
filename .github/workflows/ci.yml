@@ -32,6 +32,9 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
 
+    - name: Create virtual environment
+      run: python3 -m venv env
+
     - name: Upgrade pip and install dependencies
       run: |
         source env/bin/activate
