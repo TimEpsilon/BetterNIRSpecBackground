@@ -34,7 +34,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip3 install -r requirements.txt --user; fi
+        pip install -r requirements.txt
 
     - name: Run fetcher
       run: | 
