@@ -1,12 +1,11 @@
 import os
 
+os.environ['CRDS_PATH'] = '/home/tdewachter/crds_cache'
+os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
+
 from jwst.pipeline import Spec3Pipeline
 
 import MainPipeline
-
-os.environ['CRDS_PATH'] = '/net/GECO/nas13c/users/tdewachter/crds_cache'
-os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
-
 from glob import glob
 
 import sys

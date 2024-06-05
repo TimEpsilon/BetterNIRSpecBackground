@@ -1,8 +1,10 @@
 import os
 
+os.environ['CRDS_PATH'] = '/home/tdewachter/crds_cache'
+os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
+
 from jwst.pipeline import Detector1Pipeline
 from jwst.pipeline import Spec2Pipeline
-from jwst.pipeline import Spec3Pipeline
 import stdatamodels.jwst.datamodels as dm
 from jwst.wavecorr import WavecorrStep
 from jwst.flatfield import FlatFieldStep
@@ -13,7 +15,7 @@ from jwst.pixel_replace import PixelReplaceStep
 from jwst.resample import ResampleSpecStep
 from jwst.extract_1d import Extract1dStep
 
-from utils import logConsole, rewriteJSON
+from utils import logConsole
 import BetterBackgroundSubtractStep as BkgSubtractStep
 
 
