@@ -1,11 +1,12 @@
 \documentclass[11pt, a4paper]{article}
-\usepackage{graphicx}
+\usepackage{graphicx,wrapfig}
 \usepackage[margin=2cm]{geometry}
 \usepackage[acronym]{glossaries}
 \usepackage[sorting=none, style=nature]{biblatex} %Imports biblatex package
 \usepackage[hidelinks]{hyperref}
 \usepackage{titling}
 \usepackage{float}
+\usepackage{caption}
 
 \renewcommand{\familydefault}{\sfdefault}
 \newcommand{\customcite}[2]{\mbox{
@@ -95,7 +96,10 @@ Lorsqu'on s'intéresse à des sources de faible brillance, le flux lumineux mesu
 
 Cependant, il reste tout de même envisageable de corriger ce signal parasite. En effet, en ouvrant les obturateurs à proximité de celui imageant la source, il devient possible d'extraire le fond localement autour de la source, que l'on peut alors soustraire au spectre de cette dernière.
 
-La configuration habituelle consiste en l'ouverture de 3 obturateurs dans la direction perpendiculaire à la direction de dispersion, on parlera par la suite de \textit{Slitlet}. On réalise alors 3 expositions, chacune en orientant le télescope de façon à avoir la source dans un obturateur différent : il s'agit du nodding. On résume ceci dans la figure \ref{fig:msa_slitlet}.
+La configuration habituelle consiste en l'ouverture de 3 obturateurs dans la direction perpendiculaire à la direction de dispersion, on parlera par la suite de \textit{Slitlet}. On réalise alors 3 expositions, chacune en orientant le télescope de façon à avoir la source dans un obturateur différent : il s'agit du nodding. Ce mouvement entre chaque exposition offre également un autre avantage au travers du \textit{dithering}. La \gls{psf} de \gls{nirspec} est effectivement de $0.08 ''$ à $\lambda = 2.46 \mu m$ \cite{10_1051_0004_6361_202142663}. 
+Comme $PSF \propto \lambda$, on a une \gls{psf} variant de $0.02 ''$ à $0.17''$ le long de la plage de longueur d'onde observable. Comme la taille d'un pixel est $\sim 0.1''$ dans la direction spatiale, la \gls{psf} est sous échantillonnée presque partout. Le dithering permet alors d'améliorer cet échantillonnage par des corrections sub-pixels, mais également de s'affranchir des éventuels pixels défectueux ou des rayons cosmiques.
+
+On résume ceci dans la figure \ref{fig:msa_slitlet}.
 
 
 \begin{figure}[H]
@@ -104,6 +108,31 @@ La configuration habituelle consiste en l'ouverture de 3 obturateurs dans la dir
   \label{fig:msa_slitlet}
   \caption{Schéma de MSA et de slitlets. On réalise des séries de 3 images, chacune ayant la source dans un obturateur différent, et on utilise les 2 obturateurs restant pour déterminer le spectre du fond. \customcite{NIRSpec Instrument Development Team}{mos}}
 \end{figure}
+
+\subsection{Le pipeline JWST}
+
+Le code permettant de traiter les données reçues du JWST, appelé pipeline (figure \ref{fig:jwst_pipeline}), se décompose en 3 grandes étapes, celles ci étant de plus en plus spécifique aux types de données que l'on cherche à étudier à mesure que l'on progresse dans le pipeline.
+
+Ainsi, dans notre cas, les 3 étapes sont telles que :\\
+
+
+\begin{minipage}{.5\linewidth}
+  \begin{itemize}
+    \item \textbf{Detector 1} : Applique les corrections au niveau du détecteur, tel que le masquage des pixels morts/chauds et des rayons cosmiques, la linéarisation du nombre d'\gls{adu}, la suppression du biais et du courant d'obscurité... Cette étape est la même pour tous les instruments du \gls{jwst}.
+    \item \textbf{Spectroscopy 2} : Applique des modifications optiques, telles que la correction de champ plat et des pertes de lumières liées aux barres séparant les obturateurs, mais calibre également la photométrie et les données \gls{wcs}, associant à chaque pixel des coordonnées spatiales et spectrales. C'est ici que les images de chaque slitlets sont extraites de l'image initiale et que la soustraction du fond s'applique.
+    \item \textbf{Spectroscopy 3} : Combine plusieurs expositions entre elles, appliquant ainsi le dithering / nodding discuté plus tôt, ré-échantillonne les images et extrait les spectres de celles-ci.
+  \end{itemize}
+  \end{minipage}
+  \hfill
+  \begin{minipage}{.5\linewidth}
+  \centering
+  \includegraphics[scale=0.15]{assets/jwst_pipeline.jpg}
+  \label{fig:jwst_pipeline}
+  \captionof{figure}{Schéma des différentes étapes du pipeline. Les étapes adaptées à nos données sont encadrés en rouge. %TODO la citation}
+  
+  \end{minipage}
+
+
 
 
 
