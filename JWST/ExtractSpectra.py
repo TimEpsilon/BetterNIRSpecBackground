@@ -1,5 +1,5 @@
 import os
-os.environ['CRDS_PATH'] = './crds_cache'
+os.environ['CRDS_PATH'] = '/net/CLUSTER/VAULT/users/tdewachter/crds_cache'
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
 import numpy as np
