@@ -8,7 +8,11 @@
 /CIGALE/
 /prism/
 /Docs/
-/JWST/Cigale/out
+/JWST/Cigale/out/
+
+*.ini
+*.ini.spec
+*.bbl-SAVE-ERROR
 
 # Ignore Images
 *.png

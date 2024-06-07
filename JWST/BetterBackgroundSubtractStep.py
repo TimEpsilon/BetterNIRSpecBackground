@@ -4,7 +4,6 @@ from utils import *
 from scipy.optimize import curve_fit as cfit
 import matplotlib.pyplot as plt
 import stdatamodels.jwst.datamodels as dm
-from scipy.ndimage import rotate
 from astropy.stats import sigma_clip
 from jwst.flatfield import FlatFieldStep
 from jwst.pathloss import PathLossStep
