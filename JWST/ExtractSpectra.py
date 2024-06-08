@@ -15,7 +15,7 @@ from astropy.io import fits
 
 
 working_dir = "./mastDownload/JWST/"
-folders = glob(working_dir+'*')
+folders = glob(working_dir+'*PRISM*')
 num_processes = min(len(folders), cpu_count())
 
 def IterateOverFolders(folders):
@@ -32,7 +32,7 @@ def WorkOn1Folder(folder):
 			makeExtraction(file)
 
 
-def makeExtraction(file):
+def makeExtraction(file,overwrite=False):
 	"""
 	Extracts a spectrum from a _s2d file and saves it as a .png and a fits
 	Parameters
@@ -43,6 +43,9 @@ def makeExtraction(file):
 	-------
 
 	"""
+	if os.path.exists(file.replace("s2d","x1d")) and not overwrite:
+		return
+
 	# Skip if not 3 shutter slit
 	with dm.open(file) as mos:
 		if len(mos["shutter_state"]) != 3:
