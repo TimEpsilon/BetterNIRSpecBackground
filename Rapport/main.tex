@@ -8,6 +8,7 @@
 \usepackage{float}
 \usepackage{caption}
 \usepackage{enumitem}
+\usepackage{algorithm2e}
 
 \renewcommand{\familydefault}{\sfdefault}
 \newcommand{\customcite}[2]{\mbox{
@@ -121,7 +122,7 @@ Ainsi, dans notre cas, les 3 étapes sont telles que :\\
   \begin{itemize}[left=0cm]
     \item \textbf{Detector 1} : Applique les corrections au niveau du détecteur, tel que le masquage des pixels morts/chauds et des rayons cosmiques, la linéarisation du nombre d'\gls{adu}, la suppression du biais et du courant d'obscurité... Cette étape est la même pour tous les instruments du \gls{jwst}.
     \item \textbf{Spectroscopy 2} : Applique des modifications optiques, telles que la correction de champ plat et des pertes de lumières liées aux barres séparant les obturateurs, mais calibre également la photométrie et les données \gls{wcs}, associant à chaque pixel des coordonnées spatiales et spectrales. C'est ici que les images de chaque slitlets sont extraites de l'image initiale et que la soustraction du fond s'applique.
-    \item \textbf{Spectroscopy 3} : Combine plusieurs expositions entre elles, appliquant ainsi le dithering / nodding discuté plus tôt, ré-échantillonne les images et extrait les spectres de celles-ci.
+    \item \textbf{Spectroscopy 3} : Combine plusieurs expositions entre elles, appliquant ainsi le dithering / nodding discuté plus tôt, ré-échantillonne les images 2D et extrait les spectres 1D de celles-ci.
   \end{itemize}
   \end{minipage}
   \hfill
@@ -134,7 +135,47 @@ Ainsi, dans notre cas, les 3 étapes sont telles que :\\
 
   \subsubsection{Soustraction du fond par défaut}
 
-  Dans le cas de données \gls{nirspec} \gls{mos}, la soustraction du fond se fait lors de l'étape 2 du pipeline. Sur chaque slitlet
+  Dans le cas de données \gls{nirspec} \gls{mos}, la soustraction du fond se fait pixel par pixel, lors de l'étape 2 du pipeline. Sur chaque slitlet, pour une exposition donnée, on considère les 2 expositions restantes comme du signal de fond, on les moyenne donc avant de les soustraire à l'image initiale. Cette étape est décrite sur la figure \ref{fig:msa_slitlet}
+
+  Cette méthode a l'avantage majeur de permettre de soustraire le fond localement autour de la source. Cependant, celle ci se heurte à un problème dans le cas où la source est suffisamment étendue pour être visible depuis un des obturateurs de fond, ou dans celui où celle ci est mal centrée dans l'obturateur principal, mais également dans la situation plus intéressante où une autre source suffisamment brillante se situe dans le champ d'un des obturateurs de fond. Dans chacun de ces scénarios, le spectre de "fond" n'en est plus réellement un : on observe une sur-correction du spectre de l'objet. Les raies d'émission sont atténuées sur la bande de signal et des raies inversées apparaissent sur les autres bandes, en raison de la soustraction. C'est ce que l'on observe sur la figure \ref{fig:negative_trace} : les bandes au-dessus et en dessous de la bande principale présentent un spectre négatif. Cette sur-correction a également pour conséquence de cacher toute galaxie de faible luminosité se trouvant dans une des bandes du fond.\\
+  
+  \begin{figure}[H]
+    \centering
+    \includegraphics[scale=1.1]{assets/negative_trace_nirspec.png}
+    \caption{Exemple d'une image 2D d'un spectre de \gls{nirspec} en fin de traitement classique. On observe clairement des spectres négatifs au-dessus et en dessous de la bande contenant le signal. Ceci est particulièrement visible à proximité des raies intenses. \customcite{jw01345-o063\_s03939\_nirspec\_clear-prism\_s2d}{portal_mast}}
+    \label{fig:negative_trace}
+  \end{figure}
+
+  Le pipeline offre également un autre algorithme, dit de master background, qui extrait puis combine les spectres de plusieurs obturateurs de fond, ailleurs dans le champ, avant de ré-interpoler le spectre en 2D et de le soustraire. Cette méthode, bien qu'offrant en général un meilleur rapport signal sur bruit, a le désavantage de perdre l'aspect local du fond avec la soustraction pixel par pixel.
+
+  \subsubsection{Soustraction du fond personnalisée}
+
+  Nous allons ici chercher à établir une nouvelle méthode de soustraction du fond, combinant le meilleur signal sur bruit du master background avec la composante locale de la soustraction pixel par pixel. L'algorithme est comme suit :\\
+
+  \begin{algorithm}
+    $raw$ = données à traiter \;
+    Appliquer le stage 1 du pipeline sur $raw$ \;
+    Appliquer le stage 2 du pipeline sur $raw$ jusqu'à l'étape Master Background \;
+    Application temporaire des étapes FlatField, PathLoss, BarShadow, Photom, ResampleSpec \;
+    \ForEach{Slitlet dans $raw$}{
+      \If{Nombre de shutters dans slitlet = 3}{
+        Moyenne spectrale de l'image dans la direction de dispersion \;
+        Détermination des positions $y_i$ de chaque bande par ajustement de 3 profils gaussien \;
+        \ForEach{$i \in [1,2,3] \; \& \; i \neq source$}{
+          Extraction et moyenne spatiale des $z_j^i$, les 2 bandes de fond, centrée sur $y_i$, avec une étendue spatiale de 3 pixels \;
+          Extraction et moyenne spatiale des $\lambda_j^i$, longueurs d'ondes associées \;
+          Extraction et moyenne spatiale des $(\sigma_j^i)^2$, les variances sur $z_j^i$ associées \;          
+         }
+        Ajuster une spline $f(\lambda_j^i)$ aux données $z_j^i$, de degré $k=5$ et de facteur de lissage $s=0.01$ \;
+        Créer une nouvelle image $Z_{(x,y)} = f(\lambda_{(x,y)})$ \;
+        Appliquer les étapes inverses de ResampleSpec, Photom, BarShadow, PathLoss, FlatField \;
+        Calcul des données traitées $trait\acute{e}e_{(x,y)} = raw_{(x,y)} - Z_{(x,y)}$ \;
+        }
+    }
+    Appliquer les étapes suivantes du stage 2 du pipeline sur $raw$\;
+    Appliquer le stage 3 du pipeline sur $raw$\;
+  \end{algorithm}
+
 
 
 
