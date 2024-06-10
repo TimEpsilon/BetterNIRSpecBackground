@@ -9,19 +9,16 @@ from glob import glob
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from utils import logConsole
 from astropy.visualization import ZScaleInterval
-from multiprocessing import Pool, cpu_count
 from jwst.extract_1d import Extract1dStep as x1d
 from astropy.io import fits
 
 
 working_dir = "./mastDownload/JWST/"
 folders = glob(working_dir+'*PRISM*')
-num_processes = min(len(folders), cpu_count())
 
 def IterateOverFolders(folders):
-	pool_obj = Pool(num_processes)
-	pool_obj.map(WorkOn1Folder,folders)
-	pool_obj.close()
+	for folder in folders:
+			WorkOn1Folder(folder)
 
 def WorkOn1Folder(folder):
 	path = folder + "/Final/"
