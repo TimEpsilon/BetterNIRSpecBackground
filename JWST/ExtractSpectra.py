@@ -43,8 +43,9 @@ def makeExtraction(file,overwrite=False):
 	-------
 
 	"""
-	if os.path.exists(file.replace("s2d","x1d")) and not overwrite:
-		return
+	if os.path.exists(file.replace("s2d.fits","extracted.png")) and not overwrite:
+		logConsole("File already exists","WARNING")
+
 
 	# Skip if not 3 shutter slit
 	with dm.open(file) as mos:
