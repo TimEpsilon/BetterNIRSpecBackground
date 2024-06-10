@@ -7,6 +7,7 @@
 \usepackage{titling}
 \usepackage{float}
 \usepackage{caption}
+\usepackage{subcaption}
 \usepackage{enumitem}
 \usepackage{algorithm2e}
 
@@ -53,19 +54,53 @@
 
 \section{Introduction}
 
-%TODO
-
 \subsection{Contexte}
 
-En seulement 2 ans d'opérations, le \gls{jwst} nous a déjà ouvert de nombreuses portes jusqu'alors inaccessibles, et cela dans de nombreuses branches de l'astrophysique. Grâce à ses instruments spectroscopiques et sa sensibilité à l'infrarouge proche et moyen, il est désormais possible de sonder l'univers comme jamais auparavant. Parmi les nombreux objectifs que l'on souhaite accomplir avec ce télescope, l'un d'eux est l'étude de la formation des galaxies, de l'apparition des métaux au sein de celles-ci, et de la recherche des hypothétiques galaxies de Population III, constituées d'étoiles de métallicité nulle, formées par le gaz primordial d'Hydrogène et d'Hélium.
+\begin{wrapfigure}{r}{10cm}
+  \centering
+  \includegraphics[scale=0.5]{assets/ceers_number_galaxies.png}
+  \caption{Comparaisons modèles - données de la densité du nombre de galaxies en fonction du redshift. En haut, les différents redshifts mesurés avec leurs incertitudes. En bas, Les traits colorés représentent différents modèles pré-JWST, tandis que la zone grisée représente les données obtenues par le programme CEERS. Seuls 2 modèles semblent en accord avec les données. \customcite{Finkelstein et al.}{2023arXiv231104279F}}
+  \label{fig:densite_galaxies}
+\end{wrapfigure}
 
-Ce nouvel horizon sur l'univers lointain nous permet de remonter l'histoire de l'univers comme jamais auparavant. \cite{2023arXiv230600953M} %TODO
+En seulement 2 ans d'opérations, le \gls{jwst} nous a déjà ouvert de nombreuses portes jusqu'alors inaccessibles, et cela dans de multiples branches de l'astrophysique. Grâce à ses instruments spectroscopiques et sa sensibilité à l'infrarouge proche et moyen, il est désormais possible de sonder l'univers comme jamais auparavant. Parmi les objectifs que l'on souhaite accomplir avec ce télescope, l'un d'eux est l'étude de la formation des galaxies à l'époque de la réionisation, de l'apparition des métaux au sein de celles-ci, et de la recherche des hypothétiques Populations III, constituées d'étoiles de métallicité nulle, formées par le gaz primordial d'Hydrogène et d'Hélium purs.
 
+Ce nouvel horizon sur l'univers lointain nous permet de remonter l'histoire de l'univers comme jamais auparavant. En effet, la vitesse finie de la lumière fait que regarder loin dans l'espace est équivalent à remonter dans le temps. À cela s'ajoute également l'expansion de l'univers, avec pour conséquence de décaler le spectre lumineux de ces objets lointains vers le rouge (on parle de redshift).
 
+D'ores et déjà, de nombreux résultats remettent en question nos modèles précédemment établis. L'un d'eux, notamment, est qu'il semblerait qu'il existe bien plus de galaxies dans l'univers jeune que ce que l'on pensait jusqu'à présent \cite{2023arXiv231104279F} (voir figure \ref{fig:densite_galaxies}). Un autre est la découverte d'un potentiel candidat de Population III \cite{2023arXiv230600953M}, où une raie d'He II à $\lambda = 1640 \text{\r{A}}$ semble indiquer qu'un nuage de gaz à $z = 10.6$ s'est retrouvé ionisé par des étoiles de Pop III. 
+
+Ainsi, dans les années à suivre, il est certain que de nouvelles contraintes vont pouvoir être posées sur les modèles de formation des premières galaxies et sur l'évolution de leur metallicité grâce au JWST.
+
+\subsection{Problématiques et Objectifs}
+
+Comment peut-on utiliser la spectroscopie comme outil pour sonder les paramètres physiques des premières galaxies ?\\
+
+Nous allons par la suite traiter ce problème en 2 parties.
+
+Tout d'abord, nous étudierons le code de traitement des données du \gls{jwst} dans le but de modifier son algorithme de soustraction du fond, afin d'en extraire les éventuels faibles spectres de sources secondaires jusqu'alors dissimulés dans le fond.
+
+Ensuite, nous étudierons ces différents spectres via \gls{cigale} afin d'en déterminer les paramètres physiques, telles que leur redshift, leur metallicité ou leur taux de formation stellaire.
 
 \section{Méthodologie}
 
 \subsection{JWST et NIRSpec}
+
+\begin{figure}
+  \centering
+     \begin{subfigure}[b]{0.45\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{assets/JWST_spacecraft_model_3.png}
+         \caption{Rendu 3D du \gls{jwst}. \customcite{NASA}{jwst_nasa}}
+         \label{fig:jwst}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.45\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{assets/NIRSpec_Optical_design.png}
+         \caption{Schéma des optiques de \gls{nirspec}. \customcite{STScI}{nirspec}}
+         \label{fig:nirspec}
+     \end{subfigure}
+\end{figure}
 
 Le \gls{jwst} est un télescope spatial de 6.5 mètres de diamètre équivalent, en orbite autour du point de Lagrange L2, et actif depuis juillet 2022 \cite{jwst_website}. Sa sensibilité dans l'infrarouge en fait un outil remarquable pour observer l'univers jeune. En effet, de par l'expansion de l'univers, la lumière des objets lointains se retrouve décalée vers le rouge : il s'agit du redshift $z$, défini comme 
 
@@ -77,7 +112,7 @@ Avec $\lambda_{obs}$ la longueur d'onde observée, et $\lambda_{rest}$ la longue
 
 \begin{figure}[H]
   \centering
-  \includegraphics[scale=0.25]{assets/msa_ds_new.png}
+  \includegraphics[scale=0.4]{assets/msa_ds_new.png}
   \caption{Disposition de MSA dans le plan focal de NIRSpec. \customcite{Ferruit et al.}{2022A&A...661A..81F}}
   \label{fig:msa_shutter}
 \end{figure}
@@ -86,11 +121,11 @@ Parmi les instruments du \gls{jwst}, le \gls{nirspec} est un spectromètre sur l
 
 \subsection{Fond, Nodding et Slitlet}
 
-Lorsqu'on s'intéresse à des sources de faible brillance, le flux lumineux mesuré peut rapidement se trouver dominer par les émissions du fond. Que ce soit le fond diffus infrarouge, produit par des sources extragalactiques non résolues, la lumière zodiacale, produite par la poussière interplanétaire, le rayonnement de la Voie Lactée ou l'émission thermique du JWST lui-même, l'infrarouge est un domaine facilement parasité par des signaux indésirables \cite{jwst_background}. De plus, la nature de ses composantes fait de ce fond un signal anisotrope. Il n'est donc pas si simple d'en établir un modèle universel à soustraire de façon systématique. On a la mesure du fond en fonction de la longueur d'onde ci dessous \ref{fig:background_jwst} : 
+Lorsqu'on s'intéresse à des sources de faible brillance, le flux lumineux mesuré peut rapidement se trouver dominé par les émissions du fond. Que ce soit le fond diffus infrarouge, produit par des sources extragalactiques non résolues, la lumière zodiacale, produite par la poussière interplanétaire, le rayonnement de la Voie Lactée ou l'émission thermique du JWST lui-même, l'infrarouge est un domaine facilement parasité par des signaux indésirables \cite{jwst_background}. De plus, la nature de ses composantes fait de ce fond un signal anisotrope. Il n'est donc pas si simple d'en établir un modèle universel à soustraire de façon systématique. On a la mesure du fond en fonction de la longueur d'onde ci-dessous \ref{fig:background_jwst} : 
 
 \begin{figure}[H]
   \centering
-  \includegraphics[scale=0.4]{assets/background_jwst.png}
+  \includegraphics[scale=0.65]{assets/background_jwst.png}
   \caption{Flux par unité d'angle solide reçu par le JWST en fonction de la longueur d'onde. On remarque qu'à mesure que $\lambda$ augmente, l'émission thermique du télescope domine. \customcite{STScI}{jwst_background}}
   \label{fig:background_jwst}
 \end{figure}
@@ -152,7 +187,7 @@ Ainsi, dans notre cas, les 3 étapes sont telles que :\\
 
   Nous allons ici chercher à établir une nouvelle méthode de soustraction du fond, combinant le meilleur signal sur bruit du master background avec la composante locale de la soustraction pixel par pixel. L'algorithme est comme suit :\\
 
-  \begin{algorithm}
+  \begin{algorithm}[H]
     $raw$ = données à traiter \;
     Appliquer le stage 1 du pipeline sur $raw$ \;
     Appliquer le stage 2 du pipeline sur $raw$ jusqu'à l'étape Master Background \;
@@ -172,9 +207,11 @@ Ainsi, dans notre cas, les 3 étapes sont telles que :\\
         Calcul des données traitées $trait\acute{e}e_{(x,y)} = raw_{(x,y)} - Z_{(x,y)}$ \;
         }
     }
-    Appliquer les étapes suivantes du stage 2 du pipeline sur $raw$\;
-    Appliquer le stage 3 du pipeline sur $raw$\;
+    Appliquer les étapes suivantes du stage 2 du pipeline sur $trait\acute{e}e$\;
+    Appliquer le stage 3 du pipeline sur $trait\acute{e}e$\;
   \end{algorithm}
+
+\subsection{Analyse de l'algorithme}
 
 
 
