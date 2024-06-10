@@ -42,6 +42,7 @@ def makeExtraction(file,overwrite=False):
 	"""
 	if os.path.exists(file.replace("s2d.fits","extracted.png")) and not overwrite:
 		logConsole("File already exists","WARNING")
+		return
 
 
 	# Skip if not 3 shutter slit
@@ -117,5 +118,6 @@ def makeExtraction(file,overwrite=False):
 		name = file.replace("_s2d.fits", "_extracted.png")
 		logConsole(f"Saving {name}")
 		plt.savefig(name)
+		plt.close()
 
 IterateOverFolders(folders)
