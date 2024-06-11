@@ -9,6 +9,7 @@
 /prism/
 /Docs/
 /JWST/Cigale/out/
+/GHZ2_external/
 
 *.ini
 *.ini.spec

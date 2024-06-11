@@ -29,7 +29,7 @@ def WorkOn1Folder(folder):
 			makeExtraction(file)
 
 
-def makeExtraction(file,overwrite=False):
+def makeExtraction(file):
 	"""
 	Extracts a spectrum from a _s2d file and saves it as a .png and a fits
 	Parameters
@@ -40,11 +40,6 @@ def makeExtraction(file,overwrite=False):
 	-------
 
 	"""
-	if os.path.exists(file.replace("s2d.fits","extracted.png")) and not overwrite:
-		logConsole("File already exists","WARNING")
-		return
-
-
 	# Skip if not 3 shutter slit
 	with dm.open(file) as mos:
 		if len(mos["shutter_state"]) != 3:
@@ -53,14 +48,15 @@ def makeExtraction(file,overwrite=False):
 		# Slice height
 		n = 2
 
-		# Apply extract 1D
-		step = x1d()
-		step.smoothing_length = 2 * n + 1
-		step.use_source_posn = True
-		step.save_results = True
-		step.suffix = "x1d"
-		step.output_dir = os.path.join(*file.split("/")[:-1])
-		step(mos)
+		if not os.path.exists(file.replace("s2d", "x1d")):
+			# Apply extract 1D
+			step = x1d()
+			step.smoothing_length = 2 * n + 1
+			step.use_source_posn = True
+			step.save_results = True
+			step.suffix = "x1d"
+			step.output_dir = os.path.join(*file.split("/")[:-1])
+			step(mos)
 
 		# Get from extraction
 		with fits.open(file.replace("_s2d.fits", "_x1d.fits")) as hdul:
@@ -120,4 +116,5 @@ def makeExtraction(file,overwrite=False):
 		plt.savefig(name)
 		plt.close()
 
-IterateOverFolders(folders)
+#IterateOverFolders(folders)
+WorkOn1Folder("./mastDownload/JWST/CEERS-NIRSPEC-P4-PRISM-MSATA")
