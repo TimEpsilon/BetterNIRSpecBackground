@@ -10,6 +10,7 @@
 \usepackage{subcaption}
 \usepackage{enumitem}
 \usepackage{algorithm2e}
+\usepackage[percent]{overpic}
 
 \renewcommand{\familydefault}{\sfdefault}
 \newcommand{\customcite}[2]{\mbox{
@@ -46,6 +47,34 @@
 
 \maketitle
 
+\newpage
+\begin{center}
+  \vspace*{\fill}
+
+  Déclaration d'intégrité relative au plagiat \\
+
+  
+
+  Je soussigné \textbf{Dewachter Tim} certifie sur l'honneur : \\
+
+  \begin{itemize}
+    \centering
+    \item Que les résultats décrits dans ce rapport sont l'aboutissement de mon travail ;\\
+    \item Que je suis l'auteur de ce rapport ;\\
+    \item Que je n'ai pas utilisé des sources ou résultats tiers sans clairement les citer et les référencer selon les règles bibliographiques préconisées.\\
+  \end{itemize}
+
+  Je déclare que ce travail ne peut être suspecté de plagiat. \\
+
+
+  Date : \today\\
+
+  
+
+  Signature : Dewachter
+
+  \vspace*{\fill}
+\end{center}
 \newpage
 
 \tableofcontents
@@ -110,22 +139,24 @@ Le \gls{jwst} est un télescope spatial de 6.5 mètres de diamètre équivalent,
 
 Avec $\lambda_{obs}$ la longueur d'onde observée, et $\lambda_{rest}$ la longueur d'onde dans le référentiel de la source (au repos). Ainsi, regarder loin dans l'espace est équivalent à regarder loin dans le passé et nécessite d'observer à des longueurs d'ondes de plus en plus grandes.
 
-\begin{figure}[H]
+\begin{figure}[!h]
   \centering
-  \includegraphics[scale=0.4]{assets/msa_ds_new.png}
+  \includegraphics[scale=0.3]{assets/msa_ds_new.png}
   \caption{Disposition de MSA dans le plan focal de NIRSpec. \customcite{Ferruit et al.}{2022A&A...661A..81F}}
   \label{fig:msa_shutter}
 \end{figure}
 
-Parmi les instruments du \gls{jwst}, le \gls{nirspec} est un spectromètre sur la bande 0.6 - 5.3  µm, disposant de 3 modes de résolution : prism ($R \sim 100$), medium grating ($R \sim 1000$), high grating ($R \sim 2700$) \cite{nirspec}. L'un des atouts principaux de \gls{nirspec} est son \gls{msa}, une grille de près de 250 000 obturateurs, couvrant une surface de 3.6' x 3.4' sur le ciel, chacun pouvant être individuellement ouvert ou fermé \cite{msa} (voir \ref{fig:msa_shutter}). Ceci permet d'observer dans le mode \gls{mos} de \gls{nirspec}. Comme son nom l'indique, la spectroscopie multi-objet permet d'étudier le spectre de plusieurs objets dans un même champ, mais la grille d'obturateurs apporte également un outil fondamental dans l'extraction des spectres : la soustraction du fond.
+Parmi les instruments du \gls{jwst}, \gls{nirspec} est un spectromètre sur la bande 0.6 - 5.3  µm, disposant de 3 modes de résolution : PRISM ($R \sim 100$), medium grating ($R \sim 1000$), high grating ($R \sim 2700$) \cite{nirspec}. L'un des atouts principaux de \gls{nirspec} est son \gls{msa}, une grille de près de 250 000 obturateurs, couvrant une surface de 3.6' x 3.4' sur le ciel, chacun pouvant être individuellement ouvert ou fermé \cite{msa} (voir \ref{fig:msa_shutter}). Ceci permet d'observer dans le mode \gls{mos} de \gls{nirspec}. Comme son nom l'indique, la spectroscopie multi-objet permet d'étudier le spectre de plusieurs objets dans un même champ, mais la grille d'obturateurs apporte également un outil fondamental dans l'extraction des spectres : la soustraction du fond.\\
+
+Nous travaillerons ici sur des données \gls{nirspec} du Programme de \textit{The Cosmic Evolution Early Release Science (CEERS)}, disponibles sur la base de données MAST \cite{portal_mast} (Proposal ID : 1345), notamment les observations P4, P5, P7, P8, P9, P11, P12, avec comme résolution PRISM.
 
 \subsection{Fond, Nodding et Slitlet}
 
 Lorsqu'on s'intéresse à des sources de faible brillance, le flux lumineux mesuré peut rapidement se trouver dominé par les émissions du fond. Que ce soit le fond diffus infrarouge, produit par des sources extragalactiques non résolues, la lumière zodiacale, produite par la poussière interplanétaire, le rayonnement de la Voie Lactée ou l'émission thermique du JWST lui-même, l'infrarouge est un domaine facilement parasité par des signaux indésirables \cite{jwst_background}. De plus, la nature de ses composantes fait de ce fond un signal anisotrope. Il n'est donc pas si simple d'en établir un modèle universel à soustraire de façon systématique. On a la mesure du fond en fonction de la longueur d'onde ci-dessous \ref{fig:background_jwst} : 
 
-\begin{figure}[H]
+\begin{figure}[!h]
   \centering
-  \includegraphics[scale=0.65]{assets/background_jwst.png}
+  \includegraphics[scale=0.55]{assets/background_jwst.png}
   \caption{Flux par unité d'angle solide reçu par le JWST en fonction de la longueur d'onde. On remarque qu'à mesure que $\lambda$ augmente, l'émission thermique du télescope domine. \customcite{STScI}{jwst_background}}
   \label{fig:background_jwst}
 \end{figure}
@@ -133,7 +164,7 @@ Lorsqu'on s'intéresse à des sources de faible brillance, le flux lumineux mesu
 
 Cependant, il reste tout de même envisageable de corriger ce signal parasite. En effet, en ouvrant les obturateurs à proximité de celui imageant la source, il devient possible d'extraire le fond localement autour de la source, que l'on peut alors soustraire au spectre de cette dernière.
 
-La configuration habituelle consiste en l'ouverture de 3 obturateurs dans la direction perpendiculaire à la direction de dispersion, on parlera par la suite de \textit{Slitlet}. On réalise alors 3 expositions, chacune en orientant le télescope de façon à avoir la source dans un obturateur différent : il s'agit du nodding. Ce mouvement entre chaque exposition offre également un autre avantage au travers du \textit{dithering}. La \gls{psf} de \gls{nirspec} est effectivement de $0.08 ''$ à $\lambda = 2.46 \mu m$ \cite{10_1051_0004_6361_202142663}. 
+La configuration habituelle consiste en l'ouverture de 3 obturateurs dans la direction perpendiculaire à la direction de dispersion. Dans un souci de cohérence avec la documentation du pipeline, on parlera par la suite de \textit{Slitlet}. On réalise alors 3 expositions, chacune en orientant le télescope de façon à avoir la source dans un obturateur différent : il s'agit du nodding. Ce mouvement entre chaque exposition offre également un autre avantage au travers du \textit{dithering}. La \gls{psf} de \gls{nirspec} est effectivement de $0.08 ''$ à $\lambda = 2.46 \mu m$ \cite{10_1051_0004_6361_202142663}. 
 Comme $PSF \propto \lambda$, on a une \gls{psf} variant de $0.02 ''$ à $0.17''$ le long de la plage de longueur d'onde observable. Comme la taille d'un pixel est $\sim 0.1''$ dans la direction spatiale, la \gls{psf} est sous échantillonnée presque partout. Le dithering permet alors d'améliorer cet échantillonnage par des corrections sub-pixels, mais également de s'affranchir des éventuels pixels défectueux ou des rayons cosmiques.
 
 On résume ceci dans la figure \ref{fig:msa_slitlet}.
@@ -155,7 +186,7 @@ Ainsi, dans notre cas, les 3 étapes sont telles que :\\
 
 \begin{minipage}{.45\linewidth}
   \begin{itemize}[left=0cm]
-    \item \textbf{Detector 1} : Applique les corrections au niveau du détecteur, tel que le masquage des pixels morts/chauds et des rayons cosmiques, la linéarisation du nombre d'\gls{adu}, la suppression du biais et du courant d'obscurité... Cette étape est la même pour tous les instruments du \gls{jwst}.
+    \item \textbf{Detector 1} : Applique les corrections au niveau du détecteur, tel que le masquage des pixels morts/chauds et des rayons cosmiques, la linéarisation du nombre de détections par seconde, la suppression du biais et du courant d'obscurité... Cette étape est la même pour tous les instruments du \gls{jwst}. (cf. \ref{fig:rate_file} le fichier en sortie de cette étape)
     \item \textbf{Spectroscopy 2} : Applique des modifications optiques, telles que la correction de champ plat et des pertes de lumières liées aux barres séparant les obturateurs, mais calibre également la photométrie et les données \gls{wcs}, associant à chaque pixel des coordonnées spatiales et spectrales. C'est ici que les images de chaque slitlets sont extraites de l'image initiale et que la soustraction du fond s'applique.
     \item \textbf{Spectroscopy 3} : Combine plusieurs expositions entre elles, appliquant ainsi le dithering / nodding discuté plus tôt, ré-échantillonne les images 2D et extrait les spectres 1D de celles-ci.
   \end{itemize}
@@ -168,6 +199,22 @@ Ainsi, dans notre cas, les 3 étapes sont telles que :\\
   \label{fig:jwst_pipeline}
   \end{minipage}
 
+
+  \begin{figure}[H]
+    \centering
+    \begin{overpic}[width=1\textwidth]{assets/rate_file_illustrated.png}
+      % The coordinates (x, y) specify the position of the caption text.
+      % For example, (20,80) would place the caption at 20% from the left and 80% from the bottom.
+      \put(52.5,13){%
+          \parbox{8cm}{
+            \fontsize{11}{12}\selectfont Image de \gls{nirspec} en sortie de l'étape 1 du pipeline. On peut y observer des taches lumineuses correspondant aux ordres 0 de diffraction (vert), des larges bandes au milieu formées par des obturateurs toujours ouvert, utilisé lors du mode Fixed Slit (bleu), ainsi que des bandes plus fines, parfois regroupées par 3, parfois isolées lorsqu'un obturateur reste accidentellement ouvert
+          }
+      }
+    \end{overpic}
+    \caption{}
+    \label{fig:rate_file}
+  \end{figure}
+
   \subsubsection{Soustraction du fond par défaut}
 
   Dans le cas de données \gls{nirspec} \gls{mos}, la soustraction du fond se fait pixel par pixel, lors de l'étape 2 du pipeline. Sur chaque slitlet, pour une exposition donnée, on considère les 2 expositions restantes comme du signal de fond, on les moyenne donc avant de les soustraire à l'image initiale. Cette étape est décrite sur la figure \ref{fig:msa_slitlet}
@@ -177,7 +224,7 @@ Ainsi, dans notre cas, les 3 étapes sont telles que :\\
   \begin{figure}[H]
     \centering
     \includegraphics[scale=1.1]{assets/negative_trace_nirspec.png}
-    \caption{Exemple d'une image 2D d'un spectre de \gls{nirspec} en fin de traitement classique. On observe clairement des spectres négatifs au-dessus et en dessous de la bande contenant le signal. Ceci est particulièrement visible à proximité des raies intenses. \customcite{jw01345-o063\_s03939\_nirspec\_clear-prism\_s2d}{portal_mast}}
+    \caption{Exemple d'une image 2D d'un spectre de \gls{nirspec} en fin de traitement classique. On observe clairement des spectres négatifs au-dessus et en dessous de la bande contenant le signal. Ceci est particulièrement visible à proximité des raies intenses.}
     \label{fig:negative_trace}
   \end{figure}
 
@@ -213,12 +260,57 @@ Ainsi, dans notre cas, les 3 étapes sont telles que :\\
 
 \subsection{Analyse de l'algorithme}
 
+La méthode décrite ici est basée sur celle utilisée lors de l'étape MasterBackgroundStep du pipeline \cite{mos_master_background}.
+
+\subsubsection{Calibration temporaire}
+
+L'application temporaire des étapes FlatField, PathLoss, BarShadow, Photom et ResampleSpec, permet d'extraire les spectres de fond de façon plus efficace. Ces étapes sont inversées par la suite, une fois un modèle de fond calculé, cela dans le but de faciliter l'ajustement du modèle du fond.
+
+\begin{itemize}
+  \item \textbf{FlatField} : Le Flat Field, ou Champ Plat, permet de corriger les défauts optiques (débris sur les miroirs ou le détecteur, distorsions optiques...) ainsi que les variations de sensibilités de chaques pixels. Ces images de calibrations dépendent de la longueur d'onde, et il est donc nécessaire dans le cas de \gls{nirspec} d'en combiner et interpoler plusieurs afin de couvrir le domaine spectral observé. La correction est alors appliquée en divisant l'image de chaque slitlet par le champ plat.
+  \begin{equation}
+    \mathsf{CORRECTION} = \mathsf{SCI} \; / \; \mathsf{FLAT} 
+  \end{equation}
+
+  \item \textbf{PathLoss} : Permet de compenser les pertes de lumières dans le système optique (taille finie des obturateurs, pertes de lumière en dehors du réseau).
+  
+  \item \textbf{BarShadow} : Compense les pertes liées aux barres séparant les obturateurs dans le cas de sources étendues.
+  
+  \item \textbf{Photom} : Traitement photométrique de l'image, où celle ci passe de valeurs arbitraires en DN/s (comptage d'événements par seconde) à des valeurs physiques de flux. Le facteur de conversion dépend de la longueur d'onde et est obtenu grâce à un tableau de référence, avant d'être interpolé aux longueurs d'ondes d'intérêt.\\
+  
+  À la fin de cette étape, une copie des données prétraitées est réalisée. C'est depuis cette copie que les étapes inverses seront appliquées par la suite.
+  
+  \item \textbf{ResampleSpec} : Ré-échantillone l'image de chaque slitlet de façon à corriger toute déformation et rotation de l'image, tout en alignant la direction de dispersion spectrale sur l'axe horizontal et la direction spatiale avec l'axe vertical.
+\end{itemize}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.45]{assets/precal.png}
+  \caption{La précalibration appliquée à l'image d'un slitlet. On remarque que le traitement par FlatField corrige grandement le flux et est effectivement inégal selon la longueur d'onde, que PathLoss et BarShadow permettent de s'affranchir de l'ombre des barres sur l'image, que Photom permet le passage de $DN/s$ (le nombre de détections par seconde) vers des $MJy/sr$, et que ResampleSpec permet de redresser l'image.}
+  \label{fig:precal}
+\end{figure}
 
 
+\subsubsection{Détermination des positions des bandes}
 
+\begin{wrapfigure}{r}{.5\textwidth}
+  \begin{minipage}{\linewidth}
+    \centering\captionsetup[subfigure]{justification=centering}
+    \includegraphics[width=\linewidth]{assets/fit_gaussian.png}
+    \subcaption{Profil de la distribution spatiale de l'image d'une slitlet après avoir moyenné sur les longueurs d'ondes. On ajuste alors ce profil par 3 gaussiennes.}
+    \label{fig:profil_gauss}
+    \par
+    \vfill
+    \includegraphics[width=\linewidth]{assets/extraction.png}
+    \subcaption{Visualisation en rouge des zones d'extractions du fond et en noir de la zone du signal, qui ne nous intéresse pas ici.}
+    \label{fig:extraction}
+  \end{minipage}
+\caption*{}
+\end{wrapfigure}
 
+L'étape ResampleSpec nous permet d'être certain que la direction verticale sur l'image correspond à une dispersion spatiale, tandis que la direction horizontale correspond à une dispersion spectrale. Pour discriminer la bande contenant le signal principal de celles contenant le spectre de fond, nous réalisons donc une moyenne spectrale, tronquée à $5\sigma$, afin de nous ramener à un problème à 1 dimension.\\
 
-
+À ce profil, on ajuste alors une somme de 3 gaussiennes, censées modeliser l'apparence spatiale des 3 bandes (figure \ref{fig:profil_gauss}). Des 2 gaussiennes correspondant au fond, on récupère alors leurs positions, autour desquels on réalise une extraction dans la direction spectrale sur l'image (figure \ref{fig:extraction}). La fenêtre d'extraction utilisée est prise à 3 pixels de haut.
 
 
 \printnoidxglossaries
