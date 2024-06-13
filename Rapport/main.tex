@@ -296,7 +296,7 @@ L'application temporaire des étapes FlatField, PathLoss, BarShadow, Photom et R
 \begin{wrapfigure}{r}{.5\textwidth}
   \begin{minipage}{\linewidth}
     \centering\captionsetup[subfigure]{justification=centering}
-    \includegraphics[width=\linewidth]{assets/fit_gaussian.png}
+    \includegraphics[width=0.9\linewidth]{assets/fit_gaussian.png}
     \subcaption{Profil de la distribution spatiale de l'image d'une slitlet après avoir moyenné sur les longueurs d'ondes. On ajuste alors ce profil par 3 gaussiennes.}
     \label{fig:profil_gauss}
     \par
@@ -305,12 +305,47 @@ L'application temporaire des étapes FlatField, PathLoss, BarShadow, Photom et R
     \subcaption{Visualisation en rouge des zones d'extractions du fond et en noir de la zone du signal, qui ne nous intéresse pas ici.}
     \label{fig:extraction}
   \end{minipage}
-\caption*{}
 \end{wrapfigure}
 
 L'étape ResampleSpec nous permet d'être certain que la direction verticale sur l'image correspond à une dispersion spatiale, tandis que la direction horizontale correspond à une dispersion spectrale. Pour discriminer la bande contenant le signal principal de celles contenant le spectre de fond, nous réalisons donc une moyenne spectrale, tronquée à $5\sigma$, afin de nous ramener à un problème à 1 dimension.\\
 
-À ce profil, on ajuste alors une somme de 3 gaussiennes, censées modeliser l'apparence spatiale des 3 bandes (figure \ref{fig:profil_gauss}). Des 2 gaussiennes correspondant au fond, on récupère alors leurs positions, autour desquels on réalise une extraction dans la direction spectrale sur l'image (figure \ref{fig:extraction}). La fenêtre d'extraction utilisée est prise à 3 pixels de haut.
+À ce profil, on ajuste alors une somme de 3 gaussiennes, censées modeliser l'apparence spatiale des 3 bandes (figure \ref{fig:profil_gauss}). Des 2 gaussiennes correspondant au fond, on récupère alors leurs positions, autour desquels on réalise une extraction dans la direction spectrale sur l'image (figure \ref{fig:extraction}). On extrait alors également les longueurs d'ondes associées à chaque pixel ainsi que l'erreur sur le flux. La fenêtre d'extraction utilisée est prise à 3 pixels de haut.
+
+Pour chacune des bandes, on réalise alors une dernière moyenne, sur la direction spatiale, afin d'obtenir $z^i_j$ (tronqué à $5\sigma$), $\lambda^i_j$ et $\sigma^i_j$ (dans le cas de l'erreur, la moyenne se fait quadratiquement).
+
+\subsubsection{Ajustement par une spline}
+
+\begin{wrapfigure}{r}{0.6\linewidth}
+  \centering
+  \includegraphics[scale=0.27]{assets/fit_spline.png}
+  \caption{Extraction des spectres de fond sélectionnés sur la figure \ref{fig:extraction}, la spline ajustée est affichée en rouge. On remarque cependant que le nuage de points est séparé en 2 régimes, en raison du niveau de flux qui n'est pas le même sur une bande que sur l'autre.}
+  \label{fig:spline_fit}
+\end{wrapfigure}
+
+À présent que l'on dispose d'un ensemble de points $(\lambda, z)$, on cherche à trouver une fonction approximant $z = f(\lambda)$ de façon à ignorer les variations rapides et le bruit. Pour cela, on utilise la fonction \textit{UnivariateSpline} du module \textit{SciPy.interpolate}, afin d'ajuster un modèle de spline à nos données. Puisque les variations qui nous intéressent sont les basses fréquences, et que celles ci peuvent parfois présenter plusieurs extrema, on choisira comme ordre de la spline le degré maximal, à savoir $k=5$ (cela signifie que les morceaux de polynômes servant à construire la courbe seront au plus de degré 5). 
+
+On dispose également d'un paramètre de lissage $s \geq 0$, qui quantifie le nombre de sous intervalles sur lesquels on définit les morceaux de polynômes. Plus $s$ est proche de 0, plus la fonction passera proche de chaque point, plus $s$ est grand, plus la fonction sera "lisse" et ne suivra que l'allure générale de la distribution des points. On choisit, assez arbitrairement, une valeur de $s=0.01$.
+
+Il est possible que dans certains cas, l'ajustement de la spline échoue. L'algorithme baisse alors la valeur de $k$ à $k=3$ et augmente la valeur de $s$ par facteurs de 10 jusqu'à obtenir un ajustement. C'est notamment le cas sur la figure \ref{fig:spline_fit} ($s=1$, $k=3$), où en raison des écarts entre les flux des 2 bandes de fond, l'ajustement a échoué.
+
+
+\subsubsection{Aparté : Autres modèles d'ajustements}
+
+\begin{wrapfigure}{l}{0.4\linewidth}
+  \centering
+  \includegraphics[scale=0.35]{assets/idw_interpolation.png}
+  \caption{Moyenne spatiale du profil spectral d'une bande de fond, ainsi que d'une interpolation de ce même fond. On voit que les valeurs trop élevées sont tronquées, et que l'allure du profil n'est plus du tout suivie.}
+  \label{fig:interpolation}
+\end{wrapfigure}
+
+Avant d'arriver au modèle actuel, plusieurs autres méthodes ont été envisagées et testées pour modeliser le fond.\\
+
+Tout d'abord, les premiers tests ont été réalisés avant que l'étape de précalibration soit implémentée. Ceux ci avaient donc lieu sur des images non traitées par un champ plat.
+
+Une première méthode naïve consiste en l'extraction des bandes 2D de fond, le rejet des pixels au-dessus d'un certain seuil (garder les 50\% des plus lumineux, rejeter ceux au-dessus de 70\% de la valeur maximale...), puis l'interpolation de ces pixels rejetés à partir des pixels restants. L'interpolation pondérée de distance avait alors été choisie, en raison de son paramètre de puissance qui offrait un certain contrôle sur le degré de lissage de l'interpolation. L'allure générale du fond est en revanche perdue (figure \ref{fig:interpolation}).\\
+
+Une autre stratégie consiste en l'ajustement d'un polynôme en 2 dimensions sur chaque bande de fond. Cependant, la 
+
 
 
 \printnoidxglossaries
