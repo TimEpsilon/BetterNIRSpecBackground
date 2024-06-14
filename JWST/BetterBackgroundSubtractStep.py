@@ -3,7 +3,7 @@ from scipy.signal import find_peaks_cwt
 from utils import *
 from scipy.optimize import curve_fit as cfit
 import matplotlib.pyplot as plt
-import stdatamodels.jwst.datamodels as dms
+import stdatamodels.jwst.datamodels as dm
 from astropy.stats import sigma_clip
 from jwst.flatfield import FlatFieldStep
 from jwst.pathloss import PathLossStep
@@ -44,8 +44,6 @@ def BetterBackgroundStep(name,saveBackgroundImage=False):
 	# For a given _srctype, for every slit
 	for i,slit in enumerate(resampled.slits):
 		logConsole(f"Opened slitlet {slit.slitlet_id}")
-
-		#TODO : Eventually, work on error propagation
 
 		shutter_id = WhichShutterOpen(slit.shutter_state)
 		if shutter_id is None:
