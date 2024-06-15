@@ -1,10 +1,12 @@
+import matplotlib
+matplotlib.use('Qt5Agg')
+
 import os
 os.environ['CRDS_PATH'] = './crds_cache'
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
 import stdatamodels.jwst.datamodels as dm
 from glob import glob
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -13,15 +15,17 @@ from astropy.visualization import ZScaleInterval
 from jwst.extract_1d import Extract1dStep as x1d
 from astropy.io import fits
 
-matplotlib.use('Qt5Agg')
-
 working_dir = "./mastDownload/JWST/"
 folders = glob(working_dir+'*PRISM*')
-done = ["CEERS-NIRSPEC-P11-PRISM-MSATA"]
+done = ["CEERS-NIRSPEC-P11-PRISM-MSATA",
+		"CEERS-NIRSPEC-P5-PRISM-MSATA",
+		"CEERS-NIRSPEC-P4-PRISM-MSATA",
+		"CEERS-NIRSPEC-P12-PRISM-MSATA",
+		"CEERS-NIRSPEC-P10-PRISM-MSATA"]
 
 def IterateOverFolders(folders):
 	for folder in folders:
-			if folder in done:
+			if any(d in folder for d in done):
 				continue
 			WorkOn1Folder(folder)
 
@@ -56,39 +60,35 @@ def makeExtraction(file):
 		# 1st click : do we keep the main spectrum
 		# 2nd click : where is the second spectrum
 		clicks = []
+		DoWeExtract = False
 
 		def onclick(event):
 			nonlocal clicks
-			if event.inaxes:
-				if len(clicks) == 0:
-					clicks.append(True)
-					logConsole("Extracting main slit")
-				else:
-					clicks.append(event.ydata)
-					logConsole(f"Extracting secondary slit at {clicks[-1]}")
-			else:
-				if len(clicks) == 0:
-					clicks.append(False)
-					logConsole("Not extracting")
-				else:
-					clicks.append(np.nan)
-					logConsole("Closing")
-					plt.close()
+			nonlocal DoWeExtract
+			if event.button == 3:  # Right click
+				DoWeExtract = True
+				logConsole("Extracting main slit")
+				logConsole("Closing")
+				plt.close()
+				return
+			elif event.inaxes and event.button == 1: # Left Click
+				clicks.append(event.ydata)
+				logConsole(f"Extracting secondary slit at {clicks[-1]}")
+				return
 
-		fig, ax = plt.subplots(figsize=(6,3))
+		fig, ax = plt.subplots(figsize=(12,6))
 		z = ZScaleInterval()
 		z1, z2 = z.get_limits(mos.data)
 		ax.imshow(mos.data, vmin=z1, vmax=z2, origin='lower',interpolation="none")
 		fig.canvas.mpl_connect('button_press_event', onclick)
 		plt.show()
 
-		DoWeExtract = clicks[0]
-		ExtractElsewhere = clicks[1:]
+		print(clicks, DoWeExtract)
 
 		if DoWeExtract:
 			ExtractMainSource(file, n, mos)
 
-		for i,yExtract in enumerate(ExtractElsewhere):
+		for i,yExtract in enumerate(clicks):
 			if np.isnan(yExtract):
 				break
 			ExtractSecondarySource(file, n, mos, yExtract, i+1)
@@ -234,4 +234,4 @@ def changeUnit(bunit,sr):
 
 
 #IterateOverFolders(folders)
-makeExtraction("./mastDownload/JWST/CEERS-NIRSPEC-P11-PRISM-MSATA/Final/jw01345-o100_s85552_nirspec_clear-prism_s2d.fits")
+makeExtraction("./mastDownload/JWST/CEERS-NIRSPEC-P11-PRISM-MSATA/Final/jw01345-o100_s03480_nirspec_clear-prism_s2d.fits")
