@@ -29,15 +29,13 @@ def generateCigaleFile(folder):
 	for file in glob(os.path.join(folder, '*_x1d.fits')):
 		data = fits.open(file)
 
-		# Ignoring none 3 shutter slits because they have not been treated
-		if len(data[1].header["SHUTSTA"]) != 3:
-			continue
 		# Excluding entirely nan arrays
 		if not np.any(np.logical_and(np.isfinite(data[1].data['FLUX']), np.isfinite(data[1].data['FLUX_ERROR']))):
 			continue
 
 		program = folder.split("/")[-3].split("-")[-3]
-		ids.append(f"nirspec_{program}_{data[1].header['SRCNAME']}")
+		srcid = file.split("/")[-1].split("_")[-4]
+		ids.append(f"nirspec_{program}_{srcid}")
 		paths.append(file)
 		modes.append(data[0].header["GRATING"].lower())
 
