@@ -286,7 +286,7 @@ L'application temporaire des étapes FlatField, PathLoss, BarShadow, Photom et R
 \begin{figure}[H]
   \centering
   \includegraphics[scale=0.45]{assets/precal.png}
-  \caption{La précalibration appliquée à l'image d'un slitlet. On remarque que le traitement par FlatField corrige grandement le flux et est effectivement inégal selon la longueur d'onde, que PathLoss et BarShadow permettent de s'affranchir de l'ombre des barres sur l'image, que Photom permet le passage de $DN/s$ (le nombre de détections par seconde) vers des $MJy/sr$, et que ResampleSpec permet de redresser l'image.}
+  \caption{La précalibration appliquée à l'image d'un slitlet. On remarque que le traitement par FlatField corrige grandement le flux et est effectivement inégal selon la longueur d'onde, que PathLoss et BarShadow permettent de s'affranchir de l'ombre des barres sur l'image, que Photom permet le passage de $DN/s$ (le nombre de détections par seconde) vers des $MJy/sr$, et que ResampleSpec permet de redresser l'image. Les pixels blancs sont des pixels masqués par l'algorithme, car défectueux ou présence de rayons cosmiques.}
   \label{fig:precal}
 \end{figure}
 
@@ -333,7 +333,7 @@ Il est possible que dans certains cas, l'ajustement de la spline échoue. L'algo
 
 \begin{wrapfigure}{l}{0.4\linewidth}
   \centering
-  \includegraphics[scale=0.35]{assets/idw_interpolation.png}
+  \includegraphics[scale=0.3]{assets/idw_interpolation.png}
   \caption{Moyenne spatiale du profil spectral d'une bande de fond, ainsi que d'une interpolation de ce même fond. On voit que les valeurs trop élevées sont tronquées, et que l'allure du profil n'est plus du tout suivie.}
   \label{fig:interpolation}
 \end{wrapfigure}
@@ -344,7 +344,40 @@ Tout d'abord, les premiers tests ont été réalisés avant que l'étape de pré
 
 Une première méthode naïve consiste en l'extraction des bandes 2D de fond, le rejet des pixels au-dessus d'un certain seuil (garder les 50\% des plus lumineux, rejeter ceux au-dessus de 70\% de la valeur maximale...), puis l'interpolation de ces pixels rejetés à partir des pixels restants. L'interpolation pondérée de distance avait alors été choisie, en raison de son paramètre de puissance qui offrait un certain contrôle sur le degré de lissage de l'interpolation. L'allure générale du fond est en revanche perdue (figure \ref{fig:interpolation}).\\
 
-Une autre stratégie consiste en l'ajustement d'un polynôme en 2 dimensions sur chaque bande de fond. Cependant, la 
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.7]{assets/2D_polynomial.png}
+  \caption{Comparaison entre données brutes d'une bande de fond (haut), un ajustement par un polynôme d'ordre 4 (milieu), et l'écart relatif $\frac{Raw - Fit}{Raw}$ (bas). Bien que l'allure générale semble suivie, des effets de bords importants sont visibles.}
+  \label{fig:2D_polynomial}
+\end{figure}
+
+\begin{wrapfigure}{r}{0.6\linewidth}
+  \centering
+  \includegraphics[scale=0.5]{assets/comparaison_normal_fit.png}
+  \caption{Comparaison entre un spectre final obtenu par un traitement normal des données (rouge) et un spectre obtenu en ajustant le fond par des polynômes 2D}
+  \label{fig:comparaison_fit_normal}
+\end{wrapfigure}
+
+Une autre stratégie consiste en l'ajustement d'un polynôme en 2 dimensions sur chaque bande de fond. Cependant, malgré des premiers résultats prometteurs (figure \ref{fig:2D_polynomial}), les rapides variations sur les bords de l'image induisent des écarts importants avec les spectres obtenus par le traitement par défaut du pipeline (figure \ref{fig:comparaison_fit_normal}).\\
+
+Enfin, en raison du manque de temps, certains détails ont dû être ignorés. L'algorithme actuel peut encore être amélioré, notamment sur la sélection des bandes de fond et sur l'ajustement de la spline. En effet, la méthode actuelle ne permet pas de propager les incertitudes sur l'ajustement aux données après la soustraction. De plus, il existe encore certains cas limites pour lesquels l'ajustement échoue, ou alors des cas où la spline peut être trouvée, mais celle ci ne suit pas l'allure des données.
+
+
+\subsubsection{Interpolation 2D et finitions}
+
+Une fois notre spline $f(\lambda)$ obtenue, le spectre peut être interpolé en une image 2D à partir de la carte de longueurs d'ondes obtenue lors de la copie des données calibrées, à la fin de l'étape Photom. En effet, avant l'étape ResampleSpec, la direction de dispersion peut être légèrement déformée par rapport à l'axe horizontal. L'interpolation 2D a donc lieu avant cette étape afin de ne pas perdre d'informations lors du rééchantillonage inverse.
+
+Les opérations mathématiques inverses de Photom, BarShadow, PathLoss et FlatField sont alors appliquées sur cette nouvelle image, donnant une image correspondant à une pseudo-observation du fond à travers les 3 fentes (figure \ref{fig:background}). Celle ci est alors soustraite à l'image originale, donnant une image finale sur laquelle on applique les étapes suivantes du pipeline.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.5]{assets/background_subtraction.png}
+  \caption{Résumé des différentes opérations appliquées sur l'image d'une slitlet. De haut en bas on a : l'image pré-algorithme, l'image temporairement calibrée, une nouvelle image formée par un ajustement du fond et une interpolation 2D, cette même image décalibrée, la soustraction de l'image originale par l'image du fond}
+  \label{fig:background}
+\end{figure}
+
+\subsection{Résultats}
+
 
 
 
