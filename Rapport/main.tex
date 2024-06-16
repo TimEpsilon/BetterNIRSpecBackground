@@ -378,6 +378,33 @@ Les opérations mathématiques inverses de Photom, BarShadow, PathLoss et FlatFi
 
 \subsection{Résultats}
 
+\begin{figure}[!h]
+  \begin{subfigure}[t]{0.48\textwidth}
+      \centering
+      \includegraphics[width=1\textwidth]{assets/jw01345-o063_s32304_nirspec_clear-prism_extracted.png}
+      \caption{Image en sortie du traitement du pipeline, ainsi qu'une extraction du spectre de l'objet principal. La bande extraite est sélectionnée à partir de la position supposée de la source dans l'image et mesure 7 pixels de haut.}
+      \label{fig:extraction_32304}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[t]{0.48\textwidth}
+      \centering
+      \includegraphics[width=1\textwidth]{assets/extraction_2_sources_P7-23642.png}
+      \caption{Extractions d'une source principale (rouge) et d'une source secondaire (bleu)}
+      \label{fig:extraction_2_sources}
+  \end{subfigure}
+  \caption{Extractions de quelques spectres obtenues par notre méthode}
+\end{figure}
+
+Une fois ce traitement effectué, on procède à une extraction des spectres des sources principales ainsi que des éventuelles sources secondaires. On affiche l'allure de ces spectres sur les figures \ref{fig:extraction_32304} pour le cas d'une source et \ref{fig:extraction_2_sources} pour le cas d'une source principale et une source secondaire.\\
+
+On peut alors comparer les résultats obtenus par notre méthode personnalisée à ceux obtenus par le traitement classique. On réalise ceci sur la figure \ref{fig:comparaison_mast_custom}. On y observe clairement l'absence des traces négatives au-dessus et en dessous des raies sur l'image obtenue par notre traitement. Cependant, on remarque que le signal continue obtenue par la méthode classique semble légèrement plus importants à certaines longueurs d'ondes que celui obtenue avec notre méthode. Ceci est par ailleurs confirmé en observant le dernier graphique, sur lequel est représenté le rapport signal sur bruit en fonction de la longueur d'onde. Seules les raies se retrouvent amplifiées par notre méthode.
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[scale=0.5]{assets/comparaison_spectres_mast_custom.png}
+  \caption{Comparaison entre le traitement classique et notre traitement personnalisé. De haut en bas, on a : Le spectre 2D obtenu par notre méthode, le spectre 2D obtenu par la méthode classique, les spectres 1D extraits, avec en rouge notre méthode et en bleu la méthode classique, et le rapport signal sur bruit.}
+  \label{fig:comparaison_mast_custom}
+\end{figure}
 
 
 
