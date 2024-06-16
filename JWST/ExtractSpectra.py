@@ -206,7 +206,7 @@ def ExtractSecondarySource(file, n, mos, yExtract, extractId):
 	# Make x1d file
 	col_waves = fits.Column(array=wave, format='D', name='WAVELENGTH')
 	col_fluxes = fits.Column(array=flux, format='D', name='FLUX')
-	col_flux_errs = fits.Column(array=dflux, format='D', name='FLUX_ERR')
+	col_flux_errs = fits.Column(array=dflux, format='D', name='FLUX_ERROR')
 	cols = fits.ColDefs([col_waves, col_fluxes, col_flux_errs])
 
 	name = file.replace("_s2d.fits", f"{extractId}_x1d.fits")

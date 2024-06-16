@@ -35,9 +35,12 @@ def generateCigaleFile(folder):
 
 		program = folder.split("/")[-3].split("-")[-3]
 		srcid = file.split("/")[-1].split("_")[-4]
+		if "prism1" in file:
+			srcid = srcid + "-1"
 		ids.append(f"nirspec_{program}_{srcid}")
 		paths.append(file)
-		modes.append(data[0].header["GRATING"].lower())
+		modes.append("prism")
+		#modes.append(data[0].header["GRATING"].lower())
 
 	if len(ids) == 0:
 		print("Empty folder")
