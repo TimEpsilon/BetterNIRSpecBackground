@@ -397,7 +397,9 @@ Les opérations mathématiques inverses de Photom, BarShadow, PathLoss et FlatFi
 
 Une fois ce traitement effectué, on procède à une extraction des spectres des sources principales ainsi que des éventuelles sources secondaires. On affiche l'allure de ces spectres sur les figures \ref{fig:extraction_32304} pour le cas d'une source et \ref{fig:extraction_2_sources} pour le cas d'une source principale et une source secondaire.\\
 
-On peut alors comparer les résultats obtenus par notre méthode personnalisée à ceux obtenus par le traitement classique. On réalise ceci sur la figure \ref{fig:comparaison_mast_custom}. On y observe clairement l'absence des traces négatives au-dessus et en dessous des raies sur l'image obtenue par notre traitement. Cependant, on remarque que le signal continue obtenue par la méthode classique semble légèrement plus importants à certaines longueurs d'ondes que celui obtenue avec notre méthode. Ceci est par ailleurs confirmé en observant le dernier graphique, sur lequel est représenté le rapport signal sur bruit en fonction de la longueur d'onde. Seules les raies se retrouvent amplifiées par notre méthode.
+On peut alors comparer les résultats obtenus par notre méthode personnalisée à ceux obtenus par le traitement classique. On réalise ceci sur la figure \ref{fig:comparaison_mast_custom}. On y observe clairement l'absence des traces négatives au-dessus et en dessous des raies sur l'image obtenue par notre traitement. Cependant, on remarque que le signal continue obtenue par la méthode classique semble légèrement plus importants à certaines longueurs d'ondes que celui obtenue avec notre méthode. Ceci est par ailleurs confirmé en observant le dernier graphique, sur lequel est représenté le rapport signal sur bruit en fonction de la longueur d'onde. Seules les raies se retrouvent amplifiées par notre méthode.\\
+
+%TODO : Explication de pourquoi
 
 \begin{figure}[!h]
   \centering
@@ -406,11 +408,52 @@ On peut alors comparer les résultats obtenus par notre méthode personnalisée 
   \label{fig:comparaison_mast_custom}
 \end{figure}
 
+\section{Analyse des spectres}
+
+\subsection{Présentation de CIGALE}
+
+\glsreset{cigale}
+\gls{cigale} \cite{cigale} est un outil permettant de modéliser l'émission d'une galaxie, ses raies d'émission, son absorption par la poussière, son spectre continu, son redshift, de comparer ces modèles aux données afin d'établir le plus vraisemblable et ainsi de déterminer les paramètres physiques, chimiques et cosmologiques des galaxies observées.
+
+Les données utilisées avec \gls{cigale} sont d'ordinaire des données photométriques réalisées dans différentes bandes du spectre électromagnétique, des rayons X à la radio. Cependant, nous travaillons ici sur une version en accès anticipé de l'outil nous donnant accès à l'étude de données spectroscopiques.\\
+
+La génération d'un modèle se base sur une série d'étapes successives (on ignore ici les étapes liées aux noyaux actifs de galaxies, qui ne nous concernent pas) :
+
+\begin{itemize}
+  \item[1.] Calcul de l'histoire de formation stellaire, ou \gls{sfh}
+  \begin{itemize}
+    \item Module \texttt{sfhdelayed} : On modélise un "burst" de formation d'étoiles ainsi :
+    
+     $SFR(t) \propto \frac{t}{\tau^2} \cdot e^{-t/\tau}$, avec $\tau$ le temps au maximum de formation stellaire (en supposant le temps $t=0$ comme le début du burst).
+
+    La \gls{sfr} en fonction du temps est d'abord caractérisée par un premier burst, impliquant en général la majorité de la formation d'étoiles, suivi plus tard d'un autre burst.
+  \end{itemize}
+
+  \item[2.] Détermination du spectre stellaire à partir de la \gls{sfh}
+  \begin{itemize}
+    \item Module \texttt{bc03} : Modélise la fonction de masse initiale (\gls{imf}), c'est-à-dire la densité de probabilité qu'une étoile ait une certaine masse lors de la formation stellaire. Le module modélise alors l'émission individuelle des étoiles selon leur masse et leur métallicité.
+  \end{itemize}
+
+  \item[3.] Calcul de l'émission nébulaire, notamment des raies d'émission
+  \begin{itemize}
+    \item Module \texttt{nebular} : Simule l'émission du gaz ionisé par le rayonnement des étoiles massives (continu et raies) en prenant en compte la metallicité $Z$ de celui ci, la densité électronique $N_e$, le degré d'ionisation adimensionné $U$ (le rapport entre la densité de photons ionisant sur la densité d'atomes d'hydrogène \cite{Astrophysics-of-the-Diffuse-Universe}).
+  \end{itemize}
+
+  \item[4.] Calcul de l'absorption ultraviolette par la poussière
+  \begin{itemize}
+    \item Module \texttt{dustatt_modified_starburst} : % TODO
+  \end{itemize}
+  \item[5.] Calcul de la réémission des poussières dans l'infrarouge
+  \item[6.] Décalage par redshift
+\end{itemize}
+
+
+
+
 
 
 \printnoidxglossaries
 
 \printbibliography %Prints bibliography
-
 
 \end{document}
