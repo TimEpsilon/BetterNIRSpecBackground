@@ -441,9 +441,13 @@ La génération d'un modèle se base sur une série d'étapes successives (on ig
 
   \item[4.] Calcul de l'absorption ultraviolette par la poussière
   \begin{itemize}
-    \item Module \texttt{dustatt_modified_starburst} : % TODO
+    \item Module \texttt{dustatt\_modified\_starburst} : Décrit l'extinction UV $E_{B-V}$ comme une loi de puissance, accompagnée d'un pic lorentzien correspondant à un "UV bump" empirique, présent dans le spectre de la plupart des galaxies proches \cite{10.1093/mnras/stac1313}.
   \end{itemize}
+
   \item[5.] Calcul de la réémission des poussières dans l'infrarouge
+  \begin{itemize}
+    \item Module \texttt{dl2014}
+  \end{itemize}
   \item[6.] Décalage par redshift
 \end{itemize}
 
