@@ -2,7 +2,7 @@
 \usepackage{graphicx,wrapfig}
 \usepackage[margin=2cm]{geometry}
 \usepackage[acronym]{glossaries}
-\usepackage[sorting=none, style=nature]{biblatex} %Imports biblatex package
+\usepackage[sorting=none, style=authoryear]{biblatex} %Imports biblatex package
 \usepackage[hidelinks]{hyperref}
 \usepackage{titling}
 \usepackage{float}
@@ -13,8 +13,9 @@
 \usepackage[percent]{overpic}
 
 \renewcommand{\familydefault}{\sfdefault}
-\newcommand{\customcite}[2]{\mbox{
-  {\small \copyright} \textit{#1} \cite{#2}}
+
+\newcommand{\customcite}[1]{\mbox{
+  {\small \copyright} \cite{#1}}
 }
 
 \newcommand{\subtitle}[1]{%
@@ -23,6 +24,45 @@
     \begin{center}\LARGE#1\end{center}
     \vskip0.5em}%
 }
+
+\newcommand*{\figref}[2][]{%
+  \hyperref[{fig:#2}]{%
+    Figure~\ref*{fig:#2}%
+    \ifx\\#1\\%
+    \else
+      \,#1%
+    \fi
+  }%
+}
+
+% Define a new citation command for author and title within parentheses
+\DeclareCiteCommand{\parenciteauthortitle}
+  {\usebibmacro{prenote}}
+  {(\printnames{labelname}, \printfield{title}\addperiod)}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+
+% Ensure the new citation is hyperlinked
+\DeclareCiteCommand{\parenciteauthortitle}
+  {\usebibmacro{prenote}}
+  {(\hyperlink{\thefield{entrykey}}{\printnames{labelname}, \printfield{title}}\addperiod)}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+
+  % Redefine \parencite to make the entire citation clickable
+\DeclareCiteCommand{\parencite}
+{\usebibmacro{prenote}}
+{\hyperlink{\thefield{entrykey}}{(\printnames{labelname}, \printdate)}}
+{\multicitedelim}
+{\usebibmacro{postnote}}
+
+  % Redefine \cite to make the entire citation clickable
+  \DeclareCiteCommand{\cite}
+  {\usebibmacro{prenote}}
+  {\hyperlink{\thefield{entrykey}}{\printnames{labelname}, \printdate}}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+  
 
 \hypersetup{
   colorlinks   = true, %Colours links instead of ugly boxes
@@ -46,6 +86,19 @@
 \begin{document}
 
 \maketitle
+
+\begin{figure}
+  \centering
+     \begin{subfigure}[b]{0.3\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{assets/paris-saclay.png}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.3\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{assets/lam.png}
+     \end{subfigure}
+\end{figure}
 
 \newpage
 \begin{center}
@@ -88,17 +141,33 @@
 \begin{wrapfigure}{r}{10cm}
   \centering
   \includegraphics[scale=0.5]{assets/ceers_number_galaxies.png}
-  \caption{Comparaisons modèles - données de la densité du nombre de galaxies en fonction du redshift. En haut, les différents redshifts mesurés avec leurs incertitudes. En bas, Les traits colorés représentent différents modèles pré-JWST, tandis que la zone grisée représente les données obtenues par le programme CEERS. Seuls 2 modèles semblent en accord avec les données. \customcite{Finkelstein et al.}{2023arXiv231104279F}}
+  \caption{Comparaisons modèles - données de la densité du nombre de galaxies en fonction du redshift. En haut, les différents redshifts mesurés avec leurs incertitudes. En bas, Les traits colorés représentent différents modèles pré-JWST, tandis que la zone grisée représente les données obtenues par le programme CEERS. Seuls 2 modèles semblent en accord avec les données. \customcite{2023arXiv231104279F}}
   \label{fig:densite_galaxies}
 \end{wrapfigure}
 
 En seulement 2 ans d'opérations, le \gls{jwst} nous a déjà ouvert de nombreuses portes jusqu'alors inaccessibles, et cela dans de multiples branches de l'astrophysique. Grâce à ses instruments spectroscopiques et sa sensibilité à l'infrarouge proche et moyen, il est désormais possible de sonder l'univers comme jamais auparavant. Parmi les objectifs que l'on souhaite accomplir avec ce télescope, l'un d'eux est l'étude de la formation des galaxies à l'époque de la réionisation, de l'apparition des métaux au sein de celles-ci, et de la recherche des hypothétiques Populations III, constituées d'étoiles de métallicité nulle, formées par le gaz primordial d'Hydrogène et d'Hélium purs.
 
-Ce nouvel horizon sur l'univers lointain nous permet de remonter l'histoire de l'univers comme jamais auparavant. En effet, la vitesse finie de la lumière fait que regarder loin dans l'espace est équivalent à remonter dans le temps. À cela s'ajoute également l'expansion de l'univers, avec pour conséquence de décaler le spectre lumineux de ces objets lointains vers le rouge (on parle de redshift).
+Ce nouvel horizon sur l'univers lointain nous permet de remonter l'histoire de l'univers comme jamais auparavant. En effet, la lumière ayant une vitesse finie, les photons nous arrivant maintenant depuis ces galaxies ont en réalité été émis longtemps dans le passé. Regarder loin dans l'espace est donc équivalent à remonter dans le temps. À cela s'ajoute également l'expansion de l'univers, qui a pour conséquence le décalage vers le rouge du spectre lumineux de ces objets lointains (on parle de \textit{redshift} $z$).
 
-D'ores et déjà, de nombreux résultats remettent en question nos modèles précédemment établis. L'un d'eux, notamment, est qu'il semblerait qu'il existe bien plus de galaxies dans l'univers jeune que ce que l'on pensait jusqu'à présent \cite{2023arXiv231104279F} (voir figure \ref{fig:densite_galaxies}). Un autre est la découverte d'un potentiel candidat de Population III \cite{2023arXiv230600953M}, où une raie d'He II à $\lambda = 1640 \text{\r{A}}$ semble indiquer qu'un nuage de gaz à $z = 10.6$ s'est retrouvé ionisé par des étoiles de Pop III. 
+D'ores et déjà, de nombreux résultats remettent en question nos modèles précédemment établis. Notamment, il semblerait qu'il existe bien plus de galaxies dans l'univers jeune que ce que l'on pensait jusqu'à présent \parencite{2023arXiv231104279F} (voir figure \ref{fig:densite_galaxies}). Un autre résultat remarquable est la découverte d'un potentiel candidat de Population III \parencite{2023arXiv230600953M}, où une raie d'He II à $\lambda = 1640 \text{\r{A}}$ semble indiquer qu'un nuage de gaz à $z = 10.6$ s'est retrouvé ionisé par des étoiles de Pop III. 
 
 Ainsi, dans les années à suivre, il est certain que de nouvelles contraintes vont pouvoir être posées sur les modèles de formation des premières galaxies et sur l'évolution de leur metallicité grâce au JWST.
+
+\subsection{La poussière et les métaux}
+
+En astrophysique, tout élément chimique plus lourd que l'hydrogène et l'hélium est dit métallique. En effet, lors des 20 premières minutes après le big bang, durant la nucléosynthèse primordiale, les isotopes d'hydrogène, d'hélium et une faible quantité de lithium furent les seuls noyaux formés \parencite{2017IJMPE..2641002C}. Tout élément plus lourd est apparu bien après, soit lors de la nucléosynthèse stellaire, soit lors d'événements cosmiques majeurs, tels que des supernovae ou des fusions de trous noirs ou d'étoiles à neutron.
+
+On mesure la métallicité en utilisant divers indicateurs. Le premier est la fraction de masse des éléments lourds rapportée à la masse totale,
+
+\begin{equation}
+  Z = \sum_{A > He} \frac{m_A}{M_{total}}
+\end{equation}
+
+qui peut se déterminer à partir de la fraction de masse d'Hydrogène $X = \frac{m_H}{M_{total}}$ et d'Hélium $Y = \frac{m_{He}}{M_{total}}$, en utilisant la relation $X + Y + Z = 1$. On mesure par exemple la métallicité du Soleil à $Z_\odot = 0.0134$ \parencite{2009ARA&A..47..481A}.
+
+
+
+Les étoiles de Population III sont donc les premières étoiles de l'univers, de métallicité nulle, formées par ce gaz primordial.
 
 \subsection{Problématiques et Objectifs}
 
@@ -119,19 +188,19 @@ Ensuite, nous étudierons ces différents spectres via \gls{cigale} afin d'en d�
      \begin{subfigure}[b]{0.45\textwidth}
          \centering
          \includegraphics[width=\textwidth]{assets/JWST_spacecraft_model_3.png}
-         \caption{Rendu 3D du \gls{jwst}. \customcite{NASA}{jwst_nasa}}
+         \caption{Rendu 3D du \gls{jwst}. \customcite{jwst_nasa}}
          \label{fig:jwst}
      \end{subfigure}
      \hfill
      \begin{subfigure}[b]{0.45\textwidth}
          \centering
          \includegraphics[width=\textwidth]{assets/NIRSpec_Optical_design.png}
-         \caption{Schéma des optiques de \gls{nirspec}. \customcite{STScI}{nirspec}}
+         \caption{Schéma des optiques de \gls{nirspec}. \customcite{nirspec}}
          \label{fig:nirspec}
      \end{subfigure}
 \end{figure}
 
-Le \gls{jwst} est un télescope spatial de 6.5 mètres de diamètre équivalent, en orbite autour du point de Lagrange L2, et actif depuis juillet 2022 \cite{jwst_website}. Sa sensibilité dans l'infrarouge en fait un outil remarquable pour observer l'univers jeune. En effet, de par l'expansion de l'univers, la lumière des objets lointains se retrouve décalée vers le rouge : il s'agit du redshift $z$, défini comme 
+Le \gls{jwst} est un télescope spatial de 6.5 mètres de diamètre équivalent, en orbite autour du point de Lagrange L2, et actif depuis juillet 2022 \parenciteauthortitle{jwst_website}. Sa sensibilité dans l'infrarouge en fait un outil remarquable pour observer l'univers jeune. En effet, de par l'expansion de l'univers, la lumière des objets lointains se retrouve décalée vers le rouge : il s'agit du redshift $z$, défini comme 
 
 \begin{equation}
     1 + z = \frac{\lambda_{obs}}{\lambda_{rest}}
@@ -142,29 +211,29 @@ Avec $\lambda_{obs}$ la longueur d'onde observée, et $\lambda_{rest}$ la longue
 \begin{figure}[!h]
   \centering
   \includegraphics[scale=0.3]{assets/msa_ds_new.png}
-  \caption{Disposition de MSA dans le plan focal de NIRSpec. \customcite{Ferruit et al.}{2022A&A...661A..81F}}
+  \caption{Disposition de MSA dans le plan focal de NIRSpec. \customcite{2022A&A...661A..81F}}
   \label{fig:msa_shutter}
 \end{figure}
 
-Parmi les instruments du \gls{jwst}, \gls{nirspec} est un spectromètre sur la bande 0.6 - 5.3  µm, disposant de 3 modes de résolution : PRISM ($R \sim 100$), medium grating ($R \sim 1000$), high grating ($R \sim 2700$) \cite{nirspec}. L'un des atouts principaux de \gls{nirspec} est son \gls{msa}, une grille de près de 250 000 obturateurs, couvrant une surface de 3.6' x 3.4' sur le ciel, chacun pouvant être individuellement ouvert ou fermé \cite{msa} (voir \ref{fig:msa_shutter}). Ceci permet d'observer dans le mode \gls{mos} de \gls{nirspec}. Comme son nom l'indique, la spectroscopie multi-objet permet d'étudier le spectre de plusieurs objets dans un même champ, mais la grille d'obturateurs apporte également un outil fondamental dans l'extraction des spectres : la soustraction du fond.\\
+Parmi les instruments du \gls{jwst}, \gls{nirspec} est un spectromètre sur la bande 0.6 - 5.3  µm, disposant de 3 modes de résolution : PRISM ($R \sim 100$), medium grating ($R \sim 1000$), high grating ($R \sim 2700$) \parenciteauthortitle{nirspec}. L'un des atouts principaux de \gls{nirspec} est son \gls{msa}, une grille de près de 250 000 obturateurs, couvrant une surface de 3.6' x 3.4' sur le ciel, chacun pouvant être individuellement ouvert ou fermé \parenciteauthortitle{msa} (voir \ref{fig:msa_shutter}). Ceci permet d'observer dans le mode \gls{mos} de \gls{nirspec}. Comme son nom l'indique, la spectroscopie multi-objet permet d'étudier le spectre de plusieurs objets dans un même champ, mais la grille d'obturateurs apporte également un outil fondamental dans l'extraction des spectres : la soustraction du fond.\\
 
-Nous travaillerons ici sur des données \gls{nirspec} du Programme de \textit{The Cosmic Evolution Early Release Science (CEERS)}, disponibles sur la base de données MAST \cite{portal_mast} (Proposal ID : 1345), notamment les observations P4, P5, P7, P8, P9, P11, P12, avec comme résolution PRISM.
+Nous travaillerons ici sur des données \gls{nirspec} du Programme de \textit{The Cosmic Evolution Early Release Science (CEERS)}, disponibles sur la base de données MAST \parenciteauthortitle{portal_mast} (Proposal ID : 1345), notamment les observations P4, P5, P7, P8, P9, P11, P12, avec comme résolution PRISM.
 
 \subsection{Fond, Nodding et Slitlet}
 
-Lorsqu'on s'intéresse à des sources de faible brillance, le flux lumineux mesuré peut rapidement se trouver dominé par les émissions du fond. Que ce soit le fond diffus infrarouge, produit par des sources extragalactiques non résolues, la lumière zodiacale, produite par la poussière interplanétaire, le rayonnement de la Voie Lactée ou l'émission thermique du JWST lui-même, l'infrarouge est un domaine facilement parasité par des signaux indésirables \cite{jwst_background}. De plus, la nature de ses composantes fait de ce fond un signal anisotrope. Il n'est donc pas si simple d'en établir un modèle universel à soustraire de façon systématique. On a la mesure du fond en fonction de la longueur d'onde ci-dessous \ref{fig:background_jwst} : 
+Lorsqu'on s'intéresse à des sources de faible brillance, le flux lumineux mesuré peut rapidement se trouver dominé par les émissions du fond. Que ce soit le fond diffus infrarouge, produit par des sources extragalactiques non résolues, la lumière zodiacale, produite par la poussière interplanétaire, le rayonnement de la Voie Lactée ou l'émission thermique du JWST lui-même, l'infrarouge est un domaine facilement parasité par des signaux indésirables \parenciteauthortitle{jwst_background}. De plus, la nature de ses composantes fait de ce fond un signal anisotrope. Il n'est donc pas si simple d'en établir un modèle universel à soustraire de façon systématique. On a la mesure du fond en fonction de la longueur d'onde ci-dessous \ref{fig:background_jwst} : 
 
 \begin{figure}[!h]
   \centering
   \includegraphics[scale=0.55]{assets/background_jwst.png}
-  \caption{Flux par unité d'angle solide reçu par le JWST en fonction de la longueur d'onde. On remarque qu'à mesure que $\lambda$ augmente, l'émission thermique du télescope domine. \customcite{STScI}{jwst_background}}
+  \caption{Flux par unité d'angle solide reçu par le JWST en fonction de la longueur d'onde. On remarque qu'à mesure que $\lambda$ augmente, l'émission thermique du télescope domine. \customcite{jwst_background}}
   \label{fig:background_jwst}
 \end{figure}
 
 
 Cependant, il reste tout de même envisageable de corriger ce signal parasite. En effet, en ouvrant les obturateurs à proximité de celui imageant la source, il devient possible d'extraire le fond localement autour de la source, que l'on peut alors soustraire au spectre de cette dernière.
 
-La configuration habituelle consiste en l'ouverture de 3 obturateurs dans la direction perpendiculaire à la direction de dispersion. Dans un souci de cohérence avec la documentation du pipeline, on parlera par la suite de \textit{Slitlet}. On réalise alors 3 expositions, chacune en orientant le télescope de façon à avoir la source dans un obturateur différent : il s'agit du nodding. Ce mouvement entre chaque exposition offre également un autre avantage au travers du \textit{dithering}. La \gls{psf} de \gls{nirspec} est effectivement de $0.08 ''$ à $\lambda = 2.46 \mu m$ \cite{10_1051_0004_6361_202142663}. 
+La configuration habituelle consiste en l'ouverture de 3 obturateurs dans la direction perpendiculaire à la direction de dispersion. Dans un souci de cohérence avec la documentation du pipeline, on parlera par la suite de \textit{Slitlet}. On réalise alors 3 expositions, chacune en orientant le télescope de façon à avoir la source dans un obturateur différent : il s'agit du nodding. Ce mouvement entre chaque exposition offre également un autre avantage au travers du \textit{dithering}. La \gls{psf} de \gls{nirspec} est effectivement de $0.08 ''$ à $\lambda = 2.46 \mu m$ \parencite{10_1051_0004_6361_202142663}. 
 Comme $PSF \propto \lambda$, on a une \gls{psf} variant de $0.02 ''$ à $0.17''$ le long de la plage de longueur d'onde observable. Comme la taille d'un pixel est $\sim 0.1''$ dans la direction spatiale, la \gls{psf} est sous échantillonnée presque partout. Le dithering permet alors d'améliorer cet échantillonnage par des corrections sub-pixels, mais également de s'affranchir des éventuels pixels défectueux ou des rayons cosmiques.
 
 On résume ceci dans la figure \ref{fig:msa_slitlet}.
@@ -173,7 +242,7 @@ On résume ceci dans la figure \ref{fig:msa_slitlet}.
 \begin{figure}[H]
   \centering
   \includegraphics[scale=0.2]{assets/MSA_sky_strategy.png}
-  \caption{Schéma de MSA et de slitlets. On réalise des séries de 3 images, chacune ayant la source dans un obturateur différent, et on utilise les 2 obturateurs restant pour déterminer le spectre du fond. \customcite{NIRSpec Instrument Development Team}{mos}}
+  \caption{Schéma de MSA et de slitlets. On réalise des séries de 3 images, chacune ayant la source dans un obturateur différent, et on utilise les 2 obturateurs restant pour déterminer le spectre du fond. \customcite{mos}}
   \label{fig:msa_slitlet}
 \end{figure}
 
@@ -195,7 +264,7 @@ Ainsi, dans notre cas, les 3 étapes sont telles que :\\
   \begin{minipage}{.5\linewidth}
   \centering
   \includegraphics[scale=0.15]{assets/jwst_pipeline.jpg}
-  \captionof{figure}{Schéma des différentes étapes du pipeline. Les étapes adaptées à nos données sont encadrées en rouge.\customcite{STScI}{jwst_pipeline}}
+  \captionof{figure}{Schéma des différentes étapes du pipeline. Les étapes adaptées à nos données sont encadrées en rouge.\customcite{jwst_pipeline}}
   \label{fig:jwst_pipeline}
   \end{minipage}
 
@@ -260,7 +329,7 @@ Ainsi, dans notre cas, les 3 étapes sont telles que :\\
 
 \subsection{Analyse de l'algorithme}
 
-La méthode décrite ici est basée sur celle utilisée lors de l'étape MasterBackgroundStep du pipeline \cite{mos_master_background}.
+La méthode décrite ici est basée sur celle utilisée lors de l'étape MasterBackgroundStep du pipeline \parenciteauthortitle{mos_master_background}.
 
 \subsubsection{Calibration temporaire}
 
@@ -413,7 +482,7 @@ On peut alors comparer les résultats obtenus par notre méthode personnalisée 
 \subsection{Présentation de CIGALE}
 
 \glsreset{cigale}
-\gls{cigale} \cite{cigale} est un outil permettant de modéliser l'émission d'une galaxie, ses raies d'émission, son absorption par la poussière, son spectre continu, son redshift, de comparer ces modèles aux données afin d'établir le plus vraisemblable et ainsi de déterminer les paramètres physiques, chimiques et cosmologiques des galaxies observées.
+\gls{cigale} \parencite{cigale} est un outil permettant de modéliser l'émission d'une galaxie, ses raies d'émission, son absorption par la poussière, son spectre continu, son redshift, de comparer ces modèles aux données afin d'établir le plus vraisemblable et ainsi de déterminer les paramètres physiques, chimiques et cosmologiques des galaxies observées.
 
 Les données utilisées avec \gls{cigale} sont d'ordinaire des données photométriques réalisées dans différentes bandes du spectre électromagnétique, des rayons X à la radio. Cependant, nous travaillons ici sur une version en accès anticipé de l'outil nous donnant accès à l'étude de données spectroscopiques.\\
 
@@ -436,27 +505,38 @@ La génération d'un modèle se base sur une série d'étapes successives (on ig
 
   \item[3.] Calcul de l'émission nébulaire, notamment des raies d'émission
   \begin{itemize}
-    \item Module \texttt{nebular} : Simule l'émission du gaz ionisé par le rayonnement des étoiles massives (continu et raies) en prenant en compte la metallicité $Z$ de celui ci, la densité électronique $N_e$, le degré d'ionisation adimensionné $U$ (le rapport entre la densité de photons ionisant sur la densité d'atomes d'hydrogène \cite{Astrophysics-of-the-Diffuse-Universe}).
+    \item Module \texttt{nebular} : Simule l'émission du gaz ionisé par le rayonnement des étoiles massives (continu et raies) en prenant en compte la metallicité $Z$ de celui ci, la densité électronique $N_e$, le degré d'ionisation adimensionné $U$ (le rapport entre la densité de photons ionisant sur la densité d'atomes d'hydrogène \parencite{Astrophysics-of-the-Diffuse-Universe}).
   \end{itemize}
 
   \item[4.] Calcul de l'absorption ultraviolette par la poussière
   \begin{itemize}
-    \item Module \texttt{dustatt\_modified\_starburst} : Décrit l'extinction UV $E_{B-V}$ comme une loi de puissance, accompagnée d'un pic lorentzien correspondant à un "UV bump" empirique, présent dans le spectre de la plupart des galaxies proches \cite{10.1093/mnras/stac1313}.
+    \item Module \texttt{dustatt\_modified\_starburst} : Décrit l'extinction UV $E_{B-V}$ comme une loi de puissance, accompagnée d'un pic lorentzien correspondant à un "UV bump" empirique, présent dans le spectre de la plupart des galaxies proches \parencite{10.1093/mnras/stac1313}.
   \end{itemize}
 
   \item[5.] Calcul de la réémission des poussières dans l'infrarouge
   \begin{itemize}
-    \item Module \texttt{dl2014}
+    \item Module \texttt{dl2014} : Le principe fondamental derrière \gls{cigale} est la conservation de l'énergie. Les photons absorbés par la poussière en ultraviolet sont réémis en infrarouge moyen et lointain. Ce module simule l'émission de cette poussière (silicates, hydrocarbures, etc) en 2 parties, l'émission diffuse liée au chauffage par les étoiles et l'émission par chauffage dans les zones de formation stellaire, décrite par une loi de puissance. Cependant, ces émissions ne se situent pas dans l'intervalle de longueurs d'ondes observé par \gls{nirspec}, aux redshifts souhaités. Leur influence sera donc négligeable sur les spectres observés et ces paramètres seront alors très peu contraints.
+    
   \end{itemize}
   \item[6.] Décalage par redshift
+  \begin{itemize}
+    \item Module \texttt{redshifting} : Le spectre réalisé jusqu'à présent est celui dans le référentiel au repos de la galaxie. Ce module permet de passer au référentiel observé en appliquant un redshift. On a comme nouvelles longueurs d'ondes $\lambda' = \lambda \cdot (1+z)$ et comme nouveau flux $F_\lambda' = F_\lambda / (1+z)$. Est également calculé l'absorption par le milieu intergalactique.
+  
+  \end{itemize}
 \end{itemize}
 
+Etant donné le nombre important de paramètres pris en compte dans un modèle donné, \gls{cigale} a recours à une grille de valeurs prédéfinies par l'utilisateur. Contrairement aux méthodes habituelles d'ajustement à grand nombre de paramètres, telle que la descente de gradient ou la méthode de Monte-Carlo par chaines de Markov, celle ci permet de fortement réduire le nombre de modèles à calculer, puisqu'un seul modèle peut être utilisé plusieurs fois pour chaque spectre.
+
+\gls{cigale} va donc calculer les différents modèles $m_i$ à partir des paramètres donnés en entrée des modules et déterminer le $\chi^2 = \sum_{i} (\frac{f_i - \alpha \cdot m_i}{\sigma_i})^2$ avec les données $f_i$ et leur incertitude $\sigma_i$ ($\alpha$ est ici un facteur de normalisation du spectre, le véritable $\chi^2$ est par ailleurs décrit en détails dans l'article de présentation de \gls{cigale} \parencite{cigale}). Pour chaque $\chi^2$ est alors calculé la vraisemblance $\propto e^{-\chi^2 / 2}$, ce qui permet alors, au maximum de vraisemblance, de déterminer les paramètres les plus adaptés ainsi que leur incertitude à partir de l'écart type du pic.\\
+
+On procède donc en 2 étapes. La première consiste en une analyse approximative et rapide des 616 spectres, dont 24 sources secondaires, dans le but d'obtenir une estimation de leur redshift $z$. Une fois celui obtenu, chaque spectre se retrouve associé à un redshift, nous permettant donc d'ignorer ce paramètre lors d'une analyse plus fine par la suite.
 
 
-
-
+\newpage
 
 \printnoidxglossaries
+
+\newpage
 
 \printbibliography %Prints bibliography
 
