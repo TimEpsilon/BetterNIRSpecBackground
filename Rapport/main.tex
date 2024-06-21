@@ -11,6 +11,7 @@
 \usepackage{enumitem}
 \usepackage{algorithm2e}
 \usepackage[percent]{overpic}
+\usepackage{amsmath}
 
 \renewcommand{\familydefault}{\sfdefault}
 
@@ -380,10 +381,10 @@ La méthode décrite ici est basée sur celle utilisée lors de l'étape MasterB
 
 \subsubsection{Calibration temporaire}
 
-L'application temporaire des étapes FlatField, PathLoss, BarShadow, Photom et ResampleSpec, permet d'extraire les spectres de fond de façon plus efficace. Ces étapes sont inversées par la suite, une fois un modèle de fond calculé, cela dans le but de faciliter l'ajustement.
+L'application temporaire des étapes \texttt{FlatField}, \texttt{PathLoss}, \texttt{BarShadow}, \texttt{Photom} et \texttt{ResampleSpec}, permet d'extraire les spectres de fond de façon plus efficace. Ces étapes sont inversées par la suite, une fois un modèle de fond calculé, cela dans le but de faciliter l'ajustement.
 
 \begin{itemize}
-  \item \textbf{FlatField} : Le Flat Field, ou Champ Plat, permet de corriger les défauts optiques (débris sur les miroirs ou le détecteur, distorsions optiques...) ainsi que les variations de sensibilités de chaques pixels. Ces images de calibrations dépendent de la longueur d'onde, et il est donc nécessaire dans le cas de \gls{nirspec} d'en combiner et interpoler plusieurs afin de couvrir le domaine spectral observé. La correction est alors appliquée en divisant l'image de chaque \textit{slitlet} par le champ plat.
+  \item \textbf{FlatField} : Le \textit{Flat Field}, ou Champ Plat, permet de corriger les défauts optiques (débris sur les miroirs ou le détecteur, distorsions optiques...) ainsi que les variations de sensibilités de chaques pixels. Ces images de calibrations dépendent de la longueur d'onde, et il est donc nécessaire dans le cas de \gls{nirspec} d'en combiner et interpoler plusieurs afin de couvrir le domaine spectral observé. La correction est alors appliquée en divisant l'image de chaque \textit{slitlet} par le champ plat.
   \begin{equation}
     \mathsf{CORRECTION} = \mathsf{SCI} \; / \; \mathsf{FLAT} 
   \end{equation}
@@ -402,14 +403,14 @@ L'application temporaire des étapes FlatField, PathLoss, BarShadow, Photom et R
 \begin{figure}[H]
   \centering
   \includegraphics[scale=0.45]{assets/precal.png}
-  \caption{La précalibration appliquée à l'image d'un \textit{slitlet}. On remarque que le traitement par FlatField corrige grandement le flux et est effectivement inégal selon la longueur d'onde, que PathLoss et BarShadow permettent de s'affranchir de l'ombre des barres sur l'image, que Photom permet le passage de $DN/s$ (le nombre de détections par seconde) vers des $MJy/sr$, et que ResampleSpec permet de redresser l'image. Les pixels blancs sont des pixels masqués par l'algorithme, car défectueux ou présence de rayons cosmiques.}
+  \caption{La précalibration appliquée à l'image d'un \textit{slitlet}. On remarque que le traitement par \texttt{FlatField} corrige grandement le flux et est effectivement inégal selon la longueur d'onde, que \texttt{PathLoss} et \texttt{BarShadow} permettent de s'affranchir de l'ombre des barres sur l'image, que \texttt{Photom} permet le passage de $DN/s$ (le nombre de détections par seconde) vers des $MJy/sr$, et que \texttt{ResampleSpec} permet de redresser l'image. Les pixels blancs sont des pixels masqués par l'algorithme, car défectueux ou présence de rayons cosmiques.}
   \label{fig:precal}
 \end{figure}
 
 
 \subsubsection{Détermination des positions des bandes}
 
-L'étape ResampleSpec nous permet d'être certain que la direction verticale sur l'image correspond à une dispersion spatiale, tandis que la direction horizontale correspond à l'étalement spectral. Pour discriminer la bande contenant le signal principal de celles contenant le spectre de fond, nous réalisons donc une moyenne spectrale, tronquée à $5\sigma$, afin de nous ramener à un problème à 1 dimension.\\
+L'étape \texttt{ResampleSpec} nous permet d'être certain que la direction verticale sur l'image correspond à une dispersion spatiale, tandis que la direction horizontale correspond à l'étalement spectral. Pour discriminer la bande contenant le signal principal de celles contenant le spectre de fond, nous réalisons donc une moyenne spectrale, tronquée à $5\sigma$, afin de nous ramener à un problème à 1 dimension.\\
 
 À ce profil, on ajuste alors une somme de 3 gaussiennes, censées modeliser l'apparence spatiale des 3 bandes (\figref{fig:profil_gauss}). Des 2 gaussiennes correspondant au fond, on récupère alors leurs positions, autour desquels on réalise une extraction dans la direction spectrale sur l'image (\figref{fig:extraction}). On extrait alors également les longueurs d'ondes associées à chaque pixel ainsi que l'erreur sur la densité de flux. La fenêtre d'extraction utilisée est prise à 3 pixels de haut.
 
@@ -437,7 +438,7 @@ On dispose également d'un paramètre de lissage $s \geq 0$, qui quantifie le no
 
 Il est possible que dans certains cas, l'ajustement de la spline échoue. L'algorithme baisse alors la valeur de $k$ à $k=3$ et augmente la valeur de $s$ par facteurs de 10 jusqu'à obtenir un ajustement. C'est notamment le cas sur la \figref{fig:spline_fit} ($s=1$, $k=3$), où en raison des écarts entre les flux des 2 bandes de fond, l'ajustement a échoué.
 
-\begin{figure}[!h]
+\begin{figure}[H]
   \centering
   \includegraphics[scale=0.45]{assets/fit_spline.png}
   \caption{Extraction des spectres de fond sélectionnés sur la \figref{fig:extraction}, la spline ajustée est affichée en rouge. On remarque cependant que le nuage de points est séparé en 2 régimes, en raison du niveau de flux qui n'est pas le même sur une bande que sur l'autre.}
@@ -451,7 +452,19 @@ Avant d'arriver au modèle actuel, plusieurs autres méthodes ont été envisag�
 
 Tout d'abord, les premiers tests ont été réalisés avant que l'étape de précalibration soit implémentée. Ceux ci avaient donc lieu sur des images non traitées par un champ plat.
 
-Une première méthode naïve consiste en l'extraction des bandes 2D de fond, le rejet des pixels au-dessus d'un certain seuil (garder les 50\% des plus lumineux, rejeter ceux au-dessus de 70\% de la valeur maximale...), puis l'interpolation de ces pixels rejetés à partir des pixels restants. L'interpolation pondérée de distance avait alors été choisie, en raison de son paramètre de puissance qui offrait un certain contrôle sur le degré de lissage de l'interpolation. L'allure générale du fond est en revanche perdue (\figref{fig:interpolation}).\\
+Une première méthode naïve consiste en l'extraction des bandes 2D de fond, le rejet des pixels au-dessus d'un certain seuil (garder les 50\% des plus lumineux, rejeter ceux au-dessus de 70\% de la valeur maximale...), puis l'interpolation de ces pixels rejetés à partir des pixels restants. L'interpolation pondérée de distance (\parencite{10.1145/800186.810616}) avait alors été choisie, en raison de son paramètre de puissance qui offrait un certain contrôle sur le degré de lissage de l'interpolation. L'allure générale du fond est en revanche perdue (\figref{fig:interpolation}).
+
+L'interpolation utilisée est décrite dans l'équation \ref{eq:idw}, où $d_i = \sqrt{(x-x_i)^2 + (y-y_i)^2}$ avec $(x_i,y_i)$ la position d'un point à la valeur $z_i$ connue et $u$ le dégré de lissage.
+
+\begin{equation}
+  \label{eq:idw}
+  f(x,y) = 
+  \begin{cases}
+    \frac{\sum_{i=0}^{N} d_i^{-u} \; \cdot z_i}{\sum_{i=0}^N \;d_i^{-u}} & d_i \neq 0 \; \forall i\\
+    z_i & d_i = 0
+
+  \end{cases}
+\end{equation}
 
 \begin{figure}[H]
   \centering
@@ -475,6 +488,7 @@ Une première méthode naïve consiste en l'extraction des bandes 2D de fond, le
         \caption{Comparaison entre un spectre final obtenu par un traitement normal des données (rouge) et un spectre obtenu en ajustant le fond par des polynômes 2D}
         \label{fig:comparaison_fit_normal}
      \end{subfigure}
+     \caption{}
 \end{figure}
 
 Une autre stratégie consiste en l'ajustement d'un polynôme en 2 dimensions sur chaque bande de fond. Cependant, malgré des premiers résultats prometteurs (\figref{fig:2D_polynomial}), les rapides variations sur les bords de l'image induisent des écarts importants avec les spectres obtenus par le traitement par défaut du pipeline (\figref{fig:comparaison_fit_normal}).\\
@@ -484,14 +498,14 @@ Enfin, en raison du manque de temps, certains détails ont dû être ignorés. L
 
 \subsubsection{Interpolation 2D et finitions}
 
-Une fois notre spline $f(\lambda)$ obtenue, le spectre peut être interpolé en une image 2D à partir de la carte de longueurs d'ondes obtenue lors de la copie des données calibrées, à la fin de l'étape Photom. En effet, avant l'étape ResampleSpec, la direction de dispersion peut être légèrement déformée par rapport à l'axe horizontal. L'interpolation 2D a donc lieu avant cette étape afin de ne pas perdre d'informations lors du rééchantillonage inverse.
+Une fois notre spline $f(\lambda)$ obtenue, le spectre peut être interpolé en une image 2D à partir de la carte de longueurs d'ondes obtenue lors de la copie des données calibrées, à la fin de l'étape \texttt{Photom}. En effet, avant l'étape \texttt{ResampleSpec}, la direction de dispersion peut être légèrement déformée par rapport à l'axe horizontal. L'interpolation 2D a donc lieu avant cette étape afin de ne pas perdre d'informations lors du rééchantillonage inverse.
 
-Les opérations mathématiques inverses de Photom, BarShadow, PathLoss et FlatField sont alors appliquées sur cette nouvelle image, donnant une image correspondant à une pseudo-observation du fond à travers les 3 fentes (\figref{fig:background}). Celle ci est alors soustraite à l'image originale, donnant une image finale sur laquelle on applique les étapes suivantes du pipeline.
+Les opérations mathématiques inverses de \texttt{Photom}, \texttt{BarShadow}, \texttt{PathLoss} et \texttt{FlatField} sont alors appliquées sur cette nouvelle image, donnant une image correspondant à une pseudo-observation du fond à travers les 3 fentes (\figref{fig:background}). Celle ci est alors soustraite à l'image originale, donnant une image finale sur laquelle on applique les étapes suivantes du pipeline.
 
 \begin{figure}[H]
   \centering
   \includegraphics[scale=0.5]{assets/background_subtraction.png}
-  \caption{Résumé des différentes opérations appliquées sur l'image d'une \textit{slitlet}. De haut en bas on a : l'image pré-algorithme, l'image temporairement calibrée, une nouvelle image formée par un ajustement du fond et une interpolation 2D, cette même image décalibrée, la soustraction de l'image originale par l'image du fond}
+  \caption{Résumé des différentes opérations appliquées sur l'image d'une \textit{slitlet}. De haut en bas on a : l'image pré-algorithme, l'image temporairement calibrée, une nouvelle image formée par un ajustement du fond et une interpolation 2D, cette même image décalibrée, la soustraction de l'image originale par l'image du fond. Les bords manquants à l'image sont dus au traitement du \texttt{FlatField} qui ne calcule le champ plat qu'au niveau des 3 bandes. Ce qui est en dehors de cette zone est alors ignoré, même si un accidentel quatrième obturateur se trouve être ouvert comme ici.}
   \label{fig:background}
 \end{figure}
 
@@ -511,10 +525,10 @@ Les opérations mathématiques inverses de Photom, BarShadow, PathLoss et FlatFi
       \caption{Extractions d'une source principale (rouge) et d'une source secondaire (bleu)}
       \label{fig:extraction_2_sources}
   \end{subfigure}
-  \caption{Extractions de quelques spectres obtenues par notre méthode}
+  \caption{Extractions de quelques spectres obtenus par notre méthode}
 \end{figure}
 
-Une fois ce traitement effectué, on procède à une extraction des spectres des sources principales ainsi que des éventuelles sources secondaires. On affiche l'allure de ces spectres sur les \figref{fig:extraction_32304} pour le cas d'une source et \figref{fig:extraction_2_sources} pour le cas d'une source principale et une source secondaire.\\
+Une fois ce traitement effectué, on procède à une extraction des spectres des sources principales ainsi que des éventuelles sources secondaires. On affiche l'allure de ces spectres sur les \figref{fig:extraction_32304} pour le cas d'une source seule et \figref{fig:extraction_2_sources} pour le cas d'une source principale et une source secondaire.\\
 
 On peut alors comparer les résultats obtenus par notre méthode personnalisée à ceux obtenus par le traitement classique. On réalise ceci sur la \figref{fig:comparaison_mast_custom}. On y observe clairement l'absence des traces négatives au-dessus et en dessous des raies sur l'image obtenue par notre traitement. Cependant, on remarque que le signal continue obtenue par la méthode classique semble légèrement plus importants à certaines longueurs d'ondes que celui obtenue avec notre méthode. Ceci est par ailleurs confirmé en observant le dernier graphique, sur lequel est représenté le rapport signal sur bruit en fonction de la longueur d'onde. Seules les raies se retrouvent amplifiées par notre méthode.\\
 
@@ -522,7 +536,7 @@ On peut alors comparer les résultats obtenus par notre méthode personnalisée 
 
 \begin{figure}[!h]
   \centering
-  \includegraphics[scale=0.5]{assets/comparaison_spectres_mast_custom.png}
+  \includegraphics[scale=0.7]{assets/comparaison_spectres_mast_custom.png}
   \caption{Comparaison entre le traitement classique et notre traitement personnalisé. De haut en bas, on a : Le spectre 2D obtenu par notre méthode, le spectre 2D obtenu par la méthode classique, les spectres 1D extraits, avec en rouge notre méthode et en bleu la méthode classique, et le rapport signal sur bruit.}
   \label{fig:comparaison_mast_custom}
 \end{figure}
@@ -532,9 +546,9 @@ On peut alors comparer les résultats obtenus par notre méthode personnalisée 
 \subsection{Présentation de CIGALE}
 
 \glsreset{cigale}
-\gls{cigale} \parencite{cigale} est un outil permettant de modéliser l'émission d'une galaxie, ses raies d'émission, son absorption par la poussière, son spectre continu, son \textit{redshift}, de comparer ces modèles aux données afin d'établir le plus vraisemblable et ainsi de déterminer les paramètres physiques, chimiques et cosmologiques des galaxies observées.
+\gls{cigale} \parencite{cigale} est un outil permettant de modéliser l'émission d'une galaxie, ses raies d'émissions, son absorption par la poussière, son spectre continu, son \textit{redshift}, de comparer ces modèles aux données afin d'établir le plus vraisemblable et ainsi de déterminer les paramètres physiques, chimiques et cosmologiques des galaxies observées.
 
-Les données utilisées avec \gls{cigale} sont d'ordinaire des données photométriques réalisées dans différentes bandes du spectre électromagnétique, des rayons X à la radio. Cependant, nous travaillons ici sur une version en accès anticipé de l'outil nous donnant accès à l'étude de données spectroscopiques.\\
+Les données utilisées avec \gls{cigale} sont d'ordinaire des données photométriques réalisées dans différentes bandes du spectre électromagnétique, des rayons X à la radio. Cependant, nous travaillons ici sur une version en accès anticipé de l'outil nous donnant la possibilité d'étudier des données spectroscopiques.\\
 
 La génération d'un modèle se base sur une série d'étapes successives (on ignore ici les étapes liées aux noyaux actifs de galaxies, qui ne nous concernent pas) :
 
@@ -565,12 +579,12 @@ La génération d'un modèle se base sur une série d'étapes successives (on ig
 
   \item[5.] Calcul de la réémission des poussières dans l'infrarouge
   \begin{itemize}
-    \item Module \texttt{dl2014} : Le principe fondamental derrière \gls{cigale} est la conservation de l'énergie. Les photons absorbés par la poussière en ultraviolet sont réémis en infrarouge moyen et lointain. Ce module simule l'émission de cette poussière (silicates, hydrocarbures, etc) en 2 parties, l'émission diffuse liée au chauffage par les étoiles et l'émission par chauffage dans les zones de formation stellaire, décrite par une loi de puissance. Cependant, ces émissions ne se situent pas dans l'intervalle de longueurs d'ondes observé par \gls{nirspec}, aux \textit{redshifts} souhaités. Leur influence sera donc négligeable sur les spectres observés et ces paramètres seront alors très peu contraints.
+    \item Module \texttt{dl2014} : Le principe fondamental derrière \gls{cigale} est la conservation de l'énergie. Les photons absorbés par la poussière en ultraviolet sont réémis en infrarouge moyen et lointain. Ce module simule l'émission de cette poussière (silicates, hydrocarbures, etc) en 2 parties : l'émission diffuse liée au chauffage par les étoiles et l'émission par chauffage dans les zones de formation stellaire, décrite par une loi de puissance. Cependant, ces émissions ne se situent pas dans l'intervalle de longueurs d'ondes observé par \gls{nirspec}, aux \textit{redshifts} souhaités. Leur influence sera donc négligeable sur les spectres observés et ces paramètres seront alors très peu contraints.
     
   \end{itemize}
   \item[6.] Décalage par redshift
   \begin{itemize}
-    \item Module \texttt{redshifting} : Le spectre réalisé jusqu'à présent est celui dans le référentiel au repos de la galaxie. Ce module permet de passer au référentiel observé en appliquant un redshift. On a comme nouvelles longueurs d'ondes $\lambda' = \lambda \cdot (1+z)$ et comme nouveau flux $F_\lambda' = F_\lambda / (1+z)$. Est également calculé l'absorption par le milieu intergalactique.
+    \item Module \texttt{redshifting} : Le spectre réalisé jusqu'à présent est celui dans le référentiel au repos de la galaxie. Ce module permet de passer au référentiel observé en appliquant un \textit{redshift}. On a comme nouvelles longueurs d'ondes $\lambda' = \lambda \cdot (1+z)$ et comme nouveau flux $F_\lambda' = F_\lambda / (1+z)$. Est également calculé l'absorption par le milieu intergalactique.
   
   \end{itemize}
 \end{itemize}
@@ -579,7 +593,7 @@ Etant donné le nombre important de paramètres pris en compte dans un modèle d
 
 \gls{cigale} va donc calculer les différents modèles $m_i$ à partir des paramètres donnés en entrée des modules et déterminer le $\chi^2 = \sum_{i} (\frac{f_i - \alpha \cdot m_i}{\sigma_i})^2$ avec les données $f_i$ et leur incertitude $\sigma_i$ ($\alpha$ est ici un facteur de normalisation du spectre, le véritable $\chi^2$ est par ailleurs décrit en détails dans l'article de présentation de \gls{cigale} \parencite{cigale}). Pour chaque $\chi^2$ est alors calculé la vraisemblance $\propto e^{-\chi^2 / 2}$, ce qui permet alors, au maximum de vraisemblance, de déterminer les paramètres les plus adaptés ainsi que leur incertitude à partir de l'écart type du pic.\\
 
-On procède donc en 2 étapes. La première consiste en une analyse approximative et rapide des 616 spectres, dont 24 sources secondaires, dans le but d'obtenir une estimation de leur \textit{redshift}$z$. Une fois celui obtenu, chaque spectre se retrouve associé à un redshift, nous permettant donc d'ignorer ce paramètre lors d'une analyse plus fine par la suite.
+On procède donc en 2 étapes. La première consiste en une analyse approximative et rapide des 616 spectres, dont 24 sources secondaires, dans le but d'obtenir une estimation de leur \textit{redshift} $z$. Une fois celui obtenu, chaque spectre se retrouve associé à un redshift, nous permettant donc d'ignorer ce paramètre lors d'une analyse plus fine par la suite.
 
 
 \newpage
