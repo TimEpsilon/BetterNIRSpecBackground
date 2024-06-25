@@ -78,13 +78,17 @@
 
 
 \title{\textbf{ \\{\Huge Compte Rendu de Stage Master 2}}}
-\subtitle{Galaxies Pop III, premières phases de la formation des métaux et poussières dans l'Univers à très grand \textit{redshift}(6 $<$ z $<$ ?)}
+\subtitle{Galaxies Pop III, premières phases de la formation des métaux et poussières dans l'Univers à très grand \textit{redshift} (6 $<$ z $<$ ?)}
 \author{Dewachter Tim}
 \date{25 Mars 2024 - 28 Juin 2024}
 
 \begin{document}
 
 \maketitle
+
+\centerline{
+Sous la supervision de Denis Burgarella
+}
 
 \begin{figure}
   \centering
@@ -187,7 +191,7 @@ Cependant, lorsque la composition chimique exacte ne nous est pas accessible, on
   [Fe/H] = \log(\frac{N_{Fe}}{N_H}) - \log(\frac{N_{Fe, \odot}}{N_{H, \odot}})
 \end{equation}
 
-où $N_\alpha$ correspond au nombre d'atomes $\alpha$ et $\odot$ traduit la mesure de cette valeur dans le cas du Soleil.
+où $N_{X}$ correspond au nombre d'atomes $X$ et $\odot$ traduit la mesure de cette valeur dans le cas du Soleil.
 
 Un autre moyen d'estimer la métallicité est une mesure absolue du rapport entre la quantité d'oxygène sur la quantité d'hydrogène, appelée abondance.
 
@@ -198,7 +202,7 @@ Un autre moyen d'estimer la métallicité est une mesure absolue du rapport entr
 
 Ces rapports de quantités d'atomes peuvent être établis à partir de l'intensité des raies d'émission dans le spectre d'une galaxie, à condition de disposer au préalable d'un modèle des émissions stellaires qui viennent exciter les différents éléments.\\
 
-Plusieurs ordres de grandeurs au dessus des atomes métalliques, la poussière est formée de grains de l'ordre du micron. Absorbant la lumière visible et ultraviolette avant de réémettre leur chaleur ainsi accumulée dans l'infrarouge, la poussière est pourtant froide, ayant une température de l'ordre de $10 - 100K$ \parencite{Astrophysics-of-the-Diffuse-Universe}, faute de quoi la condensation et nucléation des grains dans le gaz en poussières plus grosses ne pourrait pas avoir lieu.
+Plusieurs ordres de grandeurs au dessus des atomes métalliques, la poussière est formée de grains de l'ordre du micron. Absorbant la lumière visible et ultraviolette avant de réémettre leur chaleur ainsi accumulée dans l'infrarouge, la poussière est pourtant froide, ayant une température de l'ordre de $10 - 100K$ \parencite{Astrophysics-of-the-Diffuse-Universe}, faute de quoi la condensation et nucléation des grains dans le gaz en poussières plus grosses ne pourraient pas avoir lieu.
 
 Une catégorie notable dans la famille des poussières sont les hydrocarbures aromatiques polycycliques, ou \gls{pah}, formés de cycles hexagonaux de carbone et d'hydrogène. Leur formation n'est donc uniquement possible dans des nuages riches en carbone. La présence de poussière est alors intrinsèquement liée à la présence de métaux dans le nuage de gaz.
 
@@ -211,9 +215,9 @@ En plus de l'absorption dans l'UV-Visible et émission dans l'IR décrite plus h
   \label{fig:cooling}
 \end{figure}
 
-La présence de métaux et de poussière dans un nuage de gaz a donc une conséquence fondamentale sur celui ci : un refroidissement plus efficace. En effet, les nouvelles transitions électroniques offertes par ces éléments lourds, combinées aux excitations créées par les collisions, permettent à la fonction de refroidissement $\Lambda(T_e,Z_A) = \frac{\dot{Q}}{n_e n}$ ($T_e$ la température électronique du plasma, $Z_A$ la charge de l'atome $A$ du plasma, $n_e$ et $n$ la densité électronique et densité de l'atome $A$, $\dot Q$ le taux de refroidissement du gaz), de voir apparaître de nouveaux pics (\figref{fig:cooling}), permettant donc un meilleur refroidissement à des températures plus élevées.\\
+La présence de métaux et de poussière dans un nuage de gaz a donc une conséquence fondamentale sur celui-ci : un refroidissement plus efficace. En effet, les nouvelles transitions électroniques offertes par ces éléments lourds, combinées aux excitations créées par les collisions, permettent à la fonction de refroidissement $\Lambda(T_e,Z_A) = \frac{\dot{Q}}{n_e n}$ ($T_e$ la température électronique du plasma, $Z_A$ la charge de l'atome $A$ du plasma, $n_e$ et $n$ la densité électronique et densité de l'atome $A$, $\dot Q$ le taux de refroidissement du gaz), de voir apparaître de nouveaux pics (\figref{fig:cooling}), permettant donc un meilleur refroidissement à des températures plus élevées.\\
 
-Ce manque de refroidissement, a une conséquence notable : la formation d'étoiles massives. En effet, le nuage de gaz initial ayant plus de difficultés à se refroidir, celui ci se fragmente moins (mais se fragmente tout de même, contrairement à ce qui était pensé il y a encore quelques années, voir \cite{Tan_2004}) et les fragments forment donc des étoiles plus massives, qui par conséquent vivent peu de temps \parencite{2023ARA&A..61...65K}. Ces premières étoiles de métallicité nulle, dites de Population III n'ont à ce jour jamais été observées. Leur découverte aurait un impact majeur sur l'étude de la formation des galaxies, notamment dans la compréhension de l'apparition des métaux dans celles ci.
+Ce manque de refroidissement a une conséquence notable : la formation d'étoiles massives. En effet, le nuage de gaz initial ayant plus de difficultés à se refroidir, celui-ci se fragmente moins (mais se fragmente tout de même, contrairement à ce qui était pensé il y a encore quelques années, voir \cite{Tan_2004}) et les fragments forment donc des étoiles plus massives, qui par conséquent vivent peu de temps \parencite{2023ARA&A..61...65K}. Ces premières étoiles de métallicité nulle, dites de Population III n'ont à ce jour jamais été observées. Leur découverte aurait un impact majeur sur l'étude de la formation des galaxies, notamment dans la compréhension de l'apparition des métaux dans celles-ci.
 
 \subsection{Problématiques et Objectifs}
 
@@ -223,7 +227,7 @@ Nous allons par la suite traiter ce problème en 2 parties.
 
 Tout d'abord, nous étudierons le code de traitement des données du \gls{jwst} dans le but de modifier son algorithme de soustraction du fond, afin d'en extraire les éventuels faibles spectres de sources secondaires jusqu'alors dissimulés dans le fond.
 
-Ensuite, nous étudierons ces différents spectres via \gls{cigale} afin d'en déterminer les paramètres physiques, telles que leur redshift, leur metallicité ou leur taux de formation stellaire.
+Ensuite, nous étudierons ces différents spectres via \gls{cigale} afin d'en déterminer les paramètres physiques, tels que leur redshift, leur metallicité ou leur taux de formation stellaire.
 
 \section{Méthodologie}
 
@@ -263,7 +267,7 @@ Avec $\lambda_{obs}$ la longueur d'onde observée, et $\lambda_{rest}$ la longue
 
 Parmi les instruments du \gls{jwst}, \gls{nirspec} est un spectromètre sur la bande 0.6 - 5.3  µm, disposant de 3 modes de résolution : PRISM ($R \sim 100$), medium grating ($R \sim 1000$), high grating ($R \sim 2700$) \parenciteauthortitle{nirspec}. L'un des atouts principaux de \gls{nirspec} est son \gls{msa}, une grille de près de 250 000 obturateurs, couvrant une surface de 3.6' x 3.4' sur le ciel, chacun pouvant être individuellement ouvert ou fermé \parenciteauthortitle{msa} (voir \figref{fig:msa_shutter}). Ceci permet d'observer dans le mode \gls{mos}. Comme son nom l'indique, la spectroscopie multi-objet permet d'extraire le spectre de plusieurs objets dans un même champ, mais la grille d'obturateurs apporte également un outil fondamental dans l'extraction des spectres : la soustraction du fond.\\
 
-Nous travaillerons ici sur des données \gls{nirspec} du Programme de \textit{}, disponibles sur la base de données MAST \parenciteauthortitle{portal_mast} (\textit{Proposal ID : 1345}), notamment les observations P4, P5, P7, P8, P11, P12, avec comme résolution PRISM.
+Nous travaillerons ici sur des données \gls{nirspec} du Programme de \gls{ceers}, disponibles sur la base de données MAST \parenciteauthortitle{portal_mast} (\textit{Proposal ID : 1345}), notamment les observations P4, P5, P7, P8, P11, P12, avec comme résolution PRISM.
 
 \subsection{Fond, \textit{Nodding} et \textit{Slitlet}}
 
@@ -277,7 +281,7 @@ Lorsqu'on s'intéresse à des sources de faible brillance, la densité de flux m
 \end{figure}
 
 
-Cependant, il reste tout de même envisageable de corriger ce signal parasite. En effet, en ouvrant les obturateurs à proximité de celui imageant la source, il devient possible d'extraire le fond localement autour de celle ci, que l'on peut alors lui soustraire.
+Cependant, il reste tout de même envisageable de corriger ce signal parasite. En effet, en ouvrant les obturateurs à proximité de celui imageant la source, il devient possible d'extraire le fond localement autour de celle-ci, que l'on peut alors lui soustraire.
 
 La configuration habituelle consiste en l'ouverture de 3 obturateurs dans la direction perpendiculaire à la direction de dispersion. Dans un souci de cohérence avec la documentation du pipeline, on décrira par la suite cet ensemble de 3 obturateurs comme un \textit{slitlet}. On réalise alors 3 expositions, chacune en orientant le télescope de façon à avoir la source dans un obturateur différent : il s'agit du \textit{nodding}. Ce mouvement entre chaque exposition offre également un autre avantage au travers du \textit{dithering}. La \gls{psf} de \gls{nirspec} est effectivement de $0.08 ''$ à $\lambda = 2.46 \mu m$ \parencite{10_1051_0004_6361_202142663}. 
 Comme $PSF \propto \lambda$, on a une \gls{psf} variant de $0.02 ''$ à $0.17''$ le long de la plage de longueurs d'ondes observables. Comme la taille d'un pixel est $\sim 0.1''$ dans la direction spatiale, la \gls{psf} est sous échantillonnée presque partout. Le \textit{dithering} permet alors d'améliorer cet échantillonnage par des corrections sub-pixels, mais également de s'affranchir des éventuels pixels défectueux ou des rayons cosmiques.
@@ -288,13 +292,13 @@ On résume ceci dans la \figref{fig:msa_slitlet}.
 \begin{figure}[H]
   \centering
   \includegraphics[scale=0.2]{assets/MSA_sky_strategy.png}
-  \caption{Schéma de MSA et de \textit{slitlets}. On réalise des séries de 3 images, chacune ayant la source dans un obturateur différent, et on utilise les 2 obturateurs restant pour déterminer le spectre du fond. \customcite{mos}}
+  \caption{Schéma de MSA et de \textit{slitlets}. On réalise des séries de 3 images, chacune ayant la source dans un obturateur différent, et on utilise les 2 obturateurs restants pour déterminer le spectre du fond. \customcite{mos}}
   \label{fig:msa_slitlet}
 \end{figure}
 
 \subsection{Le pipeline JWST}
 
-Le code permettant de traiter les données reçues du JWST, appelé pipeline (\figref{fig:jwst_pipeline}), se décompose en 3 grandes étapes, celles ci étant de plus en plus spécifique aux types de données que l'on cherche à étudier à mesure que l'on progresse dans le pipeline.
+Le code permettant de traiter les données reçues du JWST, appelé pipeline (\figref{fig:jwst_pipeline}), se décompose en 3 grandes étapes, celles-ci étant de plus en plus spécifiques aux types de données que l'on cherche à étudier à mesure que l'on progresse dans le pipeline.
 
 Ainsi, dans notre cas, les 3 étapes sont telles que :\\
 
@@ -322,7 +326,7 @@ Ainsi, dans notre cas, les 3 étapes sont telles que :\\
       % For example, (20,80) would place the caption at 20% from the left and 80% from the bottom.
       \put(52.5,13){%
           \parbox{8cm}{
-            \fontsize{11}{12}\selectfont Image de \gls{nirspec} en sortie de l'étape 1 du pipeline. On peut y observer des taches lumineuses correspondant aux ordres 0 de diffraction (vert), des larges bandes au milieu formées par des obturateurs toujours ouvert, utilisé lors du mode Fixed Slit (bleu), ainsi que des bandes plus fines, parfois regroupées par 3, parfois isolées lorsqu'un obturateur reste accidentellement ouvert.
+            \fontsize{11}{12}\selectfont Image de \gls{nirspec} en sortie de l'étape 1 du pipeline. On peut y observer des taches lumineuses correspondant aux ordres 0 de diffraction (vert), des larges bandes au milieu formées par des obturateurs toujours ouverts, utilisés lors du mode Fixed Slit (bleu), ainsi que des bandes plus fines, parfois regroupées par 3, parfois isolées lorsqu'un obturateur reste accidentellement ouvert.
           }
       }
     \end{overpic}
@@ -336,7 +340,7 @@ Ainsi, dans notre cas, les 3 étapes sont telles que :\\
 
   Dans le cas de données \gls{nirspec} \gls{mos}, la soustraction du fond se fait pixel par pixel, lors de l'étape 2 du pipeline. Sur chaque \textit{slitlet}, pour une exposition donnée, on considère les 2 expositions restantes comme du signal de fond, on les moyenne donc avant de les soustraire à l'image initiale. Cette étape est décrite sur la \figref{fig:msa_slitlet}
 
-  Cette méthode a l'avantage majeur de permettre de soustraire le fond localement autour de la source. Cependant, celle ci se heurte à un problème dans le cas où la source est suffisamment étendue pour être visible depuis un des obturateurs de fond, ou dans celui où celle ci est mal centrée dans l'obturateur principal, mais également dans la situation plus intéressante où une autre source suffisamment brillante se situe dans le champ d'un des obturateurs de fond. Dans chacun de ces scénarios, le spectre de "fond" n'en est plus réellement un : on observe une sur-correction du spectre de l'objet. Les raies d'émission sont atténuées sur la bande de signal et des raies inversées apparaissent sur les autres bandes, en raison de la soustraction. C'est ce que l'on observe sur la \figref{fig:negative_trace} : les bandes au-dessus et en dessous de la bande principale présentent un spectre négatif. Cette sur-correction a également pour conséquence de cacher toute galaxie de faible luminosité se trouvant dans une des bandes du fond.\\
+  Cette méthode a l'avantage majeur de permettre de soustraire le fond localement autour de la source. Cependant, celle-ci se heurte à un problème dans le cas où la source est suffisamment étendue pour être visible depuis un des obturateurs de fond, ou dans celui où celle-ci est mal centrée dans l'obturateur principal, mais également dans la situation plus intéressante où une autre source suffisamment brillante se situe dans le champ d'un des obturateurs de fond. Dans chacun de ces scénarios, le spectre de "fond" n'en est plus réellement un : on observe une sur-correction du spectre de l'objet. Les raies d'émission sont atténuées sur la bande de signal et des raies inversées apparaissent sur les autres bandes, en raison de la soustraction. C'est ce que l'on observe sur la \figref{fig:negative_trace} : les bandes au-dessus et en dessous de la bande principale présentent un spectre négatif. Cette sur-correction a également pour conséquence de cacher toute galaxie de faible luminosité se trouvant dans une des bandes du fond.\\
   
   \begin{figure}[H]
     \centering
@@ -384,16 +388,16 @@ La méthode décrite ici est basée sur celle utilisée lors de l'étape MasterB
 L'application temporaire des étapes \texttt{FlatField}, \texttt{PathLoss}, \texttt{BarShadow}, \texttt{Photom} et \texttt{ResampleSpec}, permet d'extraire les spectres de fond de façon plus efficace. Ces étapes sont inversées par la suite, une fois un modèle de fond calculé, cela dans le but de faciliter l'ajustement.
 
 \begin{itemize}
-  \item \textbf{FlatField} : Le \textit{Flat Field}, ou Champ Plat, permet de corriger les défauts optiques (débris sur les miroirs ou le détecteur, distorsions optiques...) ainsi que les variations de sensibilités de chaques pixels. Ces images de calibrations dépendent de la longueur d'onde, et il est donc nécessaire dans le cas de \gls{nirspec} d'en combiner et interpoler plusieurs afin de couvrir le domaine spectral observé. La correction est alors appliquée en divisant l'image de chaque \textit{slitlet} par le champ plat.
+  \item \textbf{FlatField} : Le \textit{Flat Field}, ou Champ Plat, permet de corriger les défauts optiques (débris sur les miroirs ou le détecteur, distorsions optiques...) ainsi que les variations de sensibilités de chaque pixel. Ces images de calibrations dépendent de la longueur d'onde, et il est donc nécessaire dans le cas de \gls{nirspec} d'en combiner et interpoler plusieurs afin de couvrir le domaine spectral observé. La correction est alors appliquée en divisant l'image de chaque \textit{slitlet} par le champ plat.
   \begin{equation}
     \mathsf{CORRECTION} = \mathsf{SCI} \; / \; \mathsf{FLAT} 
   \end{equation}
 
-  \item \textbf{PathLoss} : Permet de compenser les pertes de lumières dans le système optique (taille finie des obturateurs, pertes de lumières en dehors du réseau).
+  \item \textbf{PathLoss} : Permet de compenser les pertes de lumière dans le système optique (taille finie des obturateurs, pertes de lumière en dehors du réseau).
   
   \item \textbf{BarShadow} : Compense les pertes liées aux barres séparant les obturateurs dans le cas de sources étendues.
   
-  \item \textbf{Photom} : Traitement photométrique de l'image, où celle ci passe de valeurs arbitraires en DN/s (comptage d'événements par seconde) à des valeurs physiques de densité de flux. Le facteur de conversion dépend de la longueur d'onde et est obtenu grâce à un tableau de référence, avant d'être interpolé aux longueurs d'ondes d'intérêt.\\
+  \item \textbf{Photom} : Traitement photométrique de l'image, où celle-ci passe de valeurs arbitraires en DN/s (comptage d'événements par seconde) à des valeurs physiques de densité de flux. Le facteur de conversion dépend de la longueur d'onde et est obtenu grâce à un tableau de référence, avant d'être interpolé aux longueurs d'ondes d'intérêt.\\
   
   À la fin de cette étape, une copie des données prétraitées est réalisée. C'est depuis cette copie que les étapes inverses seront appliquées par la suite.
   
@@ -410,9 +414,9 @@ L'application temporaire des étapes \texttt{FlatField}, \texttt{PathLoss}, \tex
 
 \subsubsection{Détermination des positions des bandes}
 
-L'étape \texttt{ResampleSpec} nous permet d'être certain que la direction verticale sur l'image correspond à une dispersion spatiale, tandis que la direction horizontale correspond à l'étalement spectral. Pour discriminer la bande contenant le signal principal de celles contenant le spectre de fond, nous réalisons donc une moyenne spectrale, tronquée à $5\sigma$, afin de nous ramener à un problème à 1 dimension.\\
+L'étape \texttt{ResampleSpec} nous permet d'être certains que la direction verticale sur l'image correspond à une dispersion spatiale, tandis que la direction horizontale correspond à l'étalement spectral. Pour discriminer la bande contenant le signal principal de celles contenant le spectre de fond, nous réalisons donc une moyenne spectrale, tronquée à $5\sigma$, afin de nous ramener à un problème à 1 dimension.\\
 
-À ce profil, on ajuste alors une somme de 3 gaussiennes, censées modeliser l'apparence spatiale des 3 bandes (\figref{fig:profil_gauss}). Des 2 gaussiennes correspondant au fond, on récupère alors leurs positions, autour desquels on réalise une extraction dans la direction spectrale sur l'image (\figref{fig:extraction}). On extrait alors également les longueurs d'ondes associées à chaque pixel ainsi que l'erreur sur la densité de flux. La fenêtre d'extraction utilisée est prise à 3 pixels de haut.
+À ce profil, on ajuste alors une somme de 3 gaussiennes, censées modeliser l'apparence spatiale des 3 bandes (\figref{fig:profil_gauss}). Des 2 gaussiennes correspondant au fond, on récupère alors leurs positions, autour desquelles on réalise une extraction dans la direction spectrale sur l'image (\figref{fig:extraction}). On extrait alors également les longueurs d'ondes associées à chaque pixel ainsi que l'erreur sur la densité de flux. La fenêtre d'extraction utilisée est prise à 3 pixels de haut.
 
 Pour chacune des bandes, on réalise alors une dernière moyenne, sur la direction spatiale, afin d'obtenir $z^i_j$ (tronqué à $5\sigma$), $\lambda^i_j$ et $\sigma^i_j$ (dans le cas de l'erreur, la moyenne se fait quadratiquement).
 
@@ -432,7 +436,7 @@ Pour chacune des bandes, on réalise alors une dernière moyenne, sur la directi
   \end{minipage}
 \end{wrapfigure}
 
-À présent que l'on dispose d'un ensemble de points $(\lambda, z)$, on cherche à trouver une fonction approximant $z = f(\lambda)$ de façon à ignorer les variations rapides et le bruit. Pour cela, on utilise la fonction \texttt{UnivariateSpline} du module \texttt{SciPy.interpolate}, afin d'ajuster un modèle de spline à nos données. Puisque les variations qui nous intéressent sont les basses fréquences, et que celles ci peuvent parfois présenter plusieurs extrema, on choisira comme ordre de la spline le degré maximal, à savoir $k=5$ (cela signifie que les morceaux de polynômes servant à construire la courbe seront au plus de degré 5). 
+À présent que l'on dispose d'un ensemble de points $(\lambda, z)$, on cherche à trouver une fonction approximant $z = f(\lambda)$ de façon à ignorer les variations rapides et le bruit. Pour cela, on utilise la fonction \texttt{UnivariateSpline} du module \texttt{SciPy.interpolate}, afin d'ajuster un modèle de spline à nos données. Puisque les variations qui nous intéressent sont les basses fréquences, et que celles-ci peuvent parfois présenter plusieurs extrema, on choisira comme ordre de la spline le degré maximal, à savoir $k=5$ (cela signifie que les morceaux de polynômes servant à construire la courbe, seront au plus de degré 5). 
 
 On dispose également d'un paramètre de lissage $s \geq 0$, qui quantifie le nombre de sous intervalles sur lesquels on définit les morceaux de polynômes. Plus $s$ est proche de 0, plus la fonction passera proche de chaque point, plus $s$ est grand, plus la fonction sera "lisse" et ne suivra que l'allure générale de la distribution des points. On choisit, assez arbitrairement, une valeur de $s=0.01$.
 
@@ -450,7 +454,7 @@ Il est possible que dans certains cas, l'ajustement de la spline échoue. L'algo
 
 Avant d'arriver au modèle actuel, plusieurs autres méthodes ont été envisagées et testées pour modéliser le fond.\\
 
-Tout d'abord, les premiers tests ont été réalisés avant que l'étape de précalibration soit implémentée. Ceux ci avaient donc lieu sur des images non traitées par un champ plat.
+Tout d'abord, les premiers tests ont été réalisés avant que l'étape de précalibration soit implémentée. Ceux-ci avaient donc lieu sur des images non traitées par un champ plat.
 
 Une première méthode naïve consiste en l'extraction des bandes 2D de fond, le rejet des pixels au-dessus d'un certain seuil (garder les 50\% des plus lumineux, rejeter ceux au-dessus de 70\% de la valeur maximale...), puis l'interpolation de ces pixels rejetés à partir des pixels restants. L'interpolation pondérée de distance (\parencite{10.1145/800186.810616}) avait alors été choisie, en raison de son paramètre de puissance qui offrait un certain contrôle sur le degré de lissage de l'interpolation. L'allure générale du fond est en revanche perdue (\figref{fig:interpolation}).
 
@@ -493,14 +497,14 @@ L'interpolation utilisée est décrite dans l'équation \ref{eq:idw}, où $d_i =
 
 Une autre stratégie consiste en l'ajustement d'un polynôme en 2 dimensions sur chaque bande de fond. Cependant, malgré des premiers résultats prometteurs (\figref{fig:2D_polynomial}), les rapides variations sur les bords de l'image induisent des écarts importants avec les spectres obtenus par le traitement par défaut du pipeline (\figref{fig:comparaison_fit_normal}).\\
 
-Enfin, en raison du manque de temps, certains détails ont dû être ignorés. L'algorithme actuel peut encore être amélioré, notamment sur la sélection des bandes de fond et sur l'ajustement de la spline. En effet, la méthode actuelle ne permet pas de propager les incertitudes sur l'ajustement aux données après la soustraction. De plus, il existe encore certains cas limites pour lesquels l'ajustement échoue, ou alors des cas où la spline peut être trouvée, mais celle ci ne suit pas l'allure des données.
+Enfin, en raison du manque de temps, certains détails ont dû être ignorés. L'algorithme actuel peut encore être amélioré, notamment sur la sélection des bandes de fond et sur l'ajustement de la spline. En effet, la méthode actuelle ne permet pas de propager les incertitudes sur l'ajustement aux données après la soustraction. De plus, il existe encore certains cas limites pour lesquels l'ajustement échoue, ou alors des cas où la spline peut être trouvée, mais celle-ci ne suit pas l'allure des données.
 
 
 \subsubsection{Interpolation 2D et finitions}
 
 Une fois notre spline $f(\lambda)$ obtenue, le spectre peut être interpolé en une image 2D à partir de la carte de longueurs d'ondes obtenue lors de la copie des données calibrées, à la fin de l'étape \texttt{Photom}. En effet, avant l'étape \texttt{ResampleSpec}, la direction de dispersion peut être légèrement déformée par rapport à l'axe horizontal. L'interpolation 2D a donc lieu avant cette étape afin de ne pas perdre d'informations lors du rééchantillonage inverse.
 
-Les opérations mathématiques inverses de \texttt{Photom}, \texttt{BarShadow}, \texttt{PathLoss} et \texttt{FlatField} sont alors appliquées sur cette nouvelle image, donnant une image correspondant à une pseudo-observation du fond à travers les 3 fentes (\figref{fig:background}). Celle ci est alors soustraite à l'image originale, donnant une image finale sur laquelle on applique les étapes suivantes du pipeline.
+Les opérations mathématiques inverses de \texttt{Photom}, \texttt{BarShadow}, \texttt{PathLoss} et \texttt{FlatField} sont alors appliquées sur cette nouvelle image, donnant une image correspondant à une pseudo-observation du fond à travers les 3 fentes (\figref{fig:background}). Celle-ci est alors soustraite à l'image originale, donnant une image finale sur laquelle on applique les étapes suivantes du pipeline.
 
 \begin{figure}[H]
   \centering
@@ -530,9 +534,7 @@ Les opérations mathématiques inverses de \texttt{Photom}, \texttt{BarShadow}, 
 
 Une fois ce traitement effectué, on procède à une extraction des spectres des sources principales ainsi que des éventuelles sources secondaires. On affiche l'allure de ces spectres sur les \figref{fig:extraction_32304} pour le cas d'une source seule et \figref{fig:extraction_2_sources} pour le cas d'une source principale et une source secondaire.\\
 
-On peut alors comparer les résultats obtenus par notre méthode personnalisée à ceux obtenus par le traitement classique. On réalise ceci sur la \figref{fig:comparaison_mast_custom}. On y observe clairement l'absence des traces négatives au-dessus et en dessous des raies sur l'image obtenue par notre traitement. Cependant, on remarque que le signal continue obtenue par la méthode classique semble légèrement plus importants à certaines longueurs d'ondes que celui obtenue avec notre méthode. Ceci est par ailleurs confirmé en observant le dernier graphique, sur lequel est représenté le rapport signal sur bruit en fonction de la longueur d'onde. Seules les raies se retrouvent amplifiées par notre méthode.\\
-
-%TODO : Explication de pourquoi
+On peut alors comparer les résultats obtenus par notre méthode personnalisée à ceux obtenus par le traitement classique. On réalise ceci sur la \figref{fig:comparaison_mast_custom}. On y observe clairement l'absence des traces négatives au-dessus et en dessous des raies sur l'image obtenue par notre traitement. Cependant, on remarque que le signal continu obtenu par la méthode classique semble légèrement plus important à certaines longueurs d'ondes que celui obtenu avec notre méthode. Ceci est par ailleurs confirmé en observant le dernier graphique, sur lequel est représenté le rapport signal sur bruit en fonction de la longueur d'onde. Seules les raies se retrouvent amplifiées par notre méthode.\\
 
 \begin{figure}[!h]
   \centering
@@ -540,6 +542,91 @@ On peut alors comparer les résultats obtenus par notre méthode personnalisée 
   \caption{Comparaison entre le traitement classique et notre traitement personnalisé. De haut en bas, on a : Le spectre 2D obtenu par notre méthode, le spectre 2D obtenu par la méthode classique, les spectres 1D extraits, avec en rouge notre méthode et en bleu la méthode classique, et le rapport signal sur bruit.}
   \label{fig:comparaison_mast_custom}
 \end{figure}
+
+\subsubsection{Simulation de données}
+
+Pour tenter de comprendre ce résultat, nous avons essayé d'appliquer les 2 méthodes de soustraction (pixel par pixel et ajustement du fond) sur des données simulées.
+
+Pour cela, on suppose un fond polynomial d'ordre 3, auquel on choisit les coefficients de manière à reproduire l'allure générale des signaux de fonds observés (à savoir un maximum local entre 1 et 2 microns, suivi d'une remontée vers $5 \mu m$).
+
+\begin{equation}
+  bkg(\lambda) = a \lambda^3 + b \lambda^2 + c \lambda + d \; , 
+  \begin{cases}
+    a = 0.04\\
+    b = -0.3\\
+    c = 0.7\\
+    d = 0
+  \end{cases}
+\end{equation}
+
+Le signal simulé d'une galaxie est constitué de 2 raies d'émissions au profil lorentzien (\ref{eq:lorentzien}) et d'une exponentielle en guise d'émission continue (\ref{eq:exponential}).
+
+\begin{equation}
+  \label{eq:lorentzien}
+  \frac{A}{1 + (\frac{2(x-x_0)}{L})^2} \; ,
+  \begin{cases}
+   A = 5,3\\
+   x_0 = 3.3, 1.8\\
+   L = 0.06
+  \end{cases}
+\end{equation}
+
+\begin{equation}
+  \label{eq:exponential}
+  A e^{x/T} - c \; ,
+  \begin{cases}
+   A = 1.2\\
+   T = 6\\
+   c = 0.5\\
+  \end{cases}
+\end{equation}
+
+
+\begin{wrapfigure}{r}{8.5cm}
+  \centering
+  \includegraphics[scale=0.55]{assets/spectre_simulation.png}
+  \caption{Allure du spectre simulé (vert), avec le fond polynomial (bleu) et le signal continu et 2 raies (orange)}
+  \label{fig:simulated_spectrum}
+\end{wrapfigure}
+
+L'allure de ces spectres est représentée \figref{fig:simulated_spectrum}. Pour simuler l'apparence du spectre 2D, on étend verticalement la fonction représentant le fond, ainsi que celle représentant la source pour former 2 bandes de fond et une bande de signal (additionnée du fond). Ces 3 bandes sont alors permutées de façon à obtenir 3 observations, simulant le \textit{nodding} des vraies observations. Chaque bande est également multipliée par une gaussienne selon la direction verticale, centrée sur leur axe central, représentant les ombres résiduelles laissées par les bords des obturateurs. On ajoute finalement un bruit gaussien d'écart-type $\sigma = 0.1$. Les observations ainsi simulées sont visibles \figref{fig:simulated_observations}. On peut alors appliquer les algorithmes de soustraction afin de les comparer.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.8]{assets/simulated_image.png}
+  \caption{Simulation des 3 observations}
+  \label{fig:simulated_observations}
+\end{figure}
+
+\begin{wrapfigure}{r}{8.5cm}
+  \centering
+  \includegraphics[scale=0.55]{assets/fit_simulated.png}
+  \caption{Ajustement d'une spline (rouge) sur les données simulées (points noirs) par rapport au modèle de fond connu (bleu)}
+  \label{fig:simulated_fit}
+\end{wrapfigure}
+
+En ajustant la spline au fond, on remarque \figref{fig:simulated_fit} une légère sous-estimation de son allure, en raison de la fenêtre gaussienne résiduelle qui vient abaisser les valeurs des pixels sur les bords de chaque bande. Pour s'affranchir de cet effet, on pourrait alors réduire la hauteur de la fenêtre d'extraction, mais cela aurait pour conséquence de diminuer le nombre de points et de potentiellement biaiser l'ajustement, qui serait, en effet, plus susceptible au bruit.\\
+
+On trace alors les extractions obtenues selon les méthodes de soustraction \figref{fig:comparaison_simulated}, que l'on remarque être relativement similaire. En traçant l'écart relatif au carré $(\frac{extract - signal}{signal})^2$ (moyenné sur des intervalles de longueur $0.1 \mu m$), on voit par ailleurs que les résultats obtenus sont comparables pour les 2 méthodes, avec une légère préférence pour la méthode classique (pixel par pixel), puisque la méthode par ajustement du fond sous-estime ce dernier, comme discuté plus haut.
+
+Cependant, en modifiant légèrement les bandes de fond de façon à simuler l'allure d'une source étendue visible à travers plusieurs obturateurs (à chaque bande de fond est ajouté le spectre simulé de la source, multiplié par un coefficient $c=0.05$), on observe une nette amélioration de la méthode par ajustement par rapport à la méthode classique (\figref{fig:comparaison_simulated_extended}).\\
+
+Ainsi, comme attendu, notre méthode est plus efficace dans la soustraction du fond dans le cas d'une source étendue. Ce résultat sur les données simulées ne semble cependant pas se refléter sur les données réelles. Une explication possible est une combinaison entre la sous-estimation liée aux pertes de lumière résiduelles sur les bords d'une bande et une surestimation due à l'éventuelle présence du spectre d'une source étendue dans les bandes de fond. En raison du manque de temps, nous ne pourrons pas explorer ces pistes plus en détails dans le cadre de ce stage.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.4]{assets/comparaison_simulated.png}
+  \caption{Comparaison entre les 2 méthodes de soustraction du fond sur données simulées. En haut, le spectre extrait après méthode classique (noir) et méthode par ajustement du fond (bleu), ainsi que l'allure réelle du signal (rouge). En bas, l'écart relatif au carré $(\frac{extract - signal}{signal})^2$ montre que les 2 extractions sont comparables, bien que légèrement en faveur de l'extraction pixel par pixel}
+  \label{fig:comparaison_simulated}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.4]{assets/comparaison_simulated_extended.png}
+  \caption{Comparaison entre les 2 méthodes sur données simulées avec source étendue (5\% du signal est ajouté au fond). On remarque qu'ici l'écart relatif est largement en faveur de notre extraction.}
+  \label{fig:comparaison_simulated_extended}
+\end{figure}
+
 
 \section{Analyse des spectres}
 
@@ -555,11 +642,11 @@ La génération d'un modèle se base sur une série d'étapes successives (on ig
 \begin{itemize}
   \item[1.] Calcul de l'histoire de formation stellaire, ou \gls{sfh}
   \begin{itemize}
-    \item Module \texttt{sfhdelayed} : On modélise un "burst" de formation d'étoiles ainsi :
+    \item Module \texttt{sfhdelayed} : On modélise un \textit{"burst"} de formation d'étoiles ainsi :
     
-     $SFR(t) \propto \frac{t}{\tau^2} \cdot e^{-t/\tau}$, avec $\tau$ le temps au maximum de formation stellaire (en supposant le temps $t=0$ comme le début du burst).
+     $SFR(t) \propto \frac{t}{\tau^2} \cdot e^{-t/\tau}$, avec $\tau$ le temps au maximum de formation stellaire (en supposant le temps $t=0$ comme le début du \textit{burst}).
 
-    La \gls{sfr} en fonction du temps est d'abord caractérisée par un premier burst, impliquant en général la majorité de la formation d'étoiles, suivi plus tard d'un autre burst.
+    La \gls{sfr} en fonction du temps est d'abord caractérisée par un premier burst, impliquant en général la majorité de la formation d'étoiles, suivie plus tard d'un autre \textit{burst}.
   \end{itemize}
 
   \item[2.] Détermination du spectre stellaire à partir de la \gls{sfh}
@@ -569,7 +656,7 @@ La génération d'un modèle se base sur une série d'étapes successives (on ig
 
   \item[3.] Calcul de l'émission nébulaire, notamment des raies d'émission
   \begin{itemize}
-    \item Module \texttt{nebular} : Simule l'émission du gaz ionisé par le rayonnement des étoiles massives (continu et raies) en prenant en compte la metallicité $Z$ de celui ci, la densité électronique $N_e$, le degré d'ionisation adimensionné $U$ (le rapport entre la densité de photons ionisant sur la densité d'atomes d'hydrogène \parencite{Astrophysics-of-the-Diffuse-Universe}).
+    \item Module \texttt{nebular} : Simule l'émission du gaz ionisé par le rayonnement des étoiles massives (continue et raies) en prenant en compte la metallicité $Z$ de celui-ci, la densité électronique $N_e$, le degré d'ionisation adimensionné $U$ (le rapport entre la densité de photons ionisant sur la densité d'atomes d'hydrogène \parencite{Astrophysics-of-the-Diffuse-Universe}).
   \end{itemize}
 
   \item[4.] Calcul de l'absorption ultraviolette par la poussière
@@ -589,11 +676,11 @@ La génération d'un modèle se base sur une série d'étapes successives (on ig
   \end{itemize}
 \end{itemize}
 
-Etant donné le nombre important de paramètres pris en compte dans un modèle donné, \gls{cigale} a recours à une grille de valeurs prédéfinies par l'utilisateur. Contrairement aux méthodes habituelles d'ajustement à grand nombre de paramètres, telle que la descente de gradient ou la méthode de Monte-Carlo par chaines de Markov, celle ci permet de fortement réduire le nombre de modèles à calculer, puisqu'un seul modèle peut être utilisé plusieurs fois pour chaque spectre.
+Etant donné le nombre important de paramètres pris en compte dans un modèle donné, \gls{cigale} a recours à une grille de valeurs prédéfinies par l'utilisateur. Contrairement aux méthodes habituelles d'ajustement à grand nombre de paramètres, telle que la descente de gradient ou la méthode de Monte-Carlo par chaines de Markov, celle-ci permet de fortement réduire le nombre de modèles à calculer, puisqu'un seul modèle peut être utilisé plusieurs fois pour chaque spectre.
 
-\gls{cigale} va donc calculer les différents modèles $m_i$ à partir des paramètres donnés en entrée des modules et déterminer le $\chi^2 = \sum_{i} (\frac{f_i - \alpha \cdot m_i}{\sigma_i})^2$ avec les données $f_i$ et leur incertitude $\sigma_i$ ($\alpha$ est ici un facteur de normalisation du spectre, le véritable $\chi^2$ est par ailleurs décrit en détails dans l'article de présentation de \gls{cigale} \parencite{cigale}). Pour chaque $\chi^2$ est alors calculé la vraisemblance $\propto e^{-\chi^2 / 2}$, ce qui permet alors, au maximum de vraisemblance, de déterminer les paramètres les plus adaptés ainsi que leur incertitude à partir de l'écart type du pic.\\
+\gls{cigale} va donc calculer les différents modèles $m_i$ à partir des paramètres donnés en entrée des modules et déterminer le $\chi^2 = \sum_{i} (\frac{f_i - \alpha \cdot m_i}{\sigma_i})^2$ avec les données $f_i$ et leur incertitude $\sigma_i$ ($\alpha$ est ici un facteur de normalisation du spectre, le véritable $\chi^2$ est par ailleurs décrit en détail dans l'article de présentation de \gls{cigale} \parencite{cigale}). Pour chaque $\chi^2$ est alors calculé la vraisemblance $\propto e^{-\chi^2 / 2}$, ce qui permet alors, au maximum de vraisemblance, de déterminer les paramètres les plus adaptés ainsi que leur incertitude à partir de l'écart-type du pic.\\
 
-On procède donc en 2 étapes. La première consiste en une analyse approximative et rapide des 616 spectres, dont 24 sources secondaires, dans le but d'obtenir une estimation de leur \textit{redshift} $z$. Une fois celui obtenu, chaque spectre se retrouve associé à un redshift, nous permettant donc d'ignorer ce paramètre lors d'une analyse plus fine par la suite.
+On procède donc en 2 étapes. La première consiste en une analyse approximative et rapide des 616 spectres, dont 24 sources secondaires, dans le but d'obtenir une estimation de leur \textit{redshift} $z$. Une fois celui-ci obtenu, chaque spectre se retrouve associé à un \textit{redshift}, nous permettant ainsi d'ignorer ce paramètre lors d'une analyse plus fine par la suite.
 
 
 \newpage
