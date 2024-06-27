@@ -29,7 +29,7 @@
 *.pdf
 
 !assets/
-!Rapport/assets/*.png
+!Rapport/assets/*
 !/JWST/Cigale/GenerateCigaleFile.py
 
 # LaTeX
