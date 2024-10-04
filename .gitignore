@@ -1,14 +1,14 @@
 # Ignore Data folders
-/JWST/mastDownload/
-/JWST/.ipynb_checkpoints/
-/JWST/__pycache__/
-/JWST/.idea/
-/JWST/crds_cache
+*/mastDownload/
+*/.ipynb_checkpoints/
+*/__pycache__/
+*/.idea/
+*/crds_cache
 /Topcat/
 /CIGALE/
 /prism/
 /Docs/
-/JWST/Cigale/
+*/Cigale/
 /GHZ2_external/
 
 *.ini
