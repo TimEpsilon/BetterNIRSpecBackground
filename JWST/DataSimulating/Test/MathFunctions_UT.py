@@ -71,10 +71,31 @@ class DataTest_UT(unittest.TestCase):
 
 		print("Test for lorentzian passed")
 
-	def testSignal(self):
-		#TODO
-		x = np.linspace(0.6,5,500)
-		y = np.linspace(0,1,100)
+	def testCast1Dto3D(self):
+		array1D = np.array([1,2])
+		shape = (2,2,2)
+		expect = np.array([[[1,2],
+							  [1,2]],
+							 [[1,2],
+							  [1,2]]])
+		result = MathFunctions.cast1Dto3D(array1D,shape)
+		self.assertEqual(True, np.all(expect==result), msg=f"Expected {expect} but got {result}")
+
+
+		shape = (3,2,2)
+		expect = np.array([[[1,2],
+							[1,2]],
+						   [[1,2],
+							[1,2]],
+						   [[1,2],
+							[1,2]]])
+		result = MathFunctions.cast1Dto3D(array1D, shape)
+		self.assertEqual(True, np.all(expect == result), msg=f"Expected {expect} but got {result}")
+
+		shape = (3,2,1)
+		self.assertRaises(ValueError, lambda : MathFunctions.cast1Dto3D(array1D, shape))
+
+		print("Test for cast1Dto3D passed")
 
 if __name__ == '__main__':
 	unittest.main()
