@@ -1,9 +1,13 @@
 import os
+from glob import glob
 
-os.environ['CRDS_PATH'] = '/net/CLUSTER/VAULT/users/tdewachter/crds_cache'
+import pandas as pd
+from utils import getCRDSPath
+
+os.environ['CRDS_PATH'] = getCRDSPath()
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
-from jwst.pipeline import Detector1Pipeline
+from jwst.pipeline import Detector1Pipeline, Spec3Pipeline
 from jwst.pipeline import Spec2Pipeline
 import stdatamodels.jwst.datamodels as dm
 from jwst.wavecorr import WavecorrStep
@@ -15,36 +19,22 @@ from jwst.pixel_replace import PixelReplaceStep
 from jwst.resample import ResampleSpecStep
 from jwst.extract_1d import Extract1dStep
 
-from utils import logConsole
+from utils import logConsole, rewriteJSON, numberSameLength
 import BetterBackgroundSubtractStep as BkgSubtractStep
 
 
 def Stage1(uncal,path):
+	"""
+	Applies the first stage of the pipeline. No notable modifications to the steps are made
+	Parameters
+	----------
+	uncal : path to the file
+	path : path to the folder
+
+	"""
 	logConsole(f"Starting Stage 1 on {uncal}")
 	if os.path.exists(uncal.replace("_uncal", "_rate")):
 		return
-	# Steps Params By Pablo Arrabal Haro
-	"""steps = {
-			'jump': {'expand_large_events': True,
-					 # 1st flag groups after jump above DN threshold.
-					 'after_jump_flag_dn1': 0,
-					 # 1st flag groups after jump groups within
-					 # specified time.
-					 'after_jump_flag_time1': 0,
-					 # 2nd flag groups after jump above DN threshold.
-					 'after_jump_flag_dn2': 0,
-					 # 2nd flag groups after jump groups within
-					 # specified time.
-					 'after_jump_flag_time2': 0,
-					 # Minimum required area for the central saturation
-					 # of snowballs.
-					 'min_sat_area': 15.0,
-					 # Minimum area to trigger large events processing.
-					 'min_jump_area': 15.0,
-					 # The expansion factor for the enclosing circles
-					 # or ellipses.
-					 'expand_factor': 2.0}
-			}"""
 	det1 = Detector1Pipeline()
 	det1.save_results = True
 	det1.output_dir = path
@@ -54,6 +44,16 @@ def Stage1(uncal,path):
 
 
 def Stage2(rate,path):
+	"""
+	Applies the second stage of the pipeline. It is applied in 3 steps :
+	- The first few steps of the pipeline are applied as usual up until srctype
+	- The pipeline is stopped and the custom step is applied
+	- The remaining steps are applied
+	Parameters
+	----------
+	rate
+	path
+	"""
 	logConsole(f"Starting Stage 2")
 	if not os.path.exists(rate.replace("rate", "srctype")):
 		steps = {'srctype': {'save_results': True},
@@ -73,6 +73,7 @@ def Stage2(rate,path):
 		spec2.run(rate)
 		del spec2
 
+	# Custom Step
 	if not os.path.exists(rate.replace("rate", "bkg")):
 		BkgSubtractStep.BetterBackgroundStep(rate.replace("_rate", "_srctype"))
 
@@ -80,6 +81,7 @@ def Stage2(rate,path):
 
 	if not os.path.exists(bkg.replace("_bkg", "_bkg_photomstep")):
 		logConsole("Restarting Pipeline Stage 2")
+
 		# Steps :
 		# wavecorr
 		# flat field
@@ -90,6 +92,7 @@ def Stage2(rate,path):
 		# rectified 2D -> Save
 		# spectral extraction -> Save
 
+		# Remaining Steps
 		with dm.open(bkg) as data:
 			logConsole("Successfully loaded _bkg file")
 			calibrated = WavecorrStep.call(data)
@@ -101,3 +104,59 @@ def Stage2(rate,path):
 			calibrated = ResampleSpecStep.call(calibrated, output_dir=path, save_results=True)
 			calibrated = Extract1dStep.call(calibrated, output_dir=path, save_results=True)
 			del calibrated
+
+def Stage3_AssociationFile(asn_list, path):
+	for asn in asn_list:
+		logConsole(f"Starting Stage 3")
+		logConsole("Modifying Stage 3 association files")
+		rewriteJSON(asn)
+
+		final = path + "Final/"
+		if not os.path.exists(final):
+			os.makedirs(final)
+
+		spec3 = Spec3Pipeline()
+		spec3.save_results = True
+		spec3.output_dir = final
+		spec3.run(asn)
+		del spec3
+
+def Stage3_FinishUp(path):
+	"""
+	Creates a file signifying that the pipeline has finished
+	As a bonus, this file acts as a table containing the names of the files mentioned in slits_with_double_object.dat
+	Parameters
+	----------
+	path : path to the folder
+	"""
+
+	double_slits = pd.read_csv("../slits_with_double_object.dat", sep=",")
+	main_target = double_slits["Central_target"]
+	companion = double_slits["Companion"]
+	main_target = main_target.apply(numberSameLength)
+	companion = companion.apply(numberSameLength)
+
+	target_path = []
+	n = len(main_target)
+	for i in range(n):
+		target = main_target[i]
+		_ = glob(f"{path}*{target}*_s2d.fits")
+		if len(_) > 0 and f"P{double_slits['Pointing'][i]}" in _[0]:
+			target_path.append(_[0].split("/")[-1])
+		else:
+			target_path.append(None)
+
+	for i in range(n):
+		target = companion[i]
+		_ = glob(f"{path}*{target}*_s2d.fits")
+		if len(_) > 0 and f"P{double_slits['Pointing'][i]}" in _[0]:
+			target_path.append(_[0].split("/")[-1])
+		else:
+			target_path.append(None)
+
+	file_of_interest = {"TargetType": ["Main"] * len(main_target) + ["Companion"] * len(main_target),
+						"ID": [*main_target, *companion],
+						"Path": target_path}
+
+	df = pd.DataFrame(file_of_interest)
+	df.to_csv(f"{path}FilesOfInterest.csv")

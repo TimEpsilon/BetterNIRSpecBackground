@@ -1,4 +1,3 @@
-import numpy as np
 from scipy.signal import find_peaks_cwt
 from utils import *
 from scipy.optimize import curve_fit as cfit
@@ -13,6 +12,8 @@ from jwst.resample import ResampleSpecStep
 from scipy import interpolate
 from jwst.master_background import nirspec_utils
 from astropy.visualization import ZScaleInterval
+
+# TODO : This needs to be HEAVILY refactored, Unit Tests should also be implemented
 
 
 def BetterBackgroundStep(name,saveBackgroundImage=False):
