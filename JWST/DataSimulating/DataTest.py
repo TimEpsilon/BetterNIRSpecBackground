@@ -58,103 +58,79 @@ class TestSlitlet:
 
 
 		# The 1 is the position of the signal slit, left to right being up to down
-		self.slitlet_100 = template.copy()
-		self.slitlet_100[:dy,:] = self.signal.data
-		self.slitlet_100[dy:2*dy,:] = self.background.data
-		self.slitlet_100[2*dy:3*dy,:] = self.background.data
+		self.slitlet = {"100":template.copy(), "010":template.copy(), "001":template.copy()}
+		self.slitlet["100"][:dy,:] = self.signal.data
+		self.slitlet["100"][dy:2*dy,:] = self.background.data
+		self.slitlet["100"][2*dy:3*dy,:] = self.background.data
 
-		self.slitlet_010 = template.copy()
-		self.slitlet_010[:dy,:] = self.background.data
-		self.slitlet_010[dy:2*dy,:] = self.signal.data
-		self.slitlet_010[2*dy:3*dy,:] = self.background.data
+		self.slitlet["010"][:dy,:] = self.background.data
+		self.slitlet["010"][dy:2*dy,:] = self.signal.data
+		self.slitlet["010"][2*dy:3*dy,:] = self.background.data
 
-		self.slitlet_001 = template.copy()
-		self.slitlet_001[:dy,:] = self.background.data
-		self.slitlet_001[dy:2*dy,:] = self.background.data
-		self.slitlet_001[2*dy:3*dy,:] = self.signal.data
+		self.slitlet["001"][:dy,:] = self.background.data
+		self.slitlet["001"][dy:2*dy,:] = self.background.data
+		self.slitlet["001"][2*dy:3*dy,:] = self.signal.data
 
 		# Rotating
 
-		self.rotated_100 = scipy.ndimage.rotate(self.slitlet_100, self.rotationAngle,cval=np.nan,order=0)
-		self.rotated_010 = scipy.ndimage.rotate(self.slitlet_010, self.rotationAngle,cval=np.nan,order=0)
-		self.rotated_001 = scipy.ndimage.rotate(self.slitlet_001, self.rotationAngle,cval=np.nan,order=0)
+		self.rotated = {"100": scipy.ndimage.rotate(self.slitlet["100"], self.rotationAngle, cval=np.nan, order=0),
+						"010": scipy.ndimage.rotate(self.slitlet["010"], self.rotationAngle, cval=np.nan, order=0),
+						"001": scipy.ndimage.rotate(self.slitlet["001"], self.rotationAngle, cval=np.nan, order=0)}
 
 		# Adding noise
 
-		self.noise = np.random.normal(0, sigmaNoise, self.rotated_100.shape)
-		self.noise[np.isnan(self.rotated_100)] = 0
+		self.noise = np.random.normal(0, sigmaNoise, self.rotated["100"].shape)
+		self.noise[np.isnan(self.rotated["100"])] = 0
 
-		self.data_100 = self.rotated_100 + self.noise
-		self.data_010 = self.rotated_010 + self.noise
-		self.data_001 = self.rotated_001 + self.noise
+		self.data = {"100": self.rotated["100"] + self.noise,
+					 "010": self.rotated["010"] + self.noise,
+					 "001": self.rotated["001"] + self.noise}
 
 		# Anti rotation
 
-		self.antiRotated_100 = scipy.ndimage.rotate(self.data_100, -self.rotationAngle,cval=np.nan,order=0)
-		rows = np.any(~np.isnan(self.antiRotated_100), axis=1)
-		cols = np.any(~np.isnan(self.antiRotated_100), axis=0)
-		self.antiRotated_100 = self.antiRotated_100[rows][:, cols]
+		self.antiRotated = {"100":None,"010":None,"001":None}
 
-		self.antiRotated_010 = scipy.ndimage.rotate(self.data_010, -self.rotationAngle,cval=np.nan,order=0)
-		rows = np.any(~np.isnan(self.antiRotated_010), axis=1)
-		cols = np.any(~np.isnan(self.antiRotated_010), axis=0)
-		self.antiRotated_010 = self.antiRotated_010[rows][:, cols]
-
-		self.antiRotated_001 = scipy.ndimage.rotate(self.data_001, -self.rotationAngle,cval=np.nan,order=0)
-		rows = np.any(~np.isnan(self.antiRotated_001), axis=1)
-		cols = np.any(~np.isnan(self.antiRotated_001), axis=0)
-
-		self.antiRotated_001 = self.antiRotated_001[rows][:, cols]
+		for ID in ["100","010","001"]:
+			self.antiRotated[ID] = scipy.ndimage.rotate(self.data[ID], -self.rotationAngle,cval=np.nan,order=0)
+			start_x = (self.antiRotated[ID].shape[0] - self.slitlet[ID].shape[0]) // 2
+			start_y = (self.antiRotated[ID].shape[1] - self.slitlet[ID].shape[1]) // 2
+			self.antiRotated[ID] = self.antiRotated[ID][start_x:start_x + self.slitlet[ID].shape[0],
+								   start_y:start_y + self.slitlet[ID].shape[1]]
 
 		# Anti Rotated Noise Map
 
-		self.antiNoise_100 = self.antiRotated_100 - self.slitlet_100
-		self.antiNoise_010 = self.antiRotated_010 - self.slitlet_010
-		self.antiNoise_001 = self.antiRotated_001 - self.slitlet_001
+		self.antiNoise = {"100": self.antiRotated["100"] - self.slitlet["100"],
+						  "010": self.antiRotated["010"] - self.slitlet["010"],
+						  "001": self.antiRotated["001"] - self.slitlet["001"]}
 
 	def show(self, TYPE):
 
+		plt.figure(figsize=(12, 18))
 		if TYPE == "RAW":
-			plt.figure(figsize=(12,18))
-			plt.subplot(3,1,1)
-			plt.imshow(self.data_100, origin="lower",vmin=0)
-			plt.subplot(3, 1, 2)
-			plt.imshow(self.data_010, origin="lower",vmin=0)
-			plt.subplot(3, 1, 3)
-			plt.imshow(self.data_001, origin="lower",vmin=0)
+			for i,ID in enumerate(["100","010","001"]):
+				plt.subplot(3,1,i+1)
+				plt.imshow(self.data[ID], origin="lower",vmin=0)
 
 		if TYPE == "REAL":
-			plt.figure(figsize=(12,18))
-			plt.subplot(3, 1, 1)
-			plt.imshow(self.slitlet_100, origin="lower",vmin=0)
-			plt.subplot(3, 1, 2)
-			plt.imshow(self.slitlet_010, origin="lower",vmin=0)
-			plt.subplot(3, 1, 3)
-			plt.imshow(self.slitlet_001, origin="lower",vmin=0)
+			for i,ID in enumerate(["100","010","001"]):
+				plt.subplot(3, 1, i+1)
+				plt.imshow(self.slitlet[ID], origin="lower", vmin=0)
 
 		if TYPE == "CORRECTED":
-			plt.figure(figsize=(12,18))
-			plt.subplot(3, 1, 1)
-			plt.imshow(self.antiRotated_100, origin="lower",vmin=0)
-			plt.subplot(3, 1, 2)
-			plt.imshow(self.antiRotated_010, origin="lower",vmin=0)
-			plt.subplot(3, 1, 3)
-			plt.imshow(self.antiRotated_001, origin="lower",vmin=0)
+			for i,ID in enumerate(["100","010","001"]):
+				plt.subplot(3, 1, i+1)
+				plt.imshow(self.antiRotated[ID], origin="lower", vmin=0)
 
 		if TYPE == "ANTINOISE":
-			plt.figure(figsize=(12, 18))
-			plt.subplot(3, 1, 1)
-			plt.imshow(self.antiNoise_100, origin="lower", vmin=0)
-			plt.subplot(3, 1, 2)
-			plt.imshow(self.antiNoise_010, origin="lower", vmin=0)
-			plt.subplot(3, 1, 3)
-			plt.imshow(self.antiNoise_001, origin="lower", vmin=0)
+			for i,ID in enumerate(["100","010","001"]):
+				plt.subplot(3, 1, i+1)
+				plt.imshow(self.antiNoise[ID], origin="lower", vmin=0)
 		return
 
 	@staticmethod
 	def analyseNoise(image):
-		hist,bins = np.histogram(image, bins=256)
-		plt.bar(bins,hist)
+		plt.hist(image.ravel(),bins=64,alpha=0.3)
+		print(f"Mean : {np.mean(image[~np.isnan(image)])}, Sigma : {np.std(image[~np.isnan(image)])}")
 
 
 slitlet = TestSlitlet(2000, 300, 30,
@@ -163,14 +139,17 @@ slitlet = TestSlitlet(2000, 300, 30,
 					  peaks=[500,550,650,1400,1430,1900], peaksAmp=[1000, 1200, 750, 1700, 1750, 600], Lwidth=5,
 					  sigmaEnvelope=20, rotationAngle=12)
 
+# Show the different stages
 plt.close("all")
 slitlet.show("RAW")
 slitlet.show("REAL")
 slitlet.show("CORRECTED")
 slitlet.show("ANTINOISE")
 
+# Show the noise after rotation and counter rotation
+# Except for a small std, the noise distribution is practically the same as the original gaussian
 plt.figure()
-TestSlitlet.analyseNoise(slitlet.antiNoise_100)
-TestSlitlet.analyseNoise(slitlet.antiNoise_010)
-TestSlitlet.analyseNoise(slitlet.antiNoise_001)
+TestSlitlet.analyseNoise(slitlet.antiNoise["100"])
+TestSlitlet.analyseNoise(slitlet.antiNoise["010"])
+TestSlitlet.analyseNoise(slitlet.antiNoise["001"])
 plt.show()
