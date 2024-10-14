@@ -1,3 +1,7 @@
+from typing import Any
+
+import numpy as np
+from numpy import ndarray, dtype
 from scipy.signal import find_peaks_cwt
 from utils import *
 from scipy.optimize import curve_fit as cfit
@@ -49,81 +53,21 @@ def BetterBackgroundStep(name,saveBackgroundImage=False):
 		shutter_id = WhichShutterOpen(slit.shutter_state)
 		if shutter_id is None:
 			logConsole("Not a 3 shutter slit!")
-			precal[i].data = np.zeros_like(precal[i].data)
+			precal[i].data = np.zeros_like(precal.slits[i].data)
 			continue
-
-		# The slices are NOT the size of the individual shutter dispersion
-		# They are chosen by analysing the vertical maxima and choosing a radius of lines above and beyond those maxima
-		slice_indices = SelectSlice(slit)
-		if slice_indices is None:
-			logConsole("Data is empty")
-			precal.slits[i].data = np.zeros_like(precal.slits[i].data)
-			continue
-		slice_indices = np.clip(slice_indices,0,slit.data.shape[0])
 
 		logConsole("Starting on modeling of background")
-		Y, X = np.indices(slit.data.shape)
-		_, _, lamb = slit.meta.wcs.transform("detector", "world", X, Y)
-
-		x = np.append(lamb[slice_indices[shutter_id-1][0]:slice_indices[shutter_id-1][1]].mean(axis=0),
-					  lamb[slice_indices[shutter_id-2][0]:slice_indices[shutter_id-2][1]].mean(axis=0))
-
-		y = np.append(slit.data[slice_indices[shutter_id-1][0]:slice_indices[shutter_id-1][1]].mean(axis=0),
-					  slit.data[slice_indices[shutter_id-2][0]:slice_indices[shutter_id-2][1]].mean(axis=0))
-
-		dy = np.append(slit.data[slice_indices[shutter_id-1][0]:slice_indices[shutter_id-1][1]].std(axis=0),
-					   slit.data[slice_indices[shutter_id-2][0]:slice_indices[shutter_id-2][1]].std(axis=0))
-		dy = dy**2
-		dy += np.append((slit.err[slice_indices[shutter_id-1][0]:slice_indices[shutter_id-1][1]]**2).mean(axis=0),
-						(slit.err[slice_indices[shutter_id-2][0]:slice_indices[shutter_id-2][1]]**2).mean(axis=0))
-		dy = np.sqrt(dy)
-
-		indices = np.argsort(x)
-
-		# Sorts in rising wavelength order, ignores aberrant y values
-		x = x[indices]
-		y = y[indices]
-		dy = dy[indices]
-		x = x[y > 0]
-		dy = dy[y > 0]
-		y = y[y > 0]
-
-		# Weights, as a fraction of total sum, else it breaks the fitting
-		w = 1 / dy
-		w /= w.mean()
-
-		if len(x) <= 5:
-			logConsole("Not Enough Points to interpolate",source="WARNING")
-			precal.slits[i].data = np.zeros_like(precal.slits[i].data)
-			continue
-
-		# The s value should usually not cause the fitting to fail
-		# In the case it does, a larger, less harsh s value is used
-		# This is done by verifying if the returned function is nan on one of the 10 points in the wavelength range
-		interp = interpolate.UnivariateSpline(x, y, w=w, s=0.01, k=5, check_finite=True)
-		_ = interp(np.linspace(x.min(), x.max(), 10))
-		if not np.all(np.isfinite(_)):
-			for s in [0.01,0.1,1,10,100]:
-				logConsole(f"Ideal spline not found. Defaulting to a spline of s={s}",source="WARNING")
-				interp = interpolate.UnivariateSpline(x, y, w=w, s=s, k=3, check_finite=True)
-				_ = interp(np.linspace(x.min(), x.max(), 10))
-				if np.all(np.isfinite(_)):
-					break
-
-		# The 2D background model obtained from the 1D spectrum
-		Y, X = np.indices(precal[i].data.shape)
-		_, _, lamb = precal[i].meta.wcs.transform("detector", "world", X, Y)
-		fitted = interp(lamb)
+		fitted = modelBackgroundFromSlit(slit,shutter_id,precal.slits[i])
 
 		if saveBackgroundImage:
 			z = ZScaleInterval()
 			z1, z2 = z.get_limits(slit.data)
 			plt.figure(figsize=(16,4))
 			plt.subplot(2,1,1)
-			plt.imshow(precal[i].data,origin="lower",interpolation="none",vmin=z1,vmax=z2)
+			plt.imshow(precal.slits[i].data,origin="lower",interpolation="none",vmin=z1,vmax=z2)
 			plt.subplot(2, 1, 2)
 			plt.imshow(fitted, origin="lower", interpolation="none", vmin=z1, vmax=z2)
-			plt.savefig(f"{precal[i].slitlet_id}.png")
+			plt.savefig(f"{precal.slits[i].slitlet_id}.png")
 			plt.close()
 
 		precal.slits[i].data = fitted
@@ -151,40 +95,146 @@ def BetterBackgroundStep(name,saveBackgroundImage=False):
 
 	pass
 
+def modelBackgroundFromSlit(slit, shutter_id, precalSlit):
 
-def SelectSlice(slit):
+	Y, X = np.indices(slit.data.shape)
+	_, _, dataLambda = slit.meta.wcs.transform("detector", "world", X, Y)
+
+	Y, X = np.indices(precalSlit.data.shape)
+	_, _, precalLambda = precalSlit.meta.wcs.transform("detector", "world", X, Y)
+
+	# The slices are NOT the size of the individual shutter dispersion
+	# They are chosen by analysing the vertical maxima and choosing a radius of lines above and beyond those maxima
+
+	return modelBackgroundFromImage(precalSlit.data,
+									precalLambda,
+									slit.data,
+									slit.err,
+									dataLambda,
+									shutter_id)
+
+def modelBackgroundFromImage(preCalibrationData : np.ndarray,
+							 preCalibrationWavelength : np.ndarray,
+							 data : np.ndarray,
+							 error : np.ndarray,
+							 wavelength : np.ndarray,
+							 shutter_id : int):
+	"""
+	Creates a 2D image model based on the pre-calibration wavelengths positions of the background
+
+	Parameters
+	----------
+	preCalibrationData : np.ndarray, 2D array of the untreated image
+	preCalibrationWavelength : np.ndarray, 2D array representing the wavelength at each pixel
+	data : np.ndarray, 2D array of the treated image
+	error : np.ndarray, 2D array of the error of the treated image
+	wavelength : np.ndarray, 2D array representing the wavelength of the treated image
+	shutter_id : int, ID of the shutter which contains the signal (0,1,2)
+
+	Returns
+	-------
+	np.ndarray, 2D array of a smooth model of background, or zeros if a fit cannot be made
+	"""
+
+	slice_indices = SelectSlice(data)
+	if slice_indices is None:
+		logConsole("Data is empty")
+		return np.zeros_like(preCalibrationData)
+
+	x = extract1DBackgroundFromImage(wavelength, slice_indices, shutter_id)
+	y = extract1DBackgroundFromImage(data,slice_indices,shutter_id)
+	dy = extract1DBackgroundFromImage(error**2,slice_indices,shutter_id)
+	dy = np.sqrt(dy)
+
+	# Sorts in rising wavelength order, ignores aberrant y values
+	indices = np.argsort(x)
+	x = x[indices]
+	y = y[indices]
+	dy = dy[indices]
+	x = x[y > 0]
+	dy = dy[y > 0]
+	y = y[y > 0]
+
+	# Weights, as a fraction of total sum, else it breaks the fitting
+	w = 1 / dy
+	w /= w.mean()
+
+	if len(x) <= 5:
+		logConsole("Not Enough Points to interpolate", source="WARNING")
+		return np.zeros_like(preCalibrationData)
+
+	interp = makeInterpolation(x,y,w)
+
+	# The 2D background model obtained from the 1D spectrum
+	return interp(preCalibrationWavelength)
+
+def extract1DBackgroundFromImage(data, slice_indices, shutter_id):
+	return np.append(data[slice_indices[shutter_id - 1][0]:slice_indices[shutter_id - 1][1]].mean(axis=0),
+				  data[slice_indices[shutter_id - 2][0]:slice_indices[shutter_id - 2][1]].mean(axis=0))
+
+
+def makeInterpolation(x : np.ndarray, y : np.ndarray, w : np.ndarray):
+	"""
+	Creates a spline interpolation / approximation of order 5
+
+	Parameters
+	----------
+	x : wavelength 1D array
+	y : corresponding data 1D array
+	w : weights of the data points, inverse of their error
+
+	Returns
+	-------
+	interp : a function which approximates the data
+	"""
+	# The s value should not usually cause the fitting to fail
+	# In the case it does, a larger, less harsh s value is used
+	# This is done by verifying if the returned function is nan on one of the 10 points in the wavelength range
+	interp = interpolate.UnivariateSpline(x, y, w=w, s=0.01, k=5, check_finite=True)
+	_ = interp(np.linspace(x.min(), x.max(), 10))
+	if not np.all(np.isfinite(_)):
+		for s in [0.01, 0.1, 1, 10, 100]:
+			logConsole(f"Ideal spline not found. Defaulting to a spline of s={s}", source="WARNING")
+			interp = interpolate.UnivariateSpline(x, y, w=w, s=s, k=3, check_finite=True)
+			_ = interp(np.linspace(x.min(), x.max(), 10))
+			if np.all(np.isfinite(_)):
+				break
+	return interp
+
+
+def SelectSlice(slitData : np.ndarray) -> ndarray[Any, dtype[Any]] | None:
 	"""
 	Selects 3 slices (2 background, 1 signal) by analysing a cross section, finding a pixel position for each peak,
 	searching for a subpixel position, and slicing at the midpoints
 
 	Params
 	---------
-	slit, is supposed to be aligned with the pixel grid, so a resampledStep is needed before that
+	slitData, 2D array, is supposed to be aligned with the pixel grid, so a resampledStep is needed before that
 
 	Returns
 	---------
 	slice_indices : list of arrays
 		A list containing the lower and upper bound of each slit
-	rotated : tuple of arrays
 
 	"""
 	# The radius of each slice
 	radius = 1
-
-	data = sigma_clip(slit.data, sigma=5, masked=True)
+	data = sigma_clip(slitData, sigma=5, masked=True)
 
 	# Get vertical cross section by summing horizontally
 	horiz_sum = data.mean(axis=1)
 
 	# Determine 3 maxima for 3 slits
 	peaks = []
+	# Looks for peaks of different width
 	j = 2
-
 	while not len(peaks) == 3:
 		if j > 6:
 			break
 		peaks = find_peaks_cwt(horiz_sum,j)
 		j += 1
+
+	# Gets equal slices if no peaks are found
 	if not len(peaks) == 3 or np.any(peaks > len(horiz_sum)) or np.any(peaks < 0):
 		logConsole("Can't find 3 spectra. Defaulting to equal slices", source="WARNING")
 		# Somehow this edge case exists
@@ -195,35 +245,47 @@ def SelectSlice(slit):
 		n = end_index - start_index
 		xmin = np.array([round(n / 6)-radius, round(n/2)-radius, round(5*n/6)-radius]) + start_index
 		xmax = np.array([round(n / 6)+radius, round(n/2)+radius, round(5*n/6)+radius]) + start_index + 1
-		slice_indices = np.array([xmin, xmax]).T
-		return slice_indices
+		return np.array([xmin, xmax]).T
 
 	# Subpixel peaks
-	peaks = np.sort(getPeaksPrecise(range(len(horiz_sum)),horiz_sum,peaks))
+	peaks = np.sort(getPeaksPrecise(np.array(range(len(horiz_sum))),horiz_sum,peaks))
+	return np.clip(getSliceFromPeaks(peaks, radius), 0, slitData.shape[0])
 
 
-	slice_indices = getPeakSlice(peaks,radius)
-
-	return slice_indices
-
-
-def getPeaksPrecise(x,y,peaks):
+def getPeaksPrecise(x : np.ndarray, y : np.ndarray, peaks) -> np.ndarray:
 	"""
-	Returns the sub-pixel peaks
+	Gets a subpixel position for each peak
+	Parameters
+	----------
+	x : wavelength dependant, 1D array
+	y : value, 1D array
+	peaks : wavelength position of the peaks, list
+
+	Returns
+	-------
+	array of peak positions, subpixel if a gaussian fit was found, integer if not
 	"""
 	try :
 		coeff, err, info, msg, ier = cfit(slitletModel, x, y, p0=[*peaks,*y[peaks],0.5,0],full_output=True)
 	except :
 		logConsole("Can't find appropriate fit. Defaulting to input","ERROR")
-		return peaks
+		return np.array(peaks)
 	return np.array(coeff[:3])
 
 
-def getPeakSlice(peaks,n):
+def getSliceFromPeaks(peaks, n : int) -> np.ndarray:
 	"""
-	Returns slices for a set of peaks
-	"""
+	Gets the indices for 3 slices around the peaks
+	Parameters
+	----------
+	peaks : list of peak positions
+	n : radius
 
+	Returns
+	-------
+	a 2x3 array of indices of 3 slices
+
+	"""
 	# Slice radius
 	xmin = np.array([
 		round(peaks[0]-n),
@@ -236,5 +298,3 @@ def getPeakSlice(peaks,n):
 		round(peaks[2]+n+1)])
 
 	return np.array([xmin,xmax]).T
-
-#BetterBackgroundStep("./mastDownload/JWST/CEERS-NIRSPEC-P5-PRISM-MSATA/jw01345063001_03101_00001_nrs1_srctype.fits",True)
