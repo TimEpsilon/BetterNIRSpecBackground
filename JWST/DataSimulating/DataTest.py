@@ -71,11 +71,15 @@ class TestSlitlet:
 		self.slitlet["001"][dy:2*dy,:] = self.background.data
 		self.slitlet["001"][2*dy:3*dy,:] = self.signal.data
 
-		# Rotating
+		# Wavelength map
+		self.wavelength = np.linspace(0.6,5,self.slitlet["100"].shape[1])
+		self.wavelength = np.tile(self.wavelength, (self.slitlet["100"].shape[0], 1))
 
+		# Rotating
 		self.rotated = {"100": scipy.ndimage.rotate(self.slitlet["100"], self.rotationAngle, cval=np.nan, order=0),
 						"010": scipy.ndimage.rotate(self.slitlet["010"], self.rotationAngle, cval=np.nan, order=0),
 						"001": scipy.ndimage.rotate(self.slitlet["001"], self.rotationAngle, cval=np.nan, order=0)}
+		self.wavelengthRotated = scipy.ndimage.rotate(self.wavelength, self.rotationAngle, cval=np.nan, order=0)
 
 		# Adding noise
 
@@ -103,28 +107,40 @@ class TestSlitlet:
 						  "010": self.antiRotated["010"] - self.slitlet["010"],
 						  "001": self.antiRotated["001"] - self.slitlet["001"]}
 
-	def show(self, TYPE):
+	def show(self):
 
-		plt.figure(figsize=(12, 18))
-		if TYPE == "RAW":
-			for i,ID in enumerate(["100","010","001"]):
-				plt.subplot(3,1,i+1)
-				plt.imshow(self.data[ID], origin="lower",vmin=0)
+		plt.figure(figsize=(10, 10))
+		for i,ID in enumerate(["100","010","001"]):
+			plt.subplot(3,1,i+1)
+			plt.imshow(self.data[ID], origin="lower",vmin=0)
+		plt.title("RAW")
 
-		if TYPE == "REAL":
-			for i,ID in enumerate(["100","010","001"]):
-				plt.subplot(3, 1, i+1)
-				plt.imshow(self.slitlet[ID], origin="lower", vmin=0)
+		plt.figure(figsize=(14, 15))
+		for i,ID in enumerate(["100","010","001"]):
+			plt.subplot(3, 1, i+1)
+			plt.imshow(self.slitlet[ID], origin="lower", vmin=0)
+		plt.title("REAL")
 
-		if TYPE == "CORRECTED":
-			for i,ID in enumerate(["100","010","001"]):
-				plt.subplot(3, 1, i+1)
-				plt.imshow(self.antiRotated[ID], origin="lower", vmin=0)
+		plt.figure(figsize=(14, 15))
+		for i,ID in enumerate(["100","010","001"]):
+			plt.subplot(3, 1, i+1)
+			plt.imshow(self.antiRotated[ID], origin="lower", vmin=0)
+		plt.title("CORRECTED")
 
-		if TYPE == "ANTINOISE":
-			for i,ID in enumerate(["100","010","001"]):
-				plt.subplot(3, 1, i+1)
-				plt.imshow(self.antiNoise[ID], origin="lower", vmin=0)
+		plt.figure(figsize=(14, 15))
+		for i,ID in enumerate(["100","010","001"]):
+			plt.subplot(3, 1, i+1)
+			plt.imshow(self.antiNoise[ID], origin="lower", vmin=0)
+		plt.title("ONLY NOISE")
+
+		plt.figure(figsize=(14, 5))
+		plt.imshow(self.wavelength, origin="lower")
+		plt.title("WAVELENGTH")
+
+		plt.figure(figsize=(14, 5))
+		plt.imshow(self.wavelengthRotated, origin="lower")
+		plt.title("WAVELENGTH RAW")
+
 		return
 
 	@staticmethod
@@ -132,6 +148,14 @@ class TestSlitlet:
 		plt.hist(image.ravel(),bins=64,alpha=0.3)
 		print(f"Mean : {np.mean(image[~np.isnan(image)])}, Sigma : {np.std(image[~np.isnan(image)])}")
 
+	@staticmethod
+	def calculateBackground(slitlet):
+		#TODO
+		return
+
+####################
+# MAIN
+####################
 
 slitlet = TestSlitlet(2000, 300, 30,
 					  continuumX=[0,2000,400,1300], continuumZ=[200,10,140,100],
@@ -141,10 +165,7 @@ slitlet = TestSlitlet(2000, 300, 30,
 
 # Show the different stages
 plt.close("all")
-slitlet.show("RAW")
-slitlet.show("REAL")
-slitlet.show("CORRECTED")
-slitlet.show("ANTINOISE")
+slitlet.show()
 
 # Show the noise after rotation and counter rotation
 # Except for a small std, the noise distribution is practically the same as the original gaussian

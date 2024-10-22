@@ -168,7 +168,20 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 	# The 2D background model obtained from the 1D spectrum
 	return interp(preCalibrationWavelength)
 
-def extract1DBackgroundFromImage(data, slice_indices, shutter_id):
+def extract1DBackgroundFromImage(data : np.ndarray, slice_indices : iter, shutter_id : int) -> np.ndarray:
+	"""
+	Sums vertically the image on 2 horizontal slices and appends the 2
+	Parameters
+	----------
+	data : 2D array, image
+	slice_indices : 3x2 iterable, the 1st index is the n° of the slice, the 2nd is the [start,end] index
+	shutter_id : int, 1 is for the top slice, 2 for the middle, 3 for the bottom
+
+	Returns
+	-------
+	1D array, wavelength dependant
+
+	"""
 	return np.append(data[slice_indices[shutter_id - 1][0]:slice_indices[shutter_id - 1][1]].mean(axis=0),
 				  data[slice_indices[shutter_id - 2][0]:slice_indices[shutter_id - 2][1]].mean(axis=0))
 
