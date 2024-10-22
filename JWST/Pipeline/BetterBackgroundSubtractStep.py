@@ -17,9 +17,6 @@ from scipy import interpolate
 from jwst.master_background import nirspec_utils
 from astropy.visualization import ZScaleInterval
 
-# TODO : This needs to be HEAVILY refactored, Unit Tests should also be implemented
-
-
 def BetterBackgroundStep(name,saveBackgroundImage=False):
 	"""
 	 Creates a _bkg file from a _srctype file
@@ -136,7 +133,13 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 	np.ndarray, 2D array of a smooth model of background, or zeros if a fit cannot be made
 	"""
 
+	##### TEST #####
 	slice_indices = SelectSlice(data)
+	plt.figure(0)
+	plt.hlines(slice_indices.ravel(), 0, data.shape[1], color='r')
+	plt.xlim(data.shape[0], data.shape[1])
+	################
+
 	if slice_indices is None:
 		logConsole("Data is empty")
 		return np.zeros_like(preCalibrationData)
@@ -144,6 +147,18 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 	x = extract1DBackgroundFromImage(wavelength, slice_indices, shutter_id)
 	y = extract1DBackgroundFromImage(data,slice_indices,shutter_id)
 	dy = extract1DBackgroundFromImage(error**2,slice_indices,shutter_id)
+
+	mask = ~np.logical_or(
+		np.logical_or(
+			np.isnan(x),
+			np.isnan(y)
+		),
+		np.isnan(dy)
+	)
+	x = x[mask]
+	y = y[mask]
+	dy = dy[mask]
+
 	dy = np.sqrt(dy)
 
 	# Sorts in rising wavelength order, ignores aberrant y values
@@ -154,6 +169,12 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 	x = x[y > 0]
 	dy = dy[y > 0]
 	y = y[y > 0]
+
+	##### TEST #####
+	plt.figure()
+	plt.errorbar(x, y, yerr=dy, fmt='.', color='k', alpha=0.5)
+	plt.show()
+	################
 
 	# Weights, as a fraction of total sum, else it breaks the fitting
 	w = 1 / dy
@@ -175,13 +196,14 @@ def extract1DBackgroundFromImage(data : np.ndarray, slice_indices : iter, shutte
 	----------
 	data : 2D array, image
 	slice_indices : 3x2 iterable, the 1st index is the n° of the slice, the 2nd is the [start,end] index
-	shutter_id : int, 1 is for the top slice, 2 for the middle, 3 for the bottom
+	shutter_id : int, 0 is for the top slice, 1 for the middle, 2 for the bottom
 
 	Returns
 	-------
 	1D array, wavelength dependant
 
 	"""
+	print(slice_indices, shutter_id)
 	return np.append(data[slice_indices[shutter_id - 1][0]:slice_indices[shutter_id - 1][1]].mean(axis=0),
 				  data[slice_indices[shutter_id - 2][0]:slice_indices[shutter_id - 2][1]].mean(axis=0))
 
@@ -262,6 +284,7 @@ def SelectSlice(slitData : np.ndarray) -> ndarray[Any, dtype[Any]] | None:
 
 	# Subpixel peaks
 	peaks = np.sort(getPeaksPrecise(np.array(range(len(horiz_sum))),horiz_sum,peaks))
+
 	return np.clip(getSliceFromPeaks(peaks, radius), 0, slitData.shape[0])
 
 
