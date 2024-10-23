@@ -152,20 +152,20 @@ class TestSlitlet:
 			modelBackground.append(modelBackgroundFromImage(slitlet.data[ID],
 									 slitlet.wavelengthRotated,
 									 slitlet.antiRotated[ID],
-									 slitlet.noiseCorrected,
+									 np.ones_like(slitlet.wavelength)*2,
 									 slitlet.wavelength,
 									 i))
 			break
-		plt.figure()
-		plt.imshow(modelBackground[0], origin="lower")
-		plt.show()
+		#plt.figure()
+		#plt.imshow(modelBackground[0], origin="lower")
+		#plt.show()
 
 ####################
 # MAIN
 ####################
 
 if __name__ == "__main__":
-	slitlet = TestSlitlet(2000, 300, 30,
+	slitlet = TestSlitlet(2000, 300, 20,
 						  continuumX=[0,2000,400,1300], continuumZ=[200,10,140,100],
 						  signalX=[0,2000,1400,600], signalZ=[150,300,240,160],
 						  peaks=[500,550,650,1400,1430,1900], peaksAmp=[1000, 1200, 750, 1700, 1750, 600], Lwidth=5,

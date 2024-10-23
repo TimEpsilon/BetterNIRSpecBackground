@@ -133,8 +133,9 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 	np.ndarray, 2D array of a smooth model of background, or zeros if a fit cannot be made
 	"""
 
-	##### TEST #####
 	slice_indices = SelectSlice(data)
+
+	##### TEST #####
 	plt.figure(0)
 	plt.hlines(slice_indices.ravel(), 0, data.shape[1], color='r')
 	plt.xlim(data.shape[0], data.shape[1])
@@ -159,6 +160,12 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 	y = y[mask]
 	dy = dy[mask]
 
+	_, indices = np.unique(x, return_index=True)
+	indices = np.sort(indices)
+	x = x[indices]
+	y = y[indices]
+	dy = dy[indices]
+
 	dy = np.sqrt(dy)
 
 	# Sorts in rising wavelength order, ignores aberrant y values
@@ -170,21 +177,27 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 	dy = dy[y > 0]
 	y = y[y > 0]
 
-	##### TEST #####
-	plt.figure()
-	plt.errorbar(x, y, yerr=dy, fmt='.', color='k', alpha=0.5)
-	plt.show()
-	################
-
 	# Weights, as a fraction of total sum, else it breaks the fitting
 	w = 1 / dy
 	w /= w.mean()
+
+	##### TEST #####
+	plt.figure(6)
+	plt.errorbar(x, y, yerr=dy, fmt='.', color='k', alpha=0.5, linestyle='None')
+	################
 
 	if len(x) <= 5:
 		logConsole("Not Enough Points to interpolate", source="WARNING")
 		return np.zeros_like(preCalibrationData)
 
 	interp = makeInterpolation(x,y,w)
+
+	##### TEST #####
+	plt.figure(6)
+	plt.scatter(interp.get_knots(), interp(interp.get_knots()), color='r')
+	plt.plot(x,interp(x),color='r')
+	plt.show()
+	################
 
 	# The 2D background model obtained from the 1D spectrum
 	return interp(preCalibrationWavelength)
@@ -203,7 +216,6 @@ def extract1DBackgroundFromImage(data : np.ndarray, slice_indices : iter, shutte
 	1D array, wavelength dependant
 
 	"""
-	print(slice_indices, shutter_id)
 	return np.append(data[slice_indices[shutter_id - 1][0]:slice_indices[shutter_id - 1][1]].mean(axis=0),
 				  data[slice_indices[shutter_id - 2][0]:slice_indices[shutter_id - 2][1]].mean(axis=0))
 
@@ -225,12 +237,12 @@ def makeInterpolation(x : np.ndarray, y : np.ndarray, w : np.ndarray):
 	# The s value should not usually cause the fitting to fail
 	# In the case it does, a larger, less harsh s value is used
 	# This is done by verifying if the returned function is nan on one of the 10 points in the wavelength range
-	interp = interpolate.UnivariateSpline(x, y, w=w, s=0.01, k=5, check_finite=True)
+	interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=len(w)*50)
 	_ = interp(np.linspace(x.min(), x.max(), 10))
 	if not np.all(np.isfinite(_)):
 		for s in [0.01, 0.1, 1, 10, 100]:
 			logConsole(f"Ideal spline not found. Defaulting to a spline of s={s}", source="WARNING")
-			interp = interpolate.UnivariateSpline(x, y, w=w, s=s, k=3, check_finite=True)
+			interp = interpolate.UnivariateSpline(x, y, w=w, s=s, k=3)
 			_ = interp(np.linspace(x.min(), x.max(), 10))
 			if np.all(np.isfinite(_)):
 				break
@@ -253,7 +265,7 @@ def SelectSlice(slitData : np.ndarray) -> ndarray[Any, dtype[Any]] | None:
 
 	"""
 	# The radius of each slice
-	radius = 1
+	radius = 10
 	data = sigma_clip(slitData, sigma=5, masked=True)
 
 	# Get vertical cross section by summing horizontally
