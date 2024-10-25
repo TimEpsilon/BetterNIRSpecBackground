@@ -282,3 +282,4 @@ dependencies:
       - wiimatch==0.3.2
       - xlrd==2.0.1
       - zipp==3.18.1
+prefix: /home/tim/anaconda3/envs/jwst_latest
