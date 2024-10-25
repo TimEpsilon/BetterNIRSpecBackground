@@ -26,11 +26,9 @@
 *.pdf
 *.pptx
 *.zip
-*.pdf
 
 !assets/
 !Rapport/assets/*
-!/JWST/Cigale/GenerateCigaleFile.py
 
 # LaTeX
 
@@ -87,4 +85,3 @@ Rapport/main.log
 Rapport/main.ist
 Rapport/main.fls
 Rapport/main.fdb_latexmk
-Rapport/main.aux

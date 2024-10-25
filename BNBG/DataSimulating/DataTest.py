@@ -4,7 +4,7 @@ import MathFunctions
 
 import matplotlib.pyplot as plt
 
-from Pipeline.BetterBackgroundSubtractStep import modelBackgroundFromImage
+from BNBG.Pipeline.BetterBackgroundSubtractStep import modelBackgroundFromImage
 
 
 class TestSlit:

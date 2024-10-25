@@ -1,9 +1,7 @@
-from typing import Any
-
 import numpy as np
 from numpy import ndarray, dtype
 from scipy.signal import find_peaks_cwt
-from utils import *
+from ..utils import *
 from scipy.optimize import curve_fit as cfit
 import matplotlib.pyplot as plt
 import stdatamodels.jwst.datamodels as dm
@@ -31,7 +29,7 @@ def BetterBackgroundStep(name,saveBackgroundImage=False):
 		pass
 
 	# 1st draft Algorithm :
-	logConsole(f"Starting Custom Background Substraction on {name.split('/')[-1]}",source="BetterBackground")
+	logConsole(f"Starting Custom Background Subtraction on {name.split('/')[-1]}",source="BetterBackground")
 	multi_hdu = dm.open(name)
 	logConsole("Applying Pre-Calibration...")
 
@@ -137,7 +135,7 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 
 	##### TEST #####
 	plt.figure(0)
-	plt.hlines(slice_indices.ravel(), 0, data.shape[1], color='r')
+	plt.hlines(np.array(slice_indices).ravel(), 0, data.shape[1], color='r')
 	plt.xlim(data.shape[0], data.shape[1])
 	################
 
@@ -249,9 +247,9 @@ def makeInterpolation(x : np.ndarray, y : np.ndarray, w : np.ndarray):
 	return interp
 
 
-def SelectSlice(slitData : np.ndarray) -> ndarray[Any, dtype[Any]] | None:
+def SelectSlice(slitData : np.ndarray) :
 	"""
-	Selects 3 slices (2 background, 1 signal) by analysing a cross section, finding a pixel position for each peak,
+	Selects 3 slices (2 background, 1 signal) by analysing a cross-section, finding a pixel position for each peak,
 	searching for a subpixel position, and slicing at the midpoints
 
 	Params
@@ -268,7 +266,7 @@ def SelectSlice(slitData : np.ndarray) -> ndarray[Any, dtype[Any]] | None:
 	radius = 10
 	data = sigma_clip(slitData, sigma=5, masked=True)
 
-	# Get vertical cross section by summing horizontally
+	# Get vertical cross-section by summing horizontally
 	horiz_sum = data.mean(axis=1)
 
 	# Determine 3 maxima for 3 slits

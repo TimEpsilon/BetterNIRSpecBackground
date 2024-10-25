@@ -1,4 +1,3 @@
-from scipy.interpolate import CloughTocher2DInterpolator as CT
 import numpy as np
 import json
 import logging

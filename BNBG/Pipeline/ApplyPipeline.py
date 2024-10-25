@@ -1,5 +1,5 @@
 import os
-from utils import getCRDSPath
+from BNBG.utils import getCRDSPath
 
 # Needs to be overwritten in ../CRDS_PATH
 os.environ['CRDS_PATH'] = getCRDSPath()
@@ -10,7 +10,7 @@ from glob import glob
 
 import sys
 
-from utils import logConsole
+from BNBG.utils import logConsole
 
 
 def main():

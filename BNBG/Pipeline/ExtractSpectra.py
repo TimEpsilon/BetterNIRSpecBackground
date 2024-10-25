@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import stdatamodels.jwst.datamodels as dm
 from glob import glob
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from utils import logConsole
+from BNBG.utils import logConsole
 from astropy.visualization import ZScaleInterval
 from jwst.extract_1d import Extract1dStep as x1d
 from astropy.io import fits

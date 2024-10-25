@@ -68,9 +68,9 @@ obs_table = OBS.query_criteria(
 	dataRights = ["public"],
 	provenance_name = ["CALJWST"], 
 	intentType = ["science"],
-	obs_collection = ["JWST"],
+	obs_collection = ["BNBG"],
 	instrument_name = ["NIRSPEC/MSA"],
-	obs_title = ['Spectroscopic follow-up of ultra-high-z candidates in CEERS: Characterizing true z > 12 galaxies and z~4-7 interlopers in preparation for JWST Cycle 2', 
+	obs_title = ['Spectroscopic follow-up of ultra-high-z candidates in CEERS: Characterizing true z > 12 galaxies and z~4-7 interlopers in preparation for BNBG Cycle 2',
 					'The Cosmic Evolution Early Release Science (CEERS) Survey free'],
 	dataproduct_type = ["spectrum"]
 	)
