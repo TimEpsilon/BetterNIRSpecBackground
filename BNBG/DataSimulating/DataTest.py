@@ -74,7 +74,8 @@ class TestSlitlet:
 		self.slitlet["001"][2*dy:3*dy,:] = self.signal.data
 
 		# Wavelength map
-		self.wavelength = np.linspace(0.6,5,self.slitlet["100"].shape[1])
+		#self.wavelength = np.linspace(0.6,5,self.slitlet["100"].shape[1])
+		self.wavelength = np.linspace(0, self.slitlet["100"].shape[1], self.slitlet["100"].shape[1])
 		self.wavelength = np.tile(self.wavelength, (self.slitlet["100"].shape[0], 1))
 		self.wavelengthRotated = scipy.ndimage.rotate(self.wavelength, self.rotationAngle, cval=np.nan, order=0)
 
@@ -149,12 +150,13 @@ class TestSlitlet:
 
 		modelBackground = []
 		for i, ID in enumerate(["100","010","001"]):
-			modelBackground.append(modelBackgroundFromImage(slitlet.data[ID],
+			bkg = modelBackgroundFromImage(slitlet.data[ID],
 									 slitlet.wavelengthRotated,
 									 slitlet.antiRotated[ID],
 									 np.ones_like(slitlet.wavelength)*2,
 									 slitlet.wavelength,
-									 i))
+									 i)
+			modelBackground.append(bkg)
 			break
 		#plt.figure()
 		#plt.imshow(modelBackground[0], origin="lower")

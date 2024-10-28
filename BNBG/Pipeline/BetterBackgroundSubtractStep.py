@@ -1,8 +1,9 @@
-import numpy as np
-from numpy import ndarray, dtype
+from scipy.interpolate import interp1d
 from scipy.signal import find_peaks_cwt
 from ..utils import *
 from scipy.optimize import curve_fit as cfit
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import stdatamodels.jwst.datamodels as dm
 from astropy.stats import sigma_clip
@@ -23,6 +24,9 @@ def BetterBackgroundStep(name,saveBackgroundImage=False):
 	 ---------
 	 name : str
 		Path to the file to open. Must be a _srctype
+	saveBackgroundImage : bool
+		If true, will save the background image as a fits
+
 	"""
 	if not "_srctype" in name:
 		logConsole(f"{name.split('/')[-1]} not a _srctype file. Skipping...",source="WARNING")
@@ -133,6 +137,7 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 
 	slice_indices = SelectSlice(data)
 
+
 	##### TEST #####
 	plt.figure(0)
 	plt.hlines(np.array(slice_indices).ravel(), 0, data.shape[1], color='r')
@@ -179,23 +184,11 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 	w = 1 / dy
 	w /= w.mean()
 
-	##### TEST #####
-	plt.figure(6)
-	plt.errorbar(x, y, yerr=dy, fmt='.', color='k', alpha=0.5, linestyle='None')
-	################
-
 	if len(x) <= 5:
 		logConsole("Not Enough Points to interpolate", source="WARNING")
 		return np.zeros_like(preCalibrationData)
 
 	interp = makeInterpolation(x,y,w)
-
-	##### TEST #####
-	plt.figure(6)
-	plt.scatter(interp.get_knots(), interp(interp.get_knots()), color='r')
-	plt.plot(x,interp(x),color='r')
-	plt.show()
-	################
 
 	# The 2D background model obtained from the 1D spectrum
 	return interp(preCalibrationWavelength)
@@ -232,18 +225,42 @@ def makeInterpolation(x : np.ndarray, y : np.ndarray, w : np.ndarray):
 	-------
 	interp : a function which approximates the data
 	"""
-	# The s value should not usually cause the fitting to fail
-	# In the case it does, a larger, less harsh s value is used
-	# This is done by verifying if the returned function is nan on one of the 10 points in the wavelength range
-	interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=len(w)*50)
-	_ = interp(np.linspace(x.min(), x.max(), 10))
-	if not np.all(np.isfinite(_)):
-		for s in [0.01, 0.1, 1, 10, 100]:
-			logConsole(f"Ideal spline not found. Defaulting to a spline of s={s}", source="WARNING")
-			interp = interpolate.UnivariateSpline(x, y, w=w, s=s, k=3)
-			_ = interp(np.linspace(x.min(), x.max(), 10))
-			if np.all(np.isfinite(_)):
-				break
+	mean = []
+	std = []
+	n = 20
+	for j,S in enumerate(10**np.linspace(-8,12,n)):
+		interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=S*len(w))
+		Y = interp(x)
+		mean.append(np.mean(abs(Y-y)))
+		std.append(np.std(Y-y))
+		real = interp1d([0,2000,400,1300],[200,10,140,100],kind='cubic')
+
+		if j%2 == 0:
+			plt.figure()
+			plt.plot(x,Y, color='b')
+			plt.scatter(x,y, color='k', marker='+')
+			plt.plot(x,real(x), color='r')
+
+			plt.title(f"S = {S}")
+
+	plt.figure()
+	plt.plot(10**np.linspace(-8,12,n), mean, label="mean",marker='+')
+	plt.hlines(0, 10 ** -8, 10 ** 12, color='r', linestyle='--')
+	plt.yscale('log')
+	plt.xscale('log')
+	plt.ylabel("mean")
+	plt.xlabel("S")
+
+
+	plt.figure()
+	plt.plot(10 ** np.linspace(-8, 12, n), std, label="std",marker='+')
+	plt.hlines(20,10**-8,10**12,color='r',linestyle='--')
+	plt.yscale('log')
+	plt.xscale('log')
+	plt.ylabel(r"\sigma")
+	plt.xlabel("S")
+
+	plt.show()
 	return interp
 
 
