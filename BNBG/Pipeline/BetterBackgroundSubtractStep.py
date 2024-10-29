@@ -4,6 +4,7 @@ from ..utils import *
 from scipy.optimize import curve_fit as cfit
 import matplotlib
 matplotlib.use('TkAgg')
+from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
 import stdatamodels.jwst.datamodels as dm
 from astropy.stats import sigma_clip
@@ -15,6 +16,7 @@ from jwst.resample import ResampleSpecStep
 from scipy import interpolate
 from jwst.master_background import nirspec_utils
 from astropy.visualization import ZScaleInterval
+
 
 def BetterBackgroundStep(name,saveBackgroundImage=False):
 	"""
@@ -228,39 +230,61 @@ def makeInterpolation(x : np.ndarray, y : np.ndarray, w : np.ndarray):
 	mean = []
 	std = []
 	n = 20
-	for j,S in enumerate(10**np.linspace(-8,12,n)):
-		interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=S*len(w))
+	S_values = 10 ** np.linspace(-8, 12, n)
+
+	# Precompute mean and std for all S values
+	for S in S_values:
+		interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=S * len(w))
 		Y = interp(x)
-		mean.append(np.mean(abs(Y-y)))
-		std.append(np.std(Y-y))
-		real = interp1d([0,2000,400,1300],[200,10,140,100],kind='cubic')
+		mean.append(np.mean(np.abs(Y - y)))
+		std.append(np.std(Y - y))
 
-		if j%2 == 0:
-			plt.figure()
-			plt.plot(x,Y, color='b')
-			plt.scatter(x,y, color='k', marker='+')
-			plt.plot(x,real(x), color='r')
+	# Create a cubic interpolation for the true line (`real`) as needed
+	real = interpolate.interp1d([0, 2000, 400, 1300], [200, 10, 140, 100], kind='cubic', fill_value="extrapolate")
 
-			plt.title(f"S = {S}")
+	# Set up the figure and subplots
+	fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
 
-	plt.figure()
-	plt.plot(10**np.linspace(-8,12,n), mean, label="mean",marker='+')
-	plt.hlines(0, 10 ** -8, 10 ** 12, color='r', linestyle='--')
-	plt.yscale('log')
-	plt.xscale('log')
-	plt.ylabel("mean")
-	plt.xlabel("S")
+	# Initial plot elements
+	line_spline, = ax1.plot(x, np.zeros_like(x), color='b', label="Spline Fit")
+	scat_data = ax1.scatter(x, y, color='k', marker='+', label="Data Points")
+	line_real, = ax1.plot(x, real(x), color='r', label="True Function")
 
+	ax1.set_title("Spline Fitting for Varying S")
+	ax1.legend()
 
-	plt.figure()
-	plt.plot(10 ** np.linspace(-8, 12, n), std, label="std",marker='+')
-	plt.hlines(20,10**-8,10**12,color='r',linestyle='--')
-	plt.yscale('log')
-	plt.xscale('log')
-	plt.ylabel(r"\sigma")
-	plt.xlabel("S")
+	line_mean, = ax2.plot(S_values, mean, label="Mean Error", marker='+')
+	vline, = ax2.plot([], [], color='red', linestyle='--', label="Current S")
 
-	plt.show()
+	ax2.set_xscale('log')
+	ax2.set_yscale('log')
+	ax2.set_xlabel("S")
+	ax2.set_ylabel("Mean Error")
+	ax2.legend()
+	ax2.vlines(1,0,10)
+
+	# Animation update function
+	def update(frame):
+		S = S_values[frame]
+
+		# Update spline for the current S
+		interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=S * len(w))
+		Y = interp(x)
+		line_spline.set_ydata(Y)
+
+		# Update vertical line in mean plot
+		vline.set_data([S, S], [min(mean), max(mean)])
+
+		# Update title with current S
+		ax1.set_title(f"Spline Fitting for S = {S:.2e}")
+		return line_spline, vline
+
+	# Create the animation
+	ani = FuncAnimation(fig, update, frames=n, blit=True)
+
+	# Display or save the animation
+	plt.show()  # To display in a Jupyter Notebook
+	# ani.save('spline_animation.mp4', writer='ffmpeg', fps=5)  # Uncomment to save as mp4
 	return interp
 
 
