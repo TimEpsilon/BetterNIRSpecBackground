@@ -209,8 +209,10 @@ def extract1DBackgroundFromImage(data : np.ndarray, slice_indices : iter, shutte
 	1D array, wavelength dependant
 
 	"""
-	return np.append(data[slice_indices[shutter_id - 1][0]:slice_indices[shutter_id - 1][1]].mean(axis=0),
-				  data[slice_indices[shutter_id - 2][0]:slice_indices[shutter_id - 2][1]].mean(axis=0))
+	return np.append(
+					np.median(data[slice_indices[shutter_id - 1][0]:slice_indices[shutter_id - 1][1]], axis=0),
+				  	np.median(data[slice_indices[shutter_id - 2][0]:slice_indices[shutter_id - 2][1]], axis=0)
+	)
 
 
 def makeInterpolation(x : np.ndarray, y : np.ndarray, w : np.ndarray):
@@ -229,39 +231,57 @@ def makeInterpolation(x : np.ndarray, y : np.ndarray, w : np.ndarray):
 	"""
 	mean = []
 	std = []
-	n = 20
-	S_values = 10 ** np.linspace(-8, 12, n)
+	knot_counts = []
+	n = 50
+	S_values = 10 ** np.linspace(0, 3, n)
 
-	# Precompute mean and std for all S values
+	# Precompute mean, std, and knot counts for all S values
 	for S in S_values:
 		interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=S * len(w))
 		Y = interp(x)
-		mean.append(np.mean(np.abs(Y - y)))
+		mean.append(np.mean((Y - y)**2))
 		std.append(np.std(Y - y))
+		knot_counts.append(len(interp.get_knots()))  # Number of knots
 
 	# Create a cubic interpolation for the true line (`real`) as needed
-	real = interpolate.interp1d([0, 2000, 400, 1300], [200, 10, 140, 100], kind='cubic', fill_value="extrapolate")
+	real = interpolate.interp1d([0,2000,400,1300,450,800,1600], [200,10,140,100,40,150,60], kind='cubic', fill_value="extrapolate")
 
 	# Set up the figure and subplots
-	fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+	fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
 
-	# Initial plot elements
+	# Initial plot elements for the spline and data points
 	line_spline, = ax1.plot(x, np.zeros_like(x), color='b', label="Spline Fit")
 	scat_data = ax1.scatter(x, y, color='k', marker='+', label="Data Points")
 	line_real, = ax1.plot(x, real(x), color='r', label="True Function")
 
+	# Placeholder for knots; initially empty
+	knot_scat, = ax1.plot([], [], 'go', label="Knots")  # Green dots for knots
+
 	ax1.set_title("Spline Fitting for Varying S")
 	ax1.legend()
 
+	# Plot the mean error on the second subplot
 	line_mean, = ax2.plot(S_values, mean, label="Mean Error", marker='+')
-	vline, = ax2.plot([], [], color='red', linestyle='--', label="Current S")
+	vline_mean, = ax2.plot([], [], color='red', linestyle='--', label="Current S")
 
 	ax2.set_xscale('log')
 	ax2.set_yscale('log')
 	ax2.set_xlabel("S")
 	ax2.set_ylabel("Mean Error")
 	ax2.legend()
-	ax2.vlines(1,0,10)
+	ax2.vlines(1, 0, 10, color='red')
+	ax2.vlines([1 - np.sqrt(2 / len(x)), 1 + np.sqrt(2 / len(x))], 0, 10, color='red', linestyle='--')
+
+	# Plot the number of knots on the third subplot
+	line_knots, = ax3.plot(S_values, knot_counts, label="Number of Knots", marker='o', color='purple')
+	vline_knots, = ax3.plot([], [], color='red', linestyle='--', label="Current S")
+
+	ax3.set_xscale('log')
+	ax3.set_xlabel("S")
+	ax3.set_ylabel("Number of Knots")
+	ax3.legend()
+	ax3.set_title("Number of Knots vs S")
+	ax3.hlines(len(x),S_values.min(), S_values.max(), color='red', linestyle='--')
 
 	# Animation update function
 	def update(frame):
@@ -272,12 +292,19 @@ def makeInterpolation(x : np.ndarray, y : np.ndarray, w : np.ndarray):
 		Y = interp(x)
 		line_spline.set_ydata(Y)
 
-		# Update vertical line in mean plot
-		vline.set_data([S, S], [min(mean), max(mean)])
+		# Update knot locations
+		knots = interp.get_knots()
+		knot_scat.set_data(knots, interp(knots))  # Plot knots in green
+
+		# Update vertical line in mean error plot
+		vline_mean.set_data([S, S], [min(mean), max(mean)])
+
+		# Update vertical line in knot count plot
+		vline_knots.set_data([S, S], [min(knot_counts), max(knot_counts)])
 
 		# Update title with current S
 		ax1.set_title(f"Spline Fitting for S = {S:.2e}")
-		return line_spline, vline
+		return line_spline, vline_mean, vline_knots, knot_scat
 
 	# Create the animation
 	ani = FuncAnimation(fig, update, frames=n, blit=True)
@@ -304,7 +331,7 @@ def SelectSlice(slitData : np.ndarray) :
 
 	"""
 	# The radius of each slice
-	radius = 10
+	radius = 1
 	data = sigma_clip(slitData, sigma=5, masked=True)
 
 	# Get vertical cross-section by summing horizontally

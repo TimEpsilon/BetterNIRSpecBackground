@@ -19,7 +19,7 @@ from jwst.pixel_replace import PixelReplaceStep
 from jwst.resample import ResampleSpecStep
 from jwst.extract_1d import Extract1dStep
 
-from utils import logConsole, rewriteJSON, numberSameLength
+from ..utils import logConsole, rewriteJSON, numberSameLength
 import BetterBackgroundSubtractStep as BkgSubtractStep
 
 

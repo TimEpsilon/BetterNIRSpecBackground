@@ -168,7 +168,7 @@ class TestSlitlet:
 
 if __name__ == "__main__":
 	slitlet = TestSlitlet(2000, 300, 10,
-						  continuumX=[0,2000,400,1300], continuumZ=[200,10,140,100],
+						  continuumX=[0,2000,400,1300,450,800,1600], continuumZ=[200,10,140,100,40,150,60],
 						  signalX=[0,2000,1400,600], signalZ=[150,300,240,160],
 						  peaks=[500,550,650,1400,1430,1900], peaksAmp=[1000, 1200, 750, 1700, 1750, 600], Lwidth=5,
 						  sigmaEnvelope=20, rotationAngle=12)
