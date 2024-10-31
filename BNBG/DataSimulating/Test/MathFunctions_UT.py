@@ -1,9 +1,10 @@
 import sys
+
 sys.path.append("../MathFunctions")
 
 import unittest
 import numpy as np
-from DataSimulating import MathFunctions
+from BNBG.DataSimulating import MathFunctions
 
 class DataTest_UT(unittest.TestCase):
 	def testAdd2Dto1D(self):

@@ -1,4 +1,3 @@
-from scipy.interpolate import interp1d
 from scipy.signal import find_peaks_cwt
 from ..utils import *
 from scipy.optimize import curve_fit as cfit
@@ -119,7 +118,8 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 							 data : np.ndarray,
 							 error : np.ndarray,
 							 wavelength : np.ndarray,
-							 shutter_id : int):
+							 shutter_id : int,
+							 modelImage = None | np.ndarray):
 	"""
 	Creates a 2D image model based on the pre-calibration wavelengths positions of the background
 
@@ -131,20 +131,15 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 	error : np.ndarray, 2D array of the error of the treated image
 	wavelength : np.ndarray, 2D array representing the wavelength of the treated image
 	shutter_id : int, ID of the shutter which contains the signal (0,1,2)
+	modelImage : np.ndarray, 2D image of same size as data, representing the noiseless and envelope-less signal
 
 	Returns
 	-------
 	np.ndarray, 2D array of a smooth model of background, or zeros if a fit cannot be made
 	"""
+	isModelValid = verifySimilarImages(data, modelImage)
 
 	slice_indices = SelectSlice(data)
-
-
-	##### TEST #####
-	plt.figure(0)
-	plt.hlines(np.array(slice_indices).ravel(), 0, data.shape[1], color='r')
-	plt.xlim(data.shape[0], data.shape[1])
-	################
 
 	if slice_indices is None:
 		logConsole("Data is empty")
@@ -215,103 +210,93 @@ def extract1DBackgroundFromImage(data : np.ndarray, slice_indices : iter, shutte
 	)
 
 
-def makeInterpolation(x : np.ndarray, y : np.ndarray, w : np.ndarray):
+def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, S = 40, showPlots = True, realData = None):
 	"""
-	Creates a spline interpolation / approximation of order 5
+    Creates a spline interpolation / approximation of order 3.
 
-	Parameters
-	----------
-	x : wavelength 1D array
-	y : corresponding data 1D array
-	w : weights of the data points, inverse of their error
+    Parameters
+    ----------
+    x : wavelength 1D array
+    y : corresponding data 1D array
+    w : weights of the data points, inverse of their error
+    S : float, defined as S = s / len(x), needs to be tweaked for a smoother fit
+    showPlots : bool, if True plots the spline interpolation, the error in function of S and the number of knots in function of S
+    realData : 1D array, the real data values corresponding to the points x
 
-	Returns
-	-------
-	interp : a function which approximates the data
-	"""
-	mean = []
-	std = []
-	knot_counts = []
-	n = 50
-	S_values = 10 ** np.linspace(0, 3, n)
+    Returns
+    -------
+    interp : a function which approximates the data
+    """
+	interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=S * len(w))
 
-	# Precompute mean, std, and knot counts for all S values
-	for S in S_values:
-		interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=S * len(w))
-		Y = interp(x)
-		mean.append(np.mean((Y - y)**2))
-		std.append(np.std(Y - y))
-		knot_counts.append(len(interp.get_knots()))  # Number of knots
+	if showPlots:
+		mean = []
+		knots = []
+		interpolation_list = []
+		n = 50
+		Slist = 10 ** np.linspace(0, 3, n)
 
-	# Create a cubic interpolation for the true line (`real`) as needed
-	real = interpolate.interp1d([0,2000,400,1300,450,800,1600], [200,10,140,100,40,150,60], kind='cubic', fill_value="extrapolate")
+		# Precompute the interpolations
+		for current_S in Slist:
+			logConsole(f"Calculating spline for S = {current_S}")
+			_ = interpolate.UnivariateSpline(x, y, w=w, k=3, s=current_S * len(w))
+			interpolation_list.append(_)
+			Y = _(x)
+			mean.append(np.mean(abs(Y - y)))
+			knots.append(len(_.get_knots()))
 
-	# Set up the figure and subplots
-	fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
+		# Set up figure and subplots
+		fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
 
-	# Initial plot elements for the spline and data points
-	line_spline, = ax1.plot(x, np.zeros_like(x), color='b', label="Spline Fit")
-	scat_data = ax1.scatter(x, y, color='k', marker='+', label="Data Points")
-	line_real, = ax1.plot(x, real(x), color='r', label="True Function")
+		# Init spline and data points
+		line_spline, = ax1.plot(x, np.zeros_like(x), color='b', label="Spline Fit")
+		ax1.errorbar(x, y, yerr=1 / w, color='k', marker='+', linestyle='None', label="Data Points")
+		if isinstance(realData, np.ndarray) and len(realData) == len(x):
+			ax1.plot(x, realData, color="red", label="True Signal")
 
-	# Placeholder for knots; initially empty
-	knot_scat, = ax1.plot([], [], 'go', label="Knots")  # Green dots for knots
+		# List for knots
+		knot_scat, = ax1.plot([], [], 'go', label="Knots")
+		ax1.legend()
 
-	ax1.set_title("Spline Fitting for Varying S")
-	ax1.legend()
+		# Plot mean error on second subplot
+		ax2.plot(Slist, mean, label="Error", marker='+')
+		vline_mean, = ax2.plot([], [], color='red', linestyle='--', label="Current S")
+		ax2.set_xscale('log')
+		ax2.set_yscale('log')
+		ax2.set_xlabel("S")
+		ax2.set_ylabel("Error")
+		ax2.legend()
 
-	# Plot the mean error on the second subplot
-	line_mean, = ax2.plot(S_values, mean, label="Mean Error", marker='+')
-	vline_mean, = ax2.plot([], [], color='red', linestyle='--', label="Current S")
+		# Plot number of knots on third subplot
+		ax3.plot(Slist, knots, label="# Knots", color='purple')
+		vline_knots, = ax3.plot([], [], color='red', linestyle='--', label="Current S")
+		ax3.set_xscale('log')
+		ax3.set_xlabel("S")
+		ax3.set_ylabel("# Knots")
+		ax3.legend()
 
-	ax2.set_xscale('log')
-	ax2.set_yscale('log')
-	ax2.set_xlabel("S")
-	ax2.set_ylabel("Mean Error")
-	ax2.legend()
-	ax2.vlines(1, 0, 10, color='red')
-	ax2.vlines([1 - np.sqrt(2 / len(x)), 1 + np.sqrt(2 / len(x))], 0, 10, color='red', linestyle='--')
+		# Animation update function
+		def update(frame):
+			current_S = Slist[frame]
+			interpolation = interpolation_list[frame]
+			Y = interpolation(x)
+			line_spline.set_ydata(Y)
 
-	# Plot the number of knots on the third subplot
-	line_knots, = ax3.plot(S_values, knot_counts, label="Number of Knots", marker='o', color='purple')
-	vline_knots, = ax3.plot([], [], color='red', linestyle='--', label="Current S")
+			# Update knot locations
+			knot_positions = interpolation.get_knots()
+			knot_scat.set_data(knot_positions, interpolation(knot_positions))
 
-	ax3.set_xscale('log')
-	ax3.set_xlabel("S")
-	ax3.set_ylabel("Number of Knots")
-	ax3.legend()
-	ax3.set_title("Number of Knots vs S")
-	ax3.hlines(len(x),S_values.min(), S_values.max(), color='red', linestyle='--')
+			# Update vertical lines
+			vline_mean.set_data([current_S, current_S], [min(mean), max(mean)])
+			vline_knots.set_data([current_S, current_S], [min(knots), max(knots)])
 
-	# Animation update function
-	def update(frame):
-		S = S_values[frame]
+			ax1.set_title(f"Spline Fitting for S = {current_S:.2e}")
+			return line_spline, vline_mean, vline_knots, knot_scat
 
-		# Update spline for the current S
-		interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=S * len(w))
-		Y = interp(x)
-		line_spline.set_ydata(Y)
+		# Create the animation
+		anim = FuncAnimation(fig, update, frames=n, blit=True)
+		plt.show()
 
-		# Update knot locations
-		knots = interp.get_knots()
-		knot_scat.set_data(knots, interp(knots))  # Plot knots in green
-
-		# Update vertical line in mean error plot
-		vline_mean.set_data([S, S], [min(mean), max(mean)])
-
-		# Update vertical line in knot count plot
-		vline_knots.set_data([S, S], [min(knot_counts), max(knot_counts)])
-
-		# Update title with current S
-		ax1.set_title(f"Spline Fitting for S = {S:.2e}")
-		return line_spline, vline_mean, vline_knots, knot_scat
-
-	# Create the animation
-	ani = FuncAnimation(fig, update, frames=n, blit=True)
-
-	# Display or save the animation
-	plt.show()  # To display in a Jupyter Notebook
-	# ani.save('spline_animation.mp4', writer='ffmpeg', fps=5)  # Uncomment to save as mp4
 	return interp
 
 

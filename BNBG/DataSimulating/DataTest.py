@@ -124,6 +124,7 @@ class TestSlitlet:
 
 	@staticmethod
 	def calculateBackground(slitlet):
+		"""
 		plt.figure(0)
 		plt.imshow(slitlet.antiRotated["100"], origin="lower", vmin=0)
 		plt.title("CORRECTED")
@@ -147,6 +148,7 @@ class TestSlitlet:
 		plt.figure(5)
 		plt.imshow(slitlet.wavelengthRotated, origin="lower")
 		plt.title("WAVELENGTH RAW")
+		"""
 
 		modelBackground = []
 		for i, ID in enumerate(["100","010","001"]):
@@ -179,10 +181,12 @@ if __name__ == "__main__":
 
 	# Show the noise after rotation and counter rotation
 	# Except for a small std, the noise distribution is practically the same as the original gaussian
-	#plt.figure()
-	#TestSlitlet.analyseNoise(slitlet.antiNoise["100"])
-	#TestSlitlet.analyseNoise(slitlet.antiNoise["010"])
-	#TestSlitlet.analyseNoise(slitlet.antiNoise["001"])
+	"""
+	plt.figure()
+	TestSlitlet.analyseNoise(slitlet.antiNoise["100"])
+	TestSlitlet.analyseNoise(slitlet.antiNoise["010"])
+	TestSlitlet.analyseNoise(slitlet.antiNoise["001"])
+	"""
 
 	TestSlitlet.calculateBackground(slitlet)
 	plt.show()

@@ -131,3 +131,15 @@ def getCRDSPath():
 		if txt is None or txt == "":
 			raise Exception("CRDS_PATH.txt not found or file empty")
 		return txt
+
+
+def verifySimilarImages(A, B):
+	"""
+	Verifies if 2 images A and B are both valid ndarrays and have the same shape
+
+	Parameters
+	----------
+	A : ndarray
+	B : ndarray
+	"""
+	return isinstance(A, np.ndarray) and isinstance(B, np.ndarray) and A.shape == B.shape
