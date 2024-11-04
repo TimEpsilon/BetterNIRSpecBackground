@@ -56,6 +56,7 @@ class TestSlitlet:
 								   continuumX=continuumX, continuumZ=continuumZ, sigma=sigmaEnvelope)
 		self.signal = TestSlit(Xsize, dy, MathFunctions.signal, continuumX=signalX, continuumZ=signalZ,
 							   sigma=sigmaEnvelope, A=peaksAmp, peaks=peaks, Lwidth=Lwidth)
+
 		self.signal.data += self.background.data
 
 		# Model
@@ -222,13 +223,13 @@ if __name__ == "__main__":
 	continuumX = continuumX[np.argsort(continuumX)]
 	continuumX = np.append(0, continuumX)
 	continuumX = np.append(continuumX, Xsize)
-	continuumZ = np.random.random(12)*200+300
+	continuumZ = np.random.random(12)*100+500
 
 	signalX = np.random.random(4)*Xsize
 	signalX = signalX[np.argsort(signalX)]
 	signalX = np.append(0, signalX)
 	signalX = np.append(signalX, Xsize)
-	signalZ = np.random.random(6)*100+150
+	signalZ = np.random.random(6)*200+600
 
 	peaks = np.random.random(7)*Xsize
 	peaksAmp = np.random.random(7)*1000 + 300

@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.signal import find_peaks_cwt
 from ..utils import *
-from scipy.optimize import curve_fit as cfit
+from scipy.optimize import curve_fit as cfit, OptimizeWarning
 import matplotlib
 matplotlib.use('TkAgg')
 from matplotlib.animation import FuncAnimation
@@ -243,7 +243,7 @@ def extract1DBackgroundFromImage(data : np.ndarray, slice_indices : iter, shutte
 	)
 
 
-def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, S = 40, showPlots = True, realData = None):
+def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, S = 45, showPlots = True, realData = None):
 	"""
     Creates a spline interpolation / approximation of order 3.
 
@@ -371,32 +371,15 @@ def SelectSlice(slitData : np.ndarray) :
 	# Get vertical cross-section by summing horizontally
 	horiz_sum = data.mean(axis=1)
 
-	# Determine 3 maxima for 3 slits
-	peaks = []
-	# Looks for peaks of different width
-	j = 2
-	while not len(peaks) == 3:
-		if j > 6:
-			break
-		peaks = find_peaks_cwt(horiz_sum,j)
-		j += 1
-
-	# Gets equal slices if no peaks are found
-	if not len(peaks) == 3 or np.any(peaks > len(horiz_sum)) or np.any(peaks < 0):
-		logConsole("Can't find 3 spectra. Defaulting to equal slices", source="WARNING")
-		# Somehow this edge case exists
-		if np.all(horiz_sum == 0):
-			return None
-		start_index = np.where(horiz_sum > 0)[0][0]
-		end_index = np.where(horiz_sum > 0)[0][-1]
-		n = end_index - start_index
-		xmin = np.array([round(n / 6)-radius, round(n/2)-radius, round(5*n/6)-radius]) + start_index
-		xmax = np.array([round(n / 6)+radius, round(n/2)+radius, round(5*n/6)+radius]) + start_index + 1
-		return np.array([xmin, xmax]).T
+	# Naive guess of the peaks position as equal slices
+	start_index = np.where(horiz_sum > 0)[0][0]
+	end_index = np.where(horiz_sum > 0)[0][-1]
+	n = end_index - start_index
+	peaks = np.array([round(n / 6), round(n / 2), round(5 * n / 6)])
 
 	# Subpixel peaks
-	peaks = np.sort(getPeaksPrecise(np.array(range(len(horiz_sum))),horiz_sum,peaks))
-
+	peaks = np.sort(getPeaksPrecise(np.arange(0,slitData.shape[0]),horiz_sum,peaks))
+	print(peaks)
 	return np.clip(getSliceFromPeaks(peaks, radius), 0, slitData.shape[0])
 
 
@@ -405,20 +388,30 @@ def getPeaksPrecise(x : np.ndarray, y : np.ndarray, peaks) -> np.ndarray:
 	Gets a subpixel position for each peak
 	Parameters
 	----------
-	x : wavelength dependant, 1D array
+	x : spatial dependant, 1D array
 	y : value, 1D array
-	peaks : wavelength position of the peaks, list
+	peaks : pixel position of the peaks, list
 
 	Returns
 	-------
 	array of peak positions, subpixel if a gaussian fit was found, integer if not
 	"""
 	try :
-		coeff, err, info, msg, ier = cfit(slitletModel, x, y, p0=[*peaks,*y[peaks],0.5,0],full_output=True)
-	except :
+		coeff, err, info, msg, ier = cfit(slitletModel, x, y, p0=[*peaks,*y[peaks],0.5,0], full_output=True, method="dogbox",
+										  bounds=([0,0,0,0,0,0,0,0],[x.max(),x.max(),x.max(),np.inf,np.inf,np.inf,np.inf,np.inf]))
+		#### TEST ####
+		plt.figure()
+		plt.scatter(x, y, marker='+', color='k')
+		X = np.linspace(x.min(), x.max(), 100)
+		plt.plot(X, slitletModel(X, *coeff))
+		plt.vlines(peaks, 0, y.max(), color='g', linestyle='--')
+		plt.vlines(coeff[:3], 0, y.max(), color='r', linestyle='--')
+		##############
+		return coeff[:3]
+
+	except OptimizeWarning:
 		logConsole("Can't find appropriate fit. Defaulting to input","ERROR")
-		return np.array(peaks)
-	return np.array(coeff[:3])
+		return peaks
 
 
 def getSliceFromPeaks(peaks, n : int) -> np.ndarray:
@@ -435,14 +428,7 @@ def getSliceFromPeaks(peaks, n : int) -> np.ndarray:
 
 	"""
 	# Slice radius
-	xmin = np.array([
-		round(peaks[0]-n),
-		round(peaks[1]-n),
-		round(peaks[2]-n)])
-
-	xmax = np.array([
-		round(peaks[0]+n+1),
-		round(peaks[1]+n+1),
-		round(peaks[2]+n+1)])
+	xmin = np.array(np.round([peaks[0]-n, peaks[1]-n, peaks[2]-n]), dtype=int)
+	xmax = np.array(np.round([np.round(peaks[0]+n+1), np.round(peaks[1]+n+1), np.round(peaks[2]+n+1)]), dtype=int)
 
 	return np.array([xmin,xmax]).T
