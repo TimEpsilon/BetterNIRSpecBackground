@@ -40,7 +40,10 @@ def cast1Dto3D(array1D,shape):
 	return np.zeros(shape) + array1D[np.newaxis, np.newaxis, :]
 
 def gauss(x, x0, sigma):
-	return np.exp(-(x-x0)**2/(2*sigma**2))
+	if sigma == 0:
+		return np.ones_like(x)
+	else :
+		return np.exp(-(x-x0)**2/(2*sigma**2))
 
 def lorentzian(x, x0, A, L=1):
 	# x0 can be a single point or a list
@@ -58,7 +61,7 @@ def continuum(x,x0, y0):
 	interp = interp1d(x0,y0,kind='cubic')
 	return interp(x)
 
-def signal(x, y, continuumX=None, continuumZ=None, peaks=None, A=1 ,Lwidth=1, sigma=10):
+def signal(x, y, continuumX=None, continuumZ=None, peaks=None, A=1 ,Lwidth=1, sigma=0):
 	"""
 	Generates the image of a signal with lorentzian peaks, a smooth continuum and a gaussian spatial envelope
 	Parameters
@@ -68,8 +71,8 @@ def signal(x, y, continuumX=None, continuumZ=None, peaks=None, A=1 ,Lwidth=1, si
 	continuumX : the points at which the continuum is defined
 	continuumZ : the values of said points
 	peaks : the positions of the peaks, can either be a number or a list of numbers
-	sigma : the standard deviation of the gaussian spatial envelope
-	A : the lorentzian maximum. If a number, every peaks will have this height. If a list, needs to be of len(peaks)
+	sigma : the standard deviation of the gaussian spatial envelope, default is 0 and means no envelope
+	A : the lorentzian maximum. If a number, every peak will have this height. If a list, needs to be of len(peaks)
 	Lwidth : the lorentzian width of the peaks.
 	Returns
 	-------
@@ -87,7 +90,7 @@ def signal(x, y, continuumX=None, continuumZ=None, peaks=None, A=1 ,Lwidth=1, si
 	return results
 
 
-def background(x, y, continuumX=None, continuumZ=None, sigma=10):
+def background(x, y, continuumX=None, continuumZ=None, sigma=0):
 	"""
 	Generates only the background continuum and a gaussian spatial envelope
 	Parameters
@@ -96,7 +99,7 @@ def background(x, y, continuumX=None, continuumZ=None, sigma=10):
 	y : ordinate, spatial dependant
 	continuumX : the points at which the continuum is defined
 	continuumZ : the values of said points
-	sigma : standard deviation of the envelope
+	sigma : standard deviation of the envelope, if left at 0, no envelope will be applied
 
 	Returns
 	-------

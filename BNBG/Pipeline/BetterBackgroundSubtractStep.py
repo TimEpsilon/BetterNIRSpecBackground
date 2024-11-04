@@ -1,3 +1,4 @@
+import numpy as np
 from scipy.signal import find_peaks_cwt
 from ..utils import *
 from scipy.optimize import curve_fit as cfit
@@ -119,7 +120,7 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 							 error : np.ndarray,
 							 wavelength : np.ndarray,
 							 shutter_id : int,
-							 modelImage = None | np.ndarray):
+							 modelImage = None):
 	"""
 	Creates a 2D image model based on the pre-calibration wavelengths positions of the background
 
@@ -138,6 +139,7 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 	np.ndarray, 2D array of a smooth model of background, or zeros if a fit cannot be made
 	"""
 	isModelValid = verifySimilarImages(data, modelImage)
+	yModel = None
 
 	slice_indices = SelectSlice(data)
 
@@ -145,17 +147,36 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 		logConsole("Data is empty")
 		return np.zeros_like(preCalibrationData)
 
+	#### TEST ####
+	plt.figure()
+	plt.imshow(data, origin="lower", vmin=0)
+	plt.hlines(slice_indices,0,data.shape[1],linestyle="--",color="red")
+	plt.fill_between([0, data.shape[1]], [slice_indices[shutter_id - 1][0], slice_indices[shutter_id - 1][0]],
+	[slice_indices[shutter_id - 1][1], slice_indices[shutter_id - 1][1]], color='r', alpha=0.3)
+	plt.fill_between([0, data.shape[1]], [slice_indices[shutter_id - 2][0], slice_indices[shutter_id - 2][0]],
+					 [slice_indices[shutter_id - 2][1], slice_indices[shutter_id - 2][1]], color='r', alpha=0.3)
+	##############
+
 	x = extract1DBackgroundFromImage(wavelength, slice_indices, shutter_id)
 	y = extract1DBackgroundFromImage(data,slice_indices,shutter_id)
 	dy = extract1DBackgroundFromImage(error**2,slice_indices,shutter_id)
 
-	mask = ~np.logical_or(
+	mask = np.logical_or(
 		np.logical_or(
 			np.isnan(x),
 			np.isnan(y)
 		),
 		np.isnan(dy)
 	)
+
+	if isModelValid:
+		yModel = extract1DBackgroundFromImage(modelImage, slice_indices, shutter_id)
+		mask = np.logical_or(
+			mask,
+			np.isnan(yModel)
+		)
+	mask = ~mask
+
 	x = x[mask]
 	y = y[mask]
 	dy = dy[mask]
@@ -166,6 +187,10 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 	y = y[indices]
 	dy = dy[indices]
 
+	if isModelValid:
+		yModel = yModel[mask]
+		yModel = yModel[indices]
+
 	dy = np.sqrt(dy)
 
 	# Sorts in rising wavelength order, ignores aberrant y values
@@ -173,6 +198,11 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 	x = x[indices]
 	y = y[indices]
 	dy = dy[indices]
+
+	if isModelValid:
+		yModel = yModel[indices]
+		yModel = yModel[y>0]
+
 	x = x[y > 0]
 	dy = dy[y > 0]
 	y = y[y > 0]
@@ -185,7 +215,10 @@ def modelBackgroundFromImage(preCalibrationData : np.ndarray,
 		logConsole("Not Enough Points to interpolate", source="WARNING")
 		return np.zeros_like(preCalibrationData)
 
-	interp = makeInterpolation(x,y,w)
+	if isModelValid:
+		interp = makeInterpolation(x,y,w,showPlots=True,realData=yModel)
+	else:
+		interp = makeInterpolation(x,y,w)
 
 	# The 2D background model obtained from the 1D spectrum
 	return interp(preCalibrationWavelength)
@@ -234,7 +267,7 @@ def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, S = 40, showP
 		knots = []
 		interpolation_list = []
 		n = 50
-		Slist = 10 ** np.linspace(0, 3, n)
+		Slist = 10 ** np.linspace(1, 3, n)
 
 		# Precompute the interpolations
 		for current_S in Slist:
@@ -242,11 +275,11 @@ def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, S = 40, showP
 			_ = interpolate.UnivariateSpline(x, y, w=w, k=3, s=current_S * len(w))
 			interpolation_list.append(_)
 			Y = _(x)
-			mean.append(np.mean(abs(Y - y)))
+			mean.append(np.mean(abs(Y - realData)))
 			knots.append(len(_.get_knots()))
 
 		# Set up figure and subplots
-		fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
+		fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(22, 8))
 
 		# Init spline and data points
 		line_spline, = ax1.plot(x, np.zeros_like(x), color='b', label="Spline Fit")
@@ -257,23 +290,37 @@ def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, S = 40, showP
 		# List for knots
 		knot_scat, = ax1.plot([], [], 'go', label="Knots")
 		ax1.legend()
+		ax1.set_xlabel("Wavelength")
+
+		# Fourier Transform
+		freqs = np.fft.fftshift(np.fft.fftfreq(len(x), x[1]-x[0]))
+		ax2.plot(freqs, abs(np.fft.fft(y)), color="black", label="Data")
+		if isinstance(realData, np.ndarray) and len(realData) == len(x):
+			ax2.plot(freqs, abs(np.fft.fft(realData)), color="red", label="True Signal")
+		splineFFT, = ax2.plot(freqs, np.zeros_like(freqs), color="b", label="Spline Fit")
+
+		ax2.legend()
+		ax2.set_xscale("log")
+		ax2.set_yscale("log")
+		ax2.set_xlabel("Frequency")
+
 
 		# Plot mean error on second subplot
-		ax2.plot(Slist, mean, label="Error", marker='+')
-		vline_mean, = ax2.plot([], [], color='red', linestyle='--', label="Current S")
-		ax2.set_xscale('log')
-		ax2.set_yscale('log')
-		ax2.set_xlabel("S")
-		ax2.set_ylabel("Error")
-		ax2.legend()
+		ax3.plot(Slist, mean, label="Error", marker='+')
+		vline_mean, = ax3.plot([], [], color='red', linestyle='--', label="Current S")
+		ax3.set_xscale('log')
+		ax3.set_yscale('log')
+		ax3.set_xlabel("S")
+		ax3.set_ylabel("Error")
+		ax3.legend()
 
 		# Plot number of knots on third subplot
-		ax3.plot(Slist, knots, label="# Knots", color='purple')
-		vline_knots, = ax3.plot([], [], color='red', linestyle='--', label="Current S")
-		ax3.set_xscale('log')
-		ax3.set_xlabel("S")
-		ax3.set_ylabel("# Knots")
-		ax3.legend()
+		ax4.plot(Slist, knots, label="# Knots", color='purple')
+		vline_knots, = ax4.plot([], [], color='red', linestyle='--', label="Current S")
+		ax4.set_xscale('log')
+		ax4.set_xlabel("S")
+		ax4.set_ylabel("# Knots")
+		ax4.legend()
 
 		# Animation update function
 		def update(frame):
@@ -290,8 +337,10 @@ def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, S = 40, showP
 			vline_mean.set_data([current_S, current_S], [min(mean), max(mean)])
 			vline_knots.set_data([current_S, current_S], [min(knots), max(knots)])
 
-			ax1.set_title(f"Spline Fitting for S = {current_S:.2e}")
-			return line_spline, vline_mean, vline_knots, knot_scat
+			# FFT
+			splineFFT.set_data(freqs, abs(np.fft.fft(Y)))
+
+			return line_spline, vline_mean, vline_knots, knot_scat, splineFFT
 
 		# Create the animation
 		anim = FuncAnimation(fig, update, frames=n, blit=True)

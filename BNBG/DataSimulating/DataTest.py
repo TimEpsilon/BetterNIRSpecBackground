@@ -4,6 +4,7 @@ import MathFunctions
 
 import matplotlib.pyplot as plt
 
+from BNBG.DataSimulating.MathFunctions import continuum
 from BNBG.Pipeline.BetterBackgroundSubtractStep import modelBackgroundFromImage
 
 
@@ -50,17 +51,25 @@ class TestSlitlet:
 		self.rotationAngle = rotationAngle
 
 		dy = int(Ysize/3)
+		# Data
 		self.background = TestSlit(Xsize, dy, MathFunctions.background,
 								   continuumX=continuumX, continuumZ=continuumZ, sigma=sigmaEnvelope)
 		self.signal = TestSlit(Xsize, dy, MathFunctions.signal, continuumX=signalX, continuumZ=signalZ,
 							   sigma=sigmaEnvelope, A=peaksAmp, peaks=peaks, Lwidth=Lwidth)
 		self.signal.data += self.background.data
 
-		template = np.zeros((Ysize, Xsize))
+		# Model
+		self.modelBackground = TestSlit(Xsize, dy, MathFunctions.background, continuumX=continuumX,
+										continuumZ=continuumZ)
+		self.modelSignal = TestSlit(Xsize, dy, MathFunctions.signal, continuumX=signalX, continuumZ=signalZ,
+									A=peaksAmp, peaks=peaks, Lwidth=Lwidth)
+		self.modelSignal.data += self.modelBackground.data
 
+		template = np.zeros((Ysize, Xsize))
 
 		# The 1 is the position of the signal slit, left to right being up to down
 		self.slitlet = {"100":template.copy(), "010":template.copy(), "001":template.copy()}
+
 		self.slitlet["100"][:dy,:] = self.signal.data
 		self.slitlet["100"][dy:2*dy,:] = self.background.data
 		self.slitlet["100"][2*dy:3*dy,:] = self.background.data
@@ -73,6 +82,21 @@ class TestSlitlet:
 		self.slitlet["001"][dy:2*dy,:] = self.background.data
 		self.slitlet["001"][2*dy:3*dy,:] = self.signal.data
 
+		# Model
+		self.modelSlitlet = {"100":template.copy(), "010":template.copy(), "001":template.copy()}
+
+		self.modelSlitlet["100"][:dy, :] = self.modelSignal.data
+		self.modelSlitlet["100"][dy:2 * dy, :] = self.modelBackground.data
+		self.modelSlitlet["100"][2 * dy:3 * dy, :] = self.modelBackground.data
+
+		self.modelSlitlet["010"][:dy, :] = self.modelBackground.data
+		self.modelSlitlet["010"][dy:2 * dy, :] = self.modelSignal.data
+		self.modelSlitlet["010"][2 * dy:3 * dy, :] = self.modelBackground.data
+
+		self.modelSlitlet["001"][:dy, :] = self.modelBackground.data
+		self.modelSlitlet["001"][dy:2 * dy, :] = self.modelBackground.data
+		self.modelSlitlet["001"][2 * dy:3 * dy, :] = self.modelSignal.data
+
 		# Wavelength map
 		#self.wavelength = np.linspace(0.6,5,self.slitlet["100"].shape[1])
 		self.wavelength = np.linspace(0, self.slitlet["100"].shape[1], self.slitlet["100"].shape[1])
@@ -84,8 +108,11 @@ class TestSlitlet:
 						"010": scipy.ndimage.rotate(self.slitlet["010"], self.rotationAngle, cval=np.nan, order=0),
 						"001": scipy.ndimage.rotate(self.slitlet["001"], self.rotationAngle, cval=np.nan, order=0)}
 
-		# Adding noise
+		self.modelRotated = {"100": scipy.ndimage.rotate(self.modelSlitlet["100"], self.rotationAngle, cval=np.nan, order=0),
+							 "010": scipy.ndimage.rotate(self.modelSlitlet["010"], self.rotationAngle, cval=np.nan, order=0),
+							 "001": scipy.ndimage.rotate(self.modelSlitlet["001"], self.rotationAngle, cval=np.nan, order=0)}
 
+		# Adding noise
 		self.noise = np.random.normal(0, sigmaNoise, self.rotated["100"].shape)
 		self.noise[np.isnan(self.rotated["100"])] = np.nan
 
@@ -94,8 +121,8 @@ class TestSlitlet:
 					 "001": self.rotated["001"] + self.noise}
 
 		# Anti rotation
-
 		self.antiRotated = {"100":None,"010":None,"001":None}
+		self.modelAntiRotated = {"100":None,"010":None,"001":None}
 
 		for ID in ["100","010","001"]:
 			self.antiRotated[ID] = scipy.ndimage.rotate(self.data[ID], -self.rotationAngle,cval=np.nan,order=0)
@@ -110,8 +137,13 @@ class TestSlitlet:
 			self.noiseCorrected = self.noiseCorrected[start_x:start_x + self.slitlet[ID].shape[0],
 								   start_y:start_y + self.slitlet[ID].shape[1]]
 
-		# Anti Rotated Noise Map
+			self.modelAntiRotated[ID] = scipy.ndimage.rotate(self.modelRotated[ID], -self.rotationAngle, cval=np.nan, order=0)
+			start_x = (self.modelAntiRotated[ID].shape[0] - self.slitlet[ID].shape[0]) // 2
+			start_y = (self.modelAntiRotated[ID].shape[1] - self.slitlet[ID].shape[1]) // 2
+			self.modelAntiRotated[ID] = self.modelAntiRotated[ID][start_x:start_x + self.slitlet[ID].shape[0],
+								   start_y:start_y + self.slitlet[ID].shape[1]]
 
+		# Anti Rotated Noise Map
 		self.antiNoise = {"100": self.antiRotated["100"] - self.slitlet["100"],
 						  "010": self.antiRotated["010"] - self.slitlet["010"],
 						  "001": self.antiRotated["001"] - self.slitlet["001"]}
@@ -148,6 +180,22 @@ class TestSlitlet:
 		plt.figure(5)
 		plt.imshow(slitlet.wavelengthRotated, origin="lower")
 		plt.title("WAVELENGTH RAW")
+
+		plt.figure()
+		plt.imshow(slitlet.modelRotated["100"], origin="lower")
+		plt.title("MODEL")
+
+		plt.figure()
+		plt.imshow(slitlet.modelAntiRotated["100"], origin="lower")
+		plt.title("MODEL ROTATION CORRECTED")
+
+		plt.figure()
+		plt.imshow(slitlet.modelBackground.data, origin="lower")
+		plt.title("MODEL BACKGROUND")
+
+		plt.figure()
+		plt.imshow(slitlet.modelSignal.data, origin="lower")
+		plt.title("MODEL SIGNAL")
 		"""
 
 		modelBackground = []
@@ -157,23 +205,39 @@ class TestSlitlet:
 									 slitlet.antiRotated[ID],
 									 np.ones_like(slitlet.wavelength)*2,
 									 slitlet.wavelength,
-									 i)
+									 i,
+									 modelImage=slitlet.modelAntiRotated[ID])
 			modelBackground.append(bkg)
-			break
-		#plt.figure()
-		#plt.imshow(modelBackground[0], origin="lower")
-		#plt.show()
+		plt.figure()
+		plt.imshow(modelBackground[0], origin="lower")
+		plt.show()
 
 ####################
 # MAIN
 ####################
 
 if __name__ == "__main__":
-	slitlet = TestSlitlet(2000, 300, 10,
-						  continuumX=[0,2000,400,1300,450,800,1600], continuumZ=[200,10,140,100,40,150,60],
-						  signalX=[0,2000,1400,600], signalZ=[150,300,240,160],
-						  peaks=[500,550,650,1400,1430,1900], peaksAmp=[1000, 1200, 750, 1700, 1750, 600], Lwidth=5,
-						  sigmaEnvelope=20, rotationAngle=12)
+	Xsize = 400
+	continuumX = np.random.random(10)*Xsize
+	continuumX = continuumX[np.argsort(continuumX)]
+	continuumX = np.append(0, continuumX)
+	continuumX = np.append(continuumX, Xsize)
+	continuumZ = np.random.random(12)*200+300
+
+	signalX = np.random.random(4)*Xsize
+	signalX = signalX[np.argsort(signalX)]
+	signalX = np.append(0, signalX)
+	signalX = np.append(signalX, Xsize)
+	signalZ = np.random.random(6)*100+150
+
+	peaks = np.random.random(7)*Xsize
+	peaksAmp = np.random.random(7)*1000 + 300
+
+	slitlet = TestSlitlet(Xsize, 60, 10,
+						  continuumX=continuumX, continuumZ=continuumZ,
+						  signalX=signalX, signalZ=signalZ,
+						  peaks=peaks, peaksAmp=peaksAmp, Lwidth=5,
+						  sigmaEnvelope=10, rotationAngle=12)
 
 	# Show the different stages
 	plt.close("all")
