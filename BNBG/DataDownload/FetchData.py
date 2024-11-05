@@ -12,7 +12,7 @@ def download(obsids,path):
 
 	data_products = OBS.get_product_list(obsids)
 
-	# 1st filtering, only keeping Uncal, MSA and ASN files
+	# 1st filtering, only keeping interesting files
 	mask = False
 	for p_type in products_to_download:
 		mask = np.logical_or(
@@ -54,21 +54,33 @@ def cleanup(path):
 
 print("Starting MAST Query...")
 
-products_to_download = ['UNCAL', 'MSA', 'ASN']
-programs_to_ignore = ["CEERS-NIRSPEC-P9-PRISM-MSATA",
-					  "CEERS-NIRSPEC-P10-PRISM-MSATA",
-					  "CEERS-NIRSPEC-P11-PRISM-MSATA",
-					  "CEERS-NIRSPEC-P12-PRISM-MSATA",
-					  "CEERS-NIRSPEC-P4-PRISM-MSATA",
-					  "CEERS-NIRSPEC-P5-PRISM-MSATA",
-					  "CEERS-NIRSPEC-P7-PRISM-MSATA",
-					  "CEERS-NIRSPEC-P8-PRISM-MSATA"]
+# List of interesting products :
+# CAL : full image after stage 2
+# RATE : full image after stage 1
+# S2D : cutout after stage 2
+# UNCAL : raw images
+# MSA : used for calibration
+# ASN : association files
+products_to_download = ['RATE', 'MSA', 'ASN', 'S2D', 'CAL']
+programs_to_ignore = ["CEERS-NIRSPEC-P10-MR-MSATA",
+					"CEERS-NIRSPEC-P10-PRISM-MSATA",
+					"CEERS-NIRSPEC-P11-PRISM-MSATA",
+					"CEERS-NIRSPEC-P12-PRISM-MSATA",
+					"CEERS-NIRSPEC-P4-MR-MSATA",
+					"CEERS-NIRSPEC-P4-PRISM-MSATA",
+					"CEERS-NIRSPEC-P5-MR-MSATA",
+					"CEERS-NIRSPEC-P7-MR-MSATA",
+					"CEERS-NIRSPEC-P7-PRISM-MSATA",
+					"CEERS-NIRSPEC-P8-MR-MSATA",
+					"CEERS-NIRSPEC-P8-PRISM-MSATA",
+					"CEERS-NIRSPEC-P9-MR-MSATA",
+					"CEERS-NIRSPEC-P9-PRISM-MSATA"]
 
 obs_table = OBS.query_criteria(
 	dataRights = ["public"],
 	provenance_name = ["CALJWST"], 
 	intentType = ["science"],
-	obs_collection = ["BNBG"],
+	obs_collection = ["JWST"],
 	instrument_name = ["NIRSPEC/MSA"],
 	obs_title = ['Spectroscopic follow-up of ultra-high-z candidates in CEERS: Characterizing true z > 12 galaxies and z~4-7 interlopers in preparation for BNBG Cycle 2',
 					'The Cosmic Evolution Early Release Science (CEERS) Survey free'],

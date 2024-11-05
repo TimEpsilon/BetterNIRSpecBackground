@@ -2,7 +2,7 @@ import os
 from glob import glob
 
 import pandas as pd
-from utils import getCRDSPath
+from ..utils import getCRDSPath
 
 os.environ['CRDS_PATH'] = getCRDSPath()
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
