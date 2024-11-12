@@ -234,11 +234,11 @@ if __name__ == "__main__":
 	peaks = np.random.random(7)*Xsize
 	peaksAmp = np.random.random(7)*1000 + 300
 
-	slitlet = TestSlitlet(Xsize, 15, 10,
+	slitlet = TestSlitlet(Xsize, 60, 10,
 						  continuumX=continuumX, continuumZ=continuumZ,
 						  signalX=signalX, signalZ=signalZ,
 						  peaks=peaks, peaksAmp=peaksAmp, Lwidth=5,
-						  sigmaEnvelope=3, rotationAngle=12)
+						  sigmaEnvelope=20, rotationAngle=12)
 
 	# Show the different stages
 	plt.close("all")

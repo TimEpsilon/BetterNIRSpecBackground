@@ -396,6 +396,7 @@ def getPeaksPrecise(x : np.ndarray, y : np.ndarray, peaks) -> np.ndarray:
 	-------
 	array of peak positions, subpixel if a gaussian fit was found, integer if not
 	"""
+	return peaks
 	try :
 		coeff, err, info, msg, ier = cfit(slitletModel, x, y, p0=[*peaks,*y[peaks],0.5,0], full_output=True, method="dogbox",
 										  bounds=([0,0,0,0,0,0,0,0],[x.max(),x.max(),x.max(),np.inf,np.inf,np.inf,np.inf,np.inf]))

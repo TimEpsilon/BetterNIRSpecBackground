@@ -125,8 +125,8 @@ def getPolynomialOrder(coeffCount):
 
 	return order
 
-def getCRDSPath():
-	with open("../CRDS_PATH.txt") as file:
+def getCRDSPath(path="../CRDS_PATH.txt"):
+	with open(path) as file:
 		txt = file.readline()
 		if txt is None or txt == "":
 			raise Exception("CRDS_PATH.txt not found or file empty")
