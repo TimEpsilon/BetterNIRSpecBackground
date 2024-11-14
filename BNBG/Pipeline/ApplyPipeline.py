@@ -57,8 +57,8 @@ def main():
 		# Basic Master Background Algorithm
 		# 0 - Apply Spec2 up until srctype (included) and save them
 		# 1 - Modify the _srctype files, all spectra
-		# 2 - Create a _bkg file, exact copy
-		# 3 - Apply the rest of Spec2 to _bkg
+		# 2 - Create a _BNBG file, exact copy
+		# 3 - Apply the rest of Spec2 to _BNBG
 		# 4 - Modify the spec3_asn.json
 		# 5 - Apply Spec3 to the spec3_asn.json
 		##########

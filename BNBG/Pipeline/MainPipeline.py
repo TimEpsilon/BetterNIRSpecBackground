@@ -74,12 +74,12 @@ def Stage2(rate,path):
 		del spec2
 
 	# Custom Step
-	if not os.path.exists(rate.replace("rate", "bkg")):
+	if not os.path.exists(rate.replace("rate", "BNBG")):
 		BkgSubtractStep.BetterBackgroundStep(rate.replace("_rate", "_srctype"))
 
-	bkg = rate.replace("_rate", "_bkg")
+	bkg = rate.replace("_rate", "_BNBG")
 
-	if not os.path.exists(bkg.replace("_bkg", "_bkg_photomstep")):
+	if not os.path.exists(bkg.replace("_BNBG", "_BNBG_photomstep")):
 		logConsole("Restarting Pipeline Stage 2")
 
 		# Steps :
@@ -94,7 +94,7 @@ def Stage2(rate,path):
 
 		# Remaining Steps
 		with dm.open(bkg) as data:
-			logConsole("Successfully loaded _bkg file")
+			logConsole("Successfully loaded _BNBG file")
 			calibrated = WavecorrStep.call(data)
 			calibrated = FlatFieldStep.call(calibrated)
 			calibrated = PathLossStep.call(calibrated)

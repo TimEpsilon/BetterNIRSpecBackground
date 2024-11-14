@@ -52,7 +52,7 @@ def slitletModel(x,x1,x2,x3,A1,A2,A3,s,c):
 
 def rewriteJSON(file):
 	"""
-	Rewrites the asn.json files in order to apply to the _bkg files
+	Rewrites the asn.json files in order to apply to the _BNBG files
 
 	Parameters
 	----------
@@ -70,7 +70,7 @@ def rewriteJSON(file):
 		not_science = []
 		for i in range(len(data["products"][0]["members"])):
 			data["products"][0]["members"][i]["expname"] = data["products"][0]["members"][i]["expname"].replace("_cal",
-			"_bkg_photomstep")
+			"_BNBG_photomstep")
 			if not data["products"][0]["members"][i]["exptype"] == "science":
 				not_science.append(i)
 
