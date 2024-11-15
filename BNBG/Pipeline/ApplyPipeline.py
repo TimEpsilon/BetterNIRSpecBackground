@@ -2,7 +2,7 @@ import os
 from BNBG.utils import getCRDSPath
 
 # Needs to be overwritten in ../CRDS_PATH
-os.environ['CRDS_PATH'] = getCRDSPath()
+os.environ['CRDS_PATH'] = getCRDSPath("BNBG/CRDS_PATH.txt")
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
 import MainPipeline
@@ -14,10 +14,12 @@ from BNBG.utils import logConsole
 
 
 def main():
-	working_dir = "../DataDownload/mastDownload/JWST/"
+	working_dir = "mastDownload/JWST/"
 	folders = os.listdir(working_dir) #Default, needs to be overwritten
 	try :
-		folders = sys.argv[1:]
+		_ = sys.argv[1:]
+		if len(_) > 0:
+			folders = [f for f in folders if f in _]
 	except :
 		logConsole("No Folders Specified. Defaulting to all Folders")
 	logConsole(f"Found {len(folders)} folders")

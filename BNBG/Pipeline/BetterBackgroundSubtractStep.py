@@ -1,7 +1,9 @@
+import os.path
+
 import matplotlib
 matplotlib.use('TkAgg')
 
-from ..utils import *
+from BNBG.utils import *
 import matplotlib.pyplot as plt
 import stdatamodels.jwst.datamodels as dm
 from jwst.flatfield import FlatFieldStep
@@ -34,12 +36,27 @@ def BetterBackgroundStep(name,saveBackgroundImage=False):
 	multi_hdu = dm.open(name)
 	logConsole("Applying Pre-Calibration...")
 
-	precal = FlatFieldStep.call(multi_hdu)
-	precal = PathLossStep.call(precal,source_type="EXTENDED")
-	precal = BarShadowStep.call(precal,source_type="EXTENDED")
-	precal = PhotomStep.call(precal,source_type="EXTENDED")
-	# This is only useful for the extraction of the 1D spectrum
-	resampled = ResampleSpecStep.call(precal)
+	if not os.path.exists(name.replace("srctype", "photomstep")):
+		precal = FlatFieldStep.call(multi_hdu)
+		precal = PathLossStep.call(precal,source_type="EXTENDED")
+		precal = BarShadowStep.call(precal,source_type="EXTENDED")
+		precal = PhotomStep.call(precal,source_type="EXTENDED")
+
+		logConsole("Saving Photometry File...")
+		precal.write(name.replace("srctype", "photomstep"))
+	else :
+		logConsole(f"Found {name.replace('srctype', 'photomstep')}")
+		precal = dm.open(name.replace("srctype", "photomstep"))
+
+	if not os.path.exists(name.replace("srctype", "resamplespecstep")):
+		# This is only useful for the extraction of the 1D spectrum
+		resampled = ResampleSpecStep.call(precal)
+
+		logConsole("Saving Resampling File...")
+		resampled.write(name.replace("srctype", "resamplespecstep"))
+	else:
+		logConsole(f"Found {name.replace('srctype', 'resamplespecstep')}")
+		resampled = dm.open(name.replace("srctype", "resamplespecstep"))
 
 	# For a given _srctype, for every slit
 	for i,slit in enumerate(resampled.slits):
@@ -62,6 +79,7 @@ def BetterBackgroundStep(name,saveBackgroundImage=False):
 		precal.slits[i].data = fitted
 		logConsole("Background Calculated!")
 
+	precal.write(name.replace("srctype", "clean_background"))
 	# Reverse the calibration
 	logConsole("Reversing the Pre-Calibration...")
 	background = PhotomStep.call(precal, inverse=True, source_type="EXTENDED")
@@ -139,6 +157,9 @@ def modelBackgroundFromImage(preCalibrationWavelength : np.ndarray,
 	yModel = None
 
 	mask = cleanupImage(data, source=source)
+	if np.all(mask):
+		return np.zeros_like(preCalibrationWavelength)
+
 	x = extractWithMask(wavelength, mask)
 	y = extractWithMask(data, mask)
 	w = 1/np.sqrt(extractWithMask(error**2, mask))
@@ -177,7 +198,7 @@ def extractWithMask(data, mask):
 
 	return x
 
-def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, n = 0.2):
+def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, n = 0.05):
 	"""
     Creates a spline interpolation / approximation of order 3.
 

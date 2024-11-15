@@ -21,35 +21,6 @@ def logConsole(text, source=None):
 	logType.get(source,lambda : logger.info(text))()
 
 
-
-def WhichShutterOpen(shutter_state):
-	"""
-	 Gets the id of which shutter is open in the slitlet.
-	 If SHUTSTA is unusual (i.e. only one shutter is open), returns None
-	"""
-	if shutter_state == "11x":
-		return 2
-	elif shutter_state == "1x1":
-		return 1
-	elif shutter_state == "x11":
-		return 0
-	else:
-		return None
-
-
-
-def gaussian(x,x0,A,s):
-	"""
-	Simple gaussian function
-	"""
-	return A * np.exp(-(x-x0)**2 / (2*s**2))
-
-"""
-Slitlet model : 3 gaussians of same sigma
-"""
-def slitletModel(x,x1,x2,x3,A1,A2,A3,s,c):
-	return gaussian(x,x1,A1,s) + gaussian(x,x2,A2,s) + gaussian(x,x3,A3,s) + c
-
 def rewriteJSON(file):
 	"""
 	Rewrites the asn.json files in order to apply to the _BNBG files
@@ -98,34 +69,7 @@ def numberSameLength(entry):
 	entry = "".join(entry)
 	return entry
 
-def getPolynomialOrder(coeffCount):
-	"""
-	Returns the order of a polynomial based on the amount of coefficients
-
-	The amount of coefficients is given by n^2/2 + 3/2*n + 1, n the order
-	Parameters
-
-	The order is assumed to be somewhere between 0 and 6
-	----------
-	coeffCount : int
-		The amount of coefficients
-
-	Returns
-	-------
-	order : int
-		The order of the polynomial
-	"""
-
-	order = None
-	for n in range(7):
-		amount = n**2 / 2 + 3/2 * n + 1
-		if amount == coeffCount:
-			order = n
-			return order
-
-	return order
-
-def getCRDSPath(path="../CRDS_PATH.txt"):
+def getCRDSPath(path="BNBG/CRDS_PATH.txt"):
 	with open(path) as file:
 		txt = file.readline()
 		if txt is None or txt == "":

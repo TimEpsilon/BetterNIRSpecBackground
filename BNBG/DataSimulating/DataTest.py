@@ -201,13 +201,12 @@ class TestSlitlet:
 
 		modelBackground = []
 		for i, ID in enumerate(["100","010","001"]):
-			bkg = modelBackgroundFromImage(slitlet.data[ID],
-									 slitlet.wavelengthRotated,
-									 slitlet.antiRotated[ID],
-									 np.ones_like(slitlet.wavelength)*2,
-									 slitlet.wavelength,
-									 i,
-									 modelImage=slitlet.modelAntiRotated[ID])
+			bkg = modelBackgroundFromImage(slitlet.wavelengthRotated,
+										   	slitlet.data[ID],
+									 		np.ones_like(slitlet.wavelength)*2,
+									 		slitlet.wavelength,
+										   15,
+									 		modelImage=slitlet.modelAntiRotated[ID])
 			modelBackground.append(bkg)
 		plt.figure()
 		plt.imshow(modelBackground[0], origin="lower")

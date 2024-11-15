@@ -2,7 +2,7 @@ import os
 from glob import glob
 
 import pandas as pd
-from ..utils import getCRDSPath
+from BNBG.utils import getCRDSPath
 
 os.environ['CRDS_PATH'] = getCRDSPath()
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
@@ -19,7 +19,7 @@ from jwst.pixel_replace import PixelReplaceStep
 from jwst.resample import ResampleSpecStep
 from jwst.extract_1d import Extract1dStep
 
-from ..utils import logConsole, rewriteJSON, numberSameLength
+from BNBG.utils import logConsole, rewriteJSON, numberSameLength
 import BetterBackgroundSubtractStep as BkgSubtractStep
 
 
@@ -79,7 +79,7 @@ def Stage2(rate,path):
 
 	bkg = rate.replace("_rate", "_BNBG")
 
-	if not os.path.exists(bkg.replace("_BNBG", "_BNBG_photomstep")):
+	if not os.path.exists(bkg.replace("_BNBG", "_photomstep")):
 		logConsole("Restarting Pipeline Stage 2")
 
 		# Steps :
@@ -140,14 +140,6 @@ def Stage3_FinishUp(path):
 	n = len(main_target)
 	for i in range(n):
 		target = main_target[i]
-		_ = glob(f"{path}*{target}*_s2d.fits")
-		if len(_) > 0 and f"P{double_slits['Pointing'][i]}" in _[0]:
-			target_path.append(_[0].split("/")[-1])
-		else:
-			target_path.append(None)
-
-	for i in range(n):
-		target = companion[i]
 		_ = glob(f"{path}*{target}*_s2d.fits")
 		if len(_) > 0 and f"P{double_slits['Pointing'][i]}" in _[0]:
 			target_path.append(_[0].split("/")[-1])
