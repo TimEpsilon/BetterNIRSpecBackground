@@ -1,6 +1,8 @@
 import os.path
 
 import matplotlib
+import numpy as np
+
 matplotlib.use('TkAgg')
 
 from BNBG.utils import *
@@ -178,13 +180,16 @@ def modelBackgroundFromImage(preCalibrationWavelength : np.ndarray,
 	# Weights, as a fraction of total sum, else it breaks the fitting
 	w /= w.mean()
 
+	# Reorder data and remove duplicates
+	x,y,w = rebinDataPoint(x, y, w)
+
 	interp = makeInterpolation(x,y,w)
 	# The 2D background model obtained from the 1D spectrum
 	return interp(preCalibrationWavelength)
 
 def extractWithMask(data, mask):
 	"""
-	Gets a 1D array extraction by calculating the average along the vertical axis, while masking the values in mask.
+	Gets a 1D array extraction of every value in data not masked by mask.
 	----------
 	data : ndarray, a 2D image
 	mask : ndarray, a 2D mask of the same size as data
@@ -194,11 +199,52 @@ def extractWithMask(data, mask):
 	interp : a function of wavelength
 	"""
 	data[mask] = np.nan
-	x = np.nanmean(data, axis=0)
+	x = np.ravel(data)
 
 	return x
 
-def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, n = 0.05):
+def rebinDataPoint(x : np.ndarray, n : int, *values : np.ndarray) -> tuple:
+	"""
+	Orders each 1D array according to x and evenly rebins every array in order to be of length n
+	Parameters
+	----------
+	x : 1D array-like, corresponds to the wavelength
+	n : int, the length of the rebinned data
+	values : 1D array-like, must be of same length as len(x)
+
+	Returns
+	-------
+	(x,values) reordered and rebinned
+	"""
+	indices = np.argsort(x)
+	x = x[indices]
+	result = [x]
+
+	for _ in values:
+		result.append(_[indices])
+
+	# Binning
+	bins = np.linspace(x[0], x[-1], n + 1)
+	binIndices = np.digitize(x, bins) - 1
+
+	# Loop on all arrays
+	for i in range(len(result)):
+		y = result[i]
+		yBinned = []
+
+		for j in range(n):
+			mask = binIndices == j
+
+			# Ignore empty bins
+			if np.any(mask):
+				yBinned.append(y[mask].mean())
+
+		result[i] = yBinned
+
+	return tuple(result)
+
+
+def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, n = 0.1):
 	"""
     Creates a spline interpolation / approximation of order 3.
 
@@ -265,7 +311,7 @@ def getSourcePosition(slit):
 	"""
 	return slit.meta.wcs.transform('world', 'detector', slit.source_ra, slit.source_dec, 3)[1]
 
-def cleanupImage(data : np.ndarray, crop=3, source=None, radius=3):
+def cleanupImage(data : np.ndarray, crop=3, source=None, radius=4):
 	"""
 	Creates a mask that selects bad pixels for background subtraction
 	Parameters
