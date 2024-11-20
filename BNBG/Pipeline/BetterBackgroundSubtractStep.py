@@ -160,6 +160,7 @@ def modelBackgroundFromImage(preCalibrationWavelength : np.ndarray,
 
 	mask = cleanupImage(data, source=source)
 	if np.all(mask):
+		logConsole("No data was kept in slit. Returning zeros","WARNING")
 		return np.zeros_like(preCalibrationWavelength)
 
 	x = extractWithMask(wavelength, mask)
@@ -177,11 +178,19 @@ def modelBackgroundFromImage(preCalibrationWavelength : np.ndarray,
 	y = y[~nanMask]
 	w = w[~nanMask]
 
+	# Sort arrays in rising x order
+	indices = np.argsort(x)
+	x = x[indices]
+	y = y[indices]
+	w = w[indices]
+
 	# Weights, as a fraction of total sum, else it breaks the fitting
 	w /= w.mean()
 
-	# Reorder data and remove duplicates
-	x,y,w = rebinDataPoint(x, y, w)
+	# Check if at least 4 points
+	if len(x) < 4:
+		logConsole("Not enough points to fit. Returning zeros", "WARNING")
+		return np.zeros_like(preCalibrationWavelength)
 
 	interp = makeInterpolation(x,y,w)
 	# The 2D background model obtained from the 1D spectrum
@@ -199,50 +208,9 @@ def extractWithMask(data, mask):
 	interp : a function of wavelength
 	"""
 	data[mask] = np.nan
-	x = np.ravel(data)
+	x = np.nanmean(data,axis=0)
 
 	return x
-
-def rebinDataPoint(x : np.ndarray, n : int, *values : np.ndarray) -> tuple:
-	"""
-	Orders each 1D array according to x and evenly rebins every array in order to be of length n
-	Parameters
-	----------
-	x : 1D array-like, corresponds to the wavelength
-	n : int, the length of the rebinned data
-	values : 1D array-like, must be of same length as len(x)
-
-	Returns
-	-------
-	(x,values) reordered and rebinned
-	"""
-	indices = np.argsort(x)
-	x = x[indices]
-	result = [x]
-
-	for _ in values:
-		result.append(_[indices])
-
-	# Binning
-	bins = np.linspace(x[0], x[-1], n + 1)
-	binIndices = np.digitize(x, bins) - 1
-
-	# Loop on all arrays
-	for i in range(len(result)):
-		y = result[i]
-		yBinned = []
-
-		for j in range(n):
-			mask = binIndices == j
-
-			# Ignore empty bins
-			if np.any(mask):
-				yBinned.append(y[mask].mean())
-
-		result[i] = yBinned
-
-	return tuple(result)
-
 
 def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, n = 0.1):
 	"""
@@ -311,7 +279,7 @@ def getSourcePosition(slit):
 	"""
 	return slit.meta.wcs.transform('world', 'detector', slit.source_ra, slit.source_dec, 3)[1]
 
-def cleanupImage(data : np.ndarray, crop=3, source=None, radius=4):
+def cleanupImage(data : np.ndarray, crop=3, source=None, radius=5):
 	"""
 	Creates a mask that selects bad pixels for background subtraction
 	Parameters
