@@ -74,12 +74,15 @@ def Stage2(rate,path):
 		del spec2
 
 	# Custom Step
-	if not os.path.exists(rate.replace("rate", "BNBG")):
-		BkgSubtractStep.BetterBackgroundStep(rate.replace("_rate", "_srctype"))
+	pathSrctype = rate.replace("_rate", "_srctype")
+	if not os.path.exists(pathSrctype):
+		step = BkgSubtractStep.BetterBackgroundStep()
+		step.call(pathSrctype,output_dir=os.path.dirname(pathSrctype))
 
-	bkg = rate.replace("_rate", "_BNBG")
+	pathBNBG = rate.replace("_rate", "_BNBG")
+	pathPhotom = rate.replace("_rate", "_photomstep")
 
-	if not os.path.exists(bkg.replace("_BNBG", "_photomstep")):
+	if not os.path.exists(pathPhotom):
 		logConsole("Restarting Pipeline Stage 2")
 
 		# Steps :
@@ -93,16 +96,16 @@ def Stage2(rate,path):
 		# spectral extraction -> Save
 
 		# Remaining Steps
-		with dm.open(bkg) as data:
+		with dm.open(pathBNBG) as data:
 			logConsole("Successfully loaded _BNBG file")
 			calibrated = WavecorrStep.call(data)
 			calibrated = FlatFieldStep.call(calibrated)
 			calibrated = PathLossStep.call(calibrated)
 			calibrated = BarShadowStep.call(calibrated)
 			calibrated = PhotomStep.call(calibrated, output_dir=path, save_results=True)
-			calibrated = PixelReplaceStep.call(calibrated)
-			calibrated = ResampleSpecStep.call(calibrated, output_dir=path, save_results=True)
-			calibrated = Extract1dStep.call(calibrated, output_dir=path, save_results=True)
+			#calibrated = PixelReplaceStep.call(calibrated)
+			#calibrated = ResampleSpecStep.call(calibrated, output_dir=path, save_results=True)
+			#calibrated = Extract1dStep.call(calibrated, output_dir=path, save_results=True)
 			del calibrated
 
 def Stage3_AssociationFile(asn_list, path):
