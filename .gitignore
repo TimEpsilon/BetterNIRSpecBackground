@@ -297,3 +297,16 @@ Rapport/main.fdb_latexmk
 /CRDS/references/jwst/nirspec/jwst_nirspec_msa_0009.asdf
 /CRDS/references/jwst/nirspec/jwst_nirspec_ote_0011.asdf
 /CRDS/references/jwst/nirspec/jwst_nirspec_wavelengthrange_0006.asdf
+/CRDS/mappings/jwst/jwst_1298.pmap
+/CRDS/mappings/jwst/jwst_fgs_0117.imap
+/CRDS/mappings/jwst/jwst_miri_0416.imap
+/CRDS/mappings/jwst/jwst_nircam_0295.imap
+/CRDS/mappings/jwst/jwst_niriss_0261.imap
+/CRDS/mappings/jwst/jwst_niriss_pastasoss_0004.rmap
+/CRDS/mappings/jwst/jwst_nirspec_0383.imap
+/CRDS/mappings/jwst/jwst_nirspec_fflat_0026.rmap
+/CRDS/mappings/jwst/jwst_nirspec_pars-outlierdetectionstep_0003.rmap
+/CRDS/mappings/jwst/jwst_system_0042.imap
+/CRDS/mappings/jwst/jwst_system_calver_0043.rmap
+/CRDS/references/jwst/nirspec/jwst_nirspec_pars-resamplespecstep_0001.asdf
+/CRDS/references/jwst/nirspec/jwst_nirspec_wavecorr_0004.asdf

@@ -82,36 +82,50 @@ class BetterBackgroundStep(Step):
 		self.raw = dm.open(srctype)
 		name = os.path.basename(self._input_filename)
 
-		# TODO : Photomstep for precalibration is same name as photomstep post-background subtraction
-
-		pathPhotom = os.path.join(self.output_dir, name.replace("srctype", "photomstep"))
-		if not os.path.exists(pathPhotom) or not self.saveCheckpointFiles:
+		# Precalibration steps
+		pathPhotom = os.path.join(self.output_dir, name.replace("srctype", "photomstep_temp"))
+		if not os.path.exists(pathPhotom) or not self.useCheckpointFiles:
 			self.precalibrated = BetterBackgroundStep.precalibration(self.raw, pathPhotom)
 		else:
 			logConsole(f"Found {pathPhotom}")
 			self.precalibrated = dm.open(pathPhotom)
 
 		# This is only useful for the extraction of the 1D spectrum
-		pathResample = os.path.join(self.output_dir, name.replace("srctype", "resamplespecstep"))
-		if not os.path.exists(pathResample) or not self.saveCheckpointFiles:
+		pathResample = os.path.join(self.output_dir, name.replace("srctype", "resamplespecstep_temp"))
+		if not os.path.exists(pathResample) or not self.useCheckpointFiles:
 			self.resampled = BetterBackgroundStep.resampling(self.precalibrated, pathResample)
 		else:
 			logConsole(f"Found {pathResample}")
-			self.resampled = dm.open(name.replace("srctype", "resamplespecstep"))
+			self.resampled = dm.open(pathResample)
 
+		# Getting clean background
 		pathClean = os.path.join(self.output_dir, name.replace("srctype", "clean_background"))
-		self.cleanBackground = BetterBackgroundStep.workOnSlitlet(self.resampled,
-																  self.precalibrated,
-																  pathClean,
-																  radius=self.radius,
-																  crop=self.crop,
-																  n=self.interpolationKnots)
+		if not os.path.exists(pathClean) or not self.useCheckpointFiles:
+			self.cleanBackground = BetterBackgroundStep.workOnSlitlet(self.resampled,
+																	  self.precalibrated,
+																	  pathClean,
+																	  radius=self.radius,
+																	  crop=self.crop,
+																	  n=self.interpolationKnots)
+		else:
+			logConsole(f"Found {pathClean}")
+			self.cleanBackground = dm.open(pathClean)
 
+		# Undo Precalibration of clean background
 		pathBackground = os.path.join(self.output_dir, name.replace("srctype", "background"))
-		self.background = BetterBackgroundStep.reversePrecalibration(self.cleanBackground, pathBackground)
+		if not os.path.exists(pathBackground) or not self.useCheckpointFiles:
+			self.background = BetterBackgroundStep.reversePrecalibration(self.cleanBackground, pathBackground)
+		else:
+			logConsole(f"Found {pathBackground}")
+			self.background = dm.open(pathBackground)
 
+		# Subtract background from original file
 		pathBNBG = os.path.join(self.output_dir, name.replace("srctype", "BNBG"))
-		self.result = BetterBackgroundStep.subtractBackground(self.raw, self.background, pathBNBG)
+		if not os.path.exists(pathBNBG) or not self.useCheckpointFiles:
+			self.result = BetterBackgroundStep.subtractBackground(self.raw, self.background, pathBNBG)
+		else:
+			logConsole(f"Found {pathBNBG}")
+			self.result = dm.open(pathBNBG)
 
 		return self.result
 
@@ -364,7 +378,8 @@ class BetterBackgroundStep(Step):
 		interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=a * len(x), ext=1)
 		return interp
 
-	def cleanupImage(self, data : np.ndarray, crop=3, source=None, radius=5):
+	@staticmethod
+	def cleanupImage(data : np.ndarray, crop=3, source=None, radius=5):
 		"""
 		Creates a mask that selects bad pixels for background subtraction
 		Parameters

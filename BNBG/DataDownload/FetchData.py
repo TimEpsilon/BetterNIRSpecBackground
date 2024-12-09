@@ -45,7 +45,7 @@ def cleanup(path):
 			except :
 				continue
 
-	for f in glob(path+"*spec2*.json"):
+	for f in glob(path+"*image2*.json"):
 		os.remove(f)
 
 ########
@@ -61,7 +61,7 @@ print("Starting MAST Query...")
 # UNCAL : raw images
 # MSA : used for calibration
 # ASN : association files
-products_to_download = ['RATE', 'MSA', 'ASN', 'S2D', 'CAL']
+products_to_download = ['MSA', 'ASN', 'UNCAL']
 programs_to_ignore = ["CEERS-NIRSPEC-P10-MR-MSATA",
 					"CEERS-NIRSPEC-P10-PRISM-MSATA",
 					"CEERS-NIRSPEC-P11-PRISM-MSATA",
@@ -94,6 +94,6 @@ for program in np.unique(obs_table["target_name"]):
 		continue
 	_ = obs_table[obs_table["target_name"] == program]
 	print(f"Querying program: {program}")
-	path = "./mastDownload/JWST/" + program + "/"
+	path = "../../mastDownload/JWST/" + program + "/"
 	download(_["obsid"], path)
 

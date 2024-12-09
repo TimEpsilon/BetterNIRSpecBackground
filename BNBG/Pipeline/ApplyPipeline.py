@@ -1,8 +1,9 @@
 import os
 from BNBG.utils import getCRDSPath
+import shutil
 
 # Needs to be overwritten in ../CRDS_PATH
-os.environ['CRDS_PATH'] = getCRDSPath("BNBG/CRDS_PATH.txt")
+os.environ['CRDS_PATH'] = getCRDSPath(path="../CRDS_PATH.txt")
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
 import MainPipeline
@@ -14,7 +15,19 @@ from BNBG.utils import logConsole
 
 
 def main():
-	working_dir = "mastDownload/JWST/"
+	"""
+	Minimum requirement :
+	An existing mastDownload/JWST folder containing multiple folders for multiple observations
+	Each observation should contain at least _uncal.fits files, a _msa.fits file and a _spec3.json file
+	If the default subtraction is to be applied, the corresponding _spec2.json files should also exist
+	"""
+
+	# Tells the pipeline to also run the default subtraction or a pipeline with no subtraction at all
+	defaultSubtraction = True
+	noSubtraction = True
+
+	working_dir = "../../mastDownload/JWST/"
+	print(os.getcwd())
 	folders = os.listdir(working_dir) #Default, needs to be overwritten
 	try :
 		_ = sys.argv[1:]
@@ -51,10 +64,6 @@ def main():
 		rate_list = glob(path+"*_rate.fits")
 		logConsole(f"Found {len(rate_list)} countrate files.")
 
-		for file in rate_list:
-			MainPipeline.Stage2(file, path)
-
-
 		##########
 		# Basic Master Background Algorithm
 		# 0 - Apply Spec2 up until srctype (included) and save them
@@ -65,6 +74,28 @@ def main():
 		# 5 - Apply Spec3 to the spec3_asn.json
 		##########
 
+		# Custom Pipeline
+		for file in rate_list:
+			MainPipeline.Stage2(file, path)
+
+		# Basic Pipeline no subtraction
+		if noSubtraction:
+			noSubtractionPath = os.path.join(path, "NoSubtraction/")
+			if not os.path.exists(noSubtractionPath):
+				os.makedirs(noSubtractionPath)
+			for file in rate_list:
+				MainPipeline.Stage2NoSubtraction(file, noSubtractionPath)
+
+		# Basic Pipeline
+		if defaultSubtraction:
+			json_list = glob(path + "*_spec2.json")
+			defaultPath = os.path.join(path, "Default/")
+			if not os.path.exists(defaultPath):
+				os.makedirs(defaultPath)
+			for file in json_list:
+				MainPipeline.Stage2Default(file, path)
+
+
 		##########
 		# Stage 3
 		##########
@@ -73,16 +104,36 @@ def main():
 
 	for folder in folders:
 		path = working_dir + folder + "/"
-		if os.path.exists(f"{path}FilesOfInterest.csv"):
-			logConsole("FilesOfInterest.csv already exists. Skipping this folder")
+		if os.path.exists(f"{path}finished"):
+			logConsole("finished file already exists. Skipping this folder")
 			continue
 		else:
 			logConsole(f"Starting on {folder}")
 			asn_list = glob(path + "*_spec3_*_asn.json")
 			logConsole(f"Found {len(asn_list)} association files")
 
+			if noSubtraction:
+				noSubtractionPath = os.path.join(path, "NoSubtraction/")
+				noSubtractionAsn = []
+				for file in asn_list:
+					_ = noSubtractionPath+file.split("/")[-1]
+					shutil.copy(file, _)
+					noSubtractionAsn.append(_)
+
+				MainPipeline.Stage3_AssociationFile(noSubtractionAsn, noSubtractionPath, suffix="_photomstep")
+
+			if defaultSubtraction:
+				defaultPath = os.path.join(path, "Default/")
+				defaultAsn = []
+				for file in asn_list:
+					_ = defaultPath+file.split("/")[-1]
+					shutil.copy(file, _)
+					defaultAsn.append(_)
+
+				MainPipeline.Stage3_AssociationFile(defaultAsn, defaultPath, suffix="_photomstep")
+
 			MainPipeline.Stage3_AssociationFile(asn_list, path)
-			MainPipeline.Stage3_FinishUp(path)
+
 
 			logConsole("Finished")
 

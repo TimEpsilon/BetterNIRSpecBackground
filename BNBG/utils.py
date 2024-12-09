@@ -21,12 +21,15 @@ def logConsole(text, source=None):
 	logType.get(source,lambda : logger.info(text))()
 
 
-def rewriteJSON(file):
+def rewriteJSON(file, suffix="_BNBG_photomstep"):
 	"""
 	Rewrites the asn.json files in order to apply to the _BNBG files
 
 	Parameters
 	----------
+	suffix : str
+	Suffix of the input fits files
+
 	file : str
 	Path to the asn.json file
 
@@ -40,8 +43,8 @@ def rewriteJSON(file):
 		# Get calibration indices
 		not_science = []
 		for i in range(len(data["products"][0]["members"])):
-			data["products"][0]["members"][i]["expname"] = data["products"][0]["members"][i]["expname"].replace("_cal",
-			"_BNBG_photomstep")
+			data["products"][0]["members"][i]["expname"] = data["products"][0]["members"][i]["expname"].replace("_cal",suffix)
+
 			if not data["products"][0]["members"][i]["exptype"] == "science":
 				not_science.append(i)
 
