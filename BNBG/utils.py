@@ -1,6 +1,7 @@
 import numpy as np
 import json
 import logging
+import os
 
 logger = logging.getLogger("stpipe")
 
@@ -72,7 +73,10 @@ def numberSameLength(entry):
 	entry = "".join(entry)
 	return entry
 
-def getCRDSPath(path="BNBG/CRDS_PATH.txt"):
+def getCRDSPath():
+	# Get the directory of the current script
+	script_dir = os.path.dirname(os.path.abspath(__file__))
+	path = os.path.join(script_dir, 'CRDS_PATH.txt')
 	with open(path) as file:
 		txt = file.readline()
 		if txt is None or txt == "":

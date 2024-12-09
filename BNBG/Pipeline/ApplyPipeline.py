@@ -1,17 +1,16 @@
 import os
-from BNBG.utils import getCRDSPath
+
+from BNBG.Pipeline import MainPipeline
+from BNBG.utils import getCRDSPath, logConsole
 import shutil
 
 # Needs to be overwritten in ../CRDS_PATH
-os.environ['CRDS_PATH'] = getCRDSPath(path="../CRDS_PATH.txt")
+os.environ['CRDS_PATH'] = getCRDSPath()
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
-import MainPipeline
 from glob import glob
 
 import sys
-
-from BNBG.utils import logConsole
 
 
 def main():
@@ -26,8 +25,9 @@ def main():
 	defaultSubtraction = True
 	noSubtraction = True
 
-	working_dir = "../../mastDownload/JWST/"
-	print(os.getcwd())
+	script_dir = os.path.dirname(os.path.abspath(__file__))
+	working_dir = os.path.join(script_dir, '../../mastDownload/JWST/')
+
 	folders = os.listdir(working_dir) #Default, needs to be overwritten
 	try :
 		_ = sys.argv[1:]

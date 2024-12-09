@@ -1,10 +1,8 @@
 import os
-from glob import glob
 
-import pandas as pd
 from BNBG.utils import getCRDSPath
 
-os.environ['CRDS_PATH'] = getCRDSPath(path="../CRDS_PATH.txt")
+os.environ['CRDS_PATH'] = getCRDSPath()
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
 from jwst.pipeline import Detector1Pipeline, Spec3Pipeline
@@ -19,7 +17,7 @@ from jwst.pixel_replace import PixelReplaceStep
 from jwst.resample import ResampleSpecStep
 
 from BNBG.utils import logConsole, rewriteJSON, numberSameLength
-import BetterBackgroundSubtractStep as BkgSubtractStep
+import BNBG.Pipeline.BetterBackgroundSubtractStep as BkgSubtractStep
 
 
 def Stage1(uncal,path):
