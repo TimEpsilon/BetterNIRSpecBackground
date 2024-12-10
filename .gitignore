@@ -310,3 +310,10 @@ Rapport/main.fdb_latexmk
 /CRDS/mappings/jwst/jwst_system_calver_0043.rmap
 /CRDS/references/jwst/nirspec/jwst_nirspec_pars-resamplespecstep_0001.asdf
 /CRDS/references/jwst/nirspec/jwst_nirspec_wavecorr_0004.asdf
+/CRDS/mappings/jwst/jwst_1303.pmap
+/CRDS/mappings/jwst/jwst_nircam_0297.imap
+/CRDS/mappings/jwst/jwst_nircam_dark_0045.rmap
+/CRDS/mappings/jwst/jwst_nircam_readnoise_0025.rmap
+/CRDS/mappings/jwst/jwst_nircam_superbias_0018.rmap
+/CRDS/mappings/jwst/jwst_system_0043.imap
+/CRDS/mappings/jwst/jwst_system_calver_0044.rmap
