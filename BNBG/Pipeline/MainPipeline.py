@@ -114,7 +114,7 @@ def Stage2NoSubtraction(rate, path):
 	rate
 	path
 	"""
-	logConsole(f"Starting Stage 2")
+	logConsole(f"Starting Stage 2 (No Subtraction)")
 	pathSrctype = rate.replace("_rate.fits", "_srctype.fits")
 	if not os.path.exists(pathSrctype):
 		steps = {'srctype': {'save_results': True},
@@ -134,6 +134,23 @@ def Stage2NoSubtraction(rate, path):
 		spec2.run(rate)
 		del spec2
 
+	name = os.path.basename(rate.replace("_rate.fits", "_photomstep.fits"))
+	pathPhotom = os.path.join(path, name)
+	if not os.path.exists(pathPhotom):
+		logConsole("Restarting Pipeline Stage 2 (No Subtraction)")
+
+		# Remaining Steps
+		with dm.open(pathSrctype) as data:
+			logConsole("Successfully loaded _BNBG file")
+			calibrated = WavecorrStep.call(data)
+			calibrated = FlatFieldStep.call(calibrated)
+			calibrated = PathLossStep.call(calibrated)
+			calibrated = BarShadowStep.call(calibrated)
+			calibrated = PhotomStep.call(calibrated, output_dir=path, save_results=True)
+			calibrated = PixelReplaceStep.call(calibrated)
+			calibrated = ResampleSpecStep.call(calibrated, output_dir=path, save_results=True)
+			del calibrated
+
 def Stage2Default(rate, path):
 	"""
 	Applies the second stage of the pipeline as usual.
@@ -142,7 +159,7 @@ def Stage2Default(rate, path):
 	rate : should be the path to a spec2.json
 	path
 	"""
-	logConsole(f"Starting Basic Stage 2")
+	logConsole(f"Starting Basic Stage 2 (Default)")
 
 	spec2 = Spec2Pipeline()
 	spec2.output_dir = path

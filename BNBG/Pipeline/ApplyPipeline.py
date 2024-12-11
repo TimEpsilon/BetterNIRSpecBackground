@@ -88,11 +88,13 @@ def main():
 
 		# Basic Pipeline
 		if defaultSubtraction:
-			json_list = glob(path + "*_spec2.json")
+			jsonList = glob(path + "*_spec2.json")
+			logConsole(f"Found {len(jsonList)} json files.")
+
 			defaultPath = os.path.join(path, "Default/")
 			if not os.path.exists(defaultPath):
 				os.makedirs(defaultPath)
-			for file in json_list:
+			for file in jsonList:
 				MainPipeline.Stage2Default(file, path)
 
 
