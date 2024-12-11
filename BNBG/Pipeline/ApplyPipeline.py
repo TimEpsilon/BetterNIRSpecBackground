@@ -88,7 +88,7 @@ def main():
 
 		# Basic Pipeline
 		if defaultSubtraction:
-			jsonList = glob(path + "*_spec2.json")
+			jsonList = glob(path + "*_spec2_*_asn.json")
 			logConsole(f"Found {len(jsonList)} json files.")
 
 			defaultPath = os.path.join(path, "Default/")
@@ -106,38 +106,35 @@ def main():
 
 	for folder in folders:
 		path = working_dir + folder + "/"
-		if os.path.exists(f"{path}finished"):
-			logConsole("finished file already exists. Skipping this folder")
-			continue
-		else:
-			logConsole(f"Starting on {folder}")
-			asn_list = glob(path + "*_spec3_*_asn.json")
-			logConsole(f"Found {len(asn_list)} association files")
 
-			if noSubtraction:
-				noSubtractionPath = os.path.join(path, "NoSubtraction/")
-				noSubtractionAsn = []
-				for file in asn_list:
-					_ = noSubtractionPath+file.split("/")[-1]
-					shutil.copy(file, _)
-					noSubtractionAsn.append(_)
+		logConsole(f"Starting on {folder}")
+		asn_list = glob(path + "*_spec3_*_asn.json")
+		logConsole(f"Found {len(asn_list)} association files")
 
-				MainPipeline.Stage3_AssociationFile(noSubtractionAsn, noSubtractionPath, suffix="_photomstep")
+		if noSubtraction:
+			noSubtractionPath = os.path.join(path, "NoSubtraction/")
+			noSubtractionAsn = []
+			for file in asn_list:
+				_ = noSubtractionPath+file.split("/")[-1]
+				shutil.copy(file, _)
+				noSubtractionAsn.append(_)
 
-			if defaultSubtraction:
-				defaultPath = os.path.join(path, "Default/")
-				defaultAsn = []
-				for file in asn_list:
-					_ = defaultPath+file.split("/")[-1]
-					shutil.copy(file, _)
-					defaultAsn.append(_)
+			MainPipeline.Stage3_AssociationFile(noSubtractionAsn, noSubtractionPath, suffix="_photomstep")
 
-				MainPipeline.Stage3_AssociationFile(defaultAsn, defaultPath, suffix="_photomstep")
+		if defaultSubtraction:
+			defaultPath = os.path.join(path, "Default/")
+			defaultAsn = []
+			for file in asn_list:
+				_ = defaultPath+file.split("/")[-1]
+				shutil.copy(file, _)
+				defaultAsn.append(_)
 
-			MainPipeline.Stage3_AssociationFile(asn_list, path)
+			MainPipeline.Stage3_AssociationFile(defaultAsn, defaultPath, suffix="_photomstep")
+
+		MainPipeline.Stage3_AssociationFile(asn_list, path)
 
 
-			logConsole("Finished")
+		logConsole("Finished")
 
 if __name__ == "__main__":
 	main()

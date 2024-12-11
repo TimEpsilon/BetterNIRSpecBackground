@@ -172,6 +172,11 @@ def Stage3_AssociationFile(asn_list, path, suffix="_BNBG_photomstep"):
 	if not os.path.exists(final):
 		os.makedirs(final)
 
+	finishedFile = os.path.join(final, "finished")
+	if os.path.exists(finishedFile):
+		logConsole("Folder has already been processed")
+		return
+
 	for asn in asn_list:
 		logConsole(f"Starting Stage 3")
 		logConsole("Modifying Stage 3 association files")
