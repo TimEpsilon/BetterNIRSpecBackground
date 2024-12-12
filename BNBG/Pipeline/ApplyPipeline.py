@@ -95,7 +95,7 @@ def main():
 			if not os.path.exists(defaultPath):
 				os.makedirs(defaultPath)
 			for file in jsonList:
-				MainPipeline.Stage2Default(file, path)
+				MainPipeline.Stage2Default(file, defaultPath)
 
 
 		##########

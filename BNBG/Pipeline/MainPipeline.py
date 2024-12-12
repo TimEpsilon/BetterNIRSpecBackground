@@ -163,6 +163,7 @@ def Stage2Default(rate, path):
 
 	spec2 = Spec2Pipeline()
 	spec2.output_dir = path
+	spec2.save_results = True
 	spec2.run(rate)
 	del spec2
 
