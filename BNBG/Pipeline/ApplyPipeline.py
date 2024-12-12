@@ -129,7 +129,7 @@ def main():
 				shutil.copy(file, _)
 				defaultAsn.append(_)
 
-			MainPipeline.Stage3_AssociationFile(defaultAsn, defaultPath, suffix="_photomstep")
+			MainPipeline.Stage3_AssociationFile(defaultAsn, defaultPath, suffix="_cal")
 
 		MainPipeline.Stage3_AssociationFile(asn_list, path)
 

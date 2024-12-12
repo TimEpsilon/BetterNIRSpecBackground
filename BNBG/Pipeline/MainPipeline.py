@@ -1,3 +1,4 @@
+import json
 import os
 
 from BNBG.utils import getCRDSPath
@@ -160,6 +161,14 @@ def Stage2Default(rate, path):
 	path
 	"""
 	logConsole(f"Starting Basic Stage 2 (Default)")
+
+	with open("test.json") as file:
+		_ = json.load(file)
+
+	calFile = _["products"][0]["name"] + "_cal.fits"
+
+	if os.path.exists(os.path.join(path, calFile)):
+		logConsole("File already exists, skipping...")
 
 	spec2 = Spec2Pipeline()
 	spec2.output_dir = path
