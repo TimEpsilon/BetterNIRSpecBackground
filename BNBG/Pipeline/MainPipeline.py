@@ -162,7 +162,7 @@ def Stage2Default(rate, path):
 	"""
 	logConsole(f"Starting Basic Stage 2 (Default)")
 
-	with open("test.json") as file:
+	with open(rate) as file:
 		_ = json.load(file)
 
 	calFile = _["products"][0]["name"] + "_cal.fits"
