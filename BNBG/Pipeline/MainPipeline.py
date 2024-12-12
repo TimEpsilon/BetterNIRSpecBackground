@@ -169,6 +169,7 @@ def Stage2Default(rate, path):
 
 	if os.path.exists(os.path.join(path, calFile)):
 		logConsole("File already exists, skipping...")
+		return
 
 	spec2 = Spec2Pipeline()
 	spec2.output_dir = path
