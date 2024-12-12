@@ -116,7 +116,8 @@ def main():
 			noSubtractionAsn = []
 			for file in asn_list:
 				_ = noSubtractionPath+file.split("/")[-1]
-				shutil.copy(file, _)
+				if not os.path.exists(_):
+					shutil.copy(file, _)
 				noSubtractionAsn.append(_)
 
 			MainPipeline.Stage3_AssociationFile(noSubtractionAsn, noSubtractionPath, suffix="_photomstep")
@@ -126,7 +127,8 @@ def main():
 			defaultAsn = []
 			for file in asn_list:
 				_ = defaultPath+file.split("/")[-1]
-				shutil.copy(file, _)
+				if not os.path.exists(_):
+					shutil.copy(file, _)
 				defaultAsn.append(_)
 
 			MainPipeline.Stage3_AssociationFile(defaultAsn, defaultPath, suffix="_cal")
