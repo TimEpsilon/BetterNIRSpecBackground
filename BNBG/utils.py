@@ -2,6 +2,7 @@ import numpy as np
 import json
 import logging
 import os
+import stdatamodels.jwst.datamodels as dm
 
 logger = logging.getLogger("stpipe")
 
@@ -56,23 +57,6 @@ def rewriteJSON(file, suffix="_BNBG_photomstep"):
 	with open(file, "w") as asn:
 		json.dump(data, asn, indent=4)
 
-def numberSameLength(entry):
-	"""
-	Prepends 0 to a number in order to respect the XXXXX format
-	----------
-	entry : a number, assumed to be < 5 chars long
-
-	Returns
-		a str with 0 prepended to a number
-	-------
-
-	"""
-	entry = [*str(entry)]
-	while len(entry) < 5:
-		entry.insert(0, '0')
-	entry = "".join(entry)
-	return entry
-
 def getCRDSPath():
 	# Get the directory of the current script
 	script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -82,7 +66,6 @@ def getCRDSPath():
 		if txt is None or txt == "":
 			raise Exception("CRDS_PATH.txt not found or file empty")
 		return txt
-
 
 def verifySimilarImages(A, B):
 	"""
@@ -94,3 +77,49 @@ def verifySimilarImages(A, B):
 	B : ndarray
 	"""
 	return isinstance(A, np.ndarray) and isinstance(B, np.ndarray) and A.shape == B.shape
+
+# Will keep this in case it is needed at one point
+# However, it is currently useless as the Stage2 Pipeline is hardcoded to stop if assign_wcs is skipped
+# Which is a problem if I want to use any kind of checkpoint file
+# I can't be the only one who wants to save the results at different points in the pipeline and reuse them later
+# Why is there no easy way to do this
+# This should be included within the pipeline itself in the first place
+def DoPipelineWithCheckpoints(pipeline, file):
+	"""
+	Applies a pipeline stage to a file which could have been generated at any step within the pipeline, or a so-called checkpoint file
+	Parameters
+	----------
+	pipeline : Pipeline
+		Will be applied to the file, but every step already applied or skipped will be skipped
+	file :
+		A path to a file, either an ASN json or a fits file, or anything else that can be opened as or is a datamodel
+	"""
+	ASN = None
+	if isinstance(file, str):
+		if ".json" in file:
+			# Keep the 1st file within the json
+			logConsole("Found a json file. Will grab the first fits file found in the association.")
+			with open(file) as jsonFile:
+				_ = json.load(jsonFile)
+
+			name = _["products"][0]["members"][0]["expname"]
+			ASN = file
+			file = os.path.join(os.path.dirname(file), name)
+
+	model = dm.open(file)
+
+	# Iterate over steps in the pipeline
+	for stepName, _ in pipeline.step_defs.items():
+		thisStep = getattr(pipeline, stepName)
+		# Check if this step has already been completed or skipped
+		if stepName in dir(model.meta.cal_step):
+			if getattr(model.meta.cal_step, stepName) in ['COMPLETE', 'SKIPPED']:
+				logConsole(f"{stepName} has already been applied. Will be skipped.")
+				thisStep.skip = True
+			else:
+				thisStep.skip = False
+
+	if ASN is not None:
+		pipeline.run(ASN)
+	else:
+		pipeline.run(model)

@@ -17,7 +17,7 @@ from jwst.photom import PhotomStep
 from jwst.pixel_replace import PixelReplaceStep
 from jwst.resample import ResampleSpecStep
 
-from BNBG.utils import logConsole, rewriteJSON, numberSameLength
+from BNBG.utils import logConsole, rewriteJSON, DoPipelineWithCheckpoints
 import BNBG.Pipeline.BetterBackgroundSubtractStep as BkgSubtractStep
 
 
@@ -49,8 +49,8 @@ def Stage2(rate,path):
 	- The remaining steps are applied
 	Parameters
 	----------
-	rate
-	path
+	rate : path to the file
+	path : path to the folder
 	"""
 	logConsole(f"Starting Stage 2")
 	pathSrctype = rate.replace("_rate.fits", "_srctype.fits")
@@ -101,7 +101,7 @@ def Stage2(rate,path):
 			calibrated = BarShadowStep.call(calibrated)
 			calibrated = PhotomStep.call(calibrated, output_dir=path, save_results=True)
 			calibrated = PixelReplaceStep.call(calibrated)
-			calibrated = ResampleSpecStep.call(calibrated, output_dir=path, save_results=True)
+			calibrated = ResampleSpecStep.call(calibrated, output_dir=path, save_results=True, weight_type="ivm")
 			#calibrated = Extract1dStep.call(calibrated, output_dir=path, save_results=True)
 			del calibrated
 
