@@ -1,5 +1,4 @@
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from BNBG.Pipeline import MainPipeline
 from BNBG.utils import getCRDSPath, logConsole
@@ -49,17 +48,8 @@ def main():
 		uncal_list = glob(path+"*_uncal.fits")
 		logConsole(f"Found {len(uncal_list)} uncalibrated files.")
 
-		n = min(os.cpu_count(), len(uncal_list))
-		# Execute in parallel
-		with ThreadPoolExecutor(max_workers=n) as executor:
-			futures = [executor.submit(lambda file : MainPipeline.Stage1(file, path), file) for file in uncal_list]
-
-			# Wait for all futures to complete
-			for future in as_completed(futures):
-				try:
-					future.result()
-				except Exception as e:
-					logConsole(f"Error processing a file: {e}")
+		for file in uncal_list:
+			MainPipeline.Stage1(file, path)
 
 	##########
 	# Stage 2
@@ -83,19 +73,8 @@ def main():
 		# 5 - Apply Spec3 to the spec3_asn.json
 		##########
 
-		n = min(os.cpu_count(), len(rate_list))
-		# Execute in parallel
-		with ThreadPoolExecutor(max_workers=n) as executor:
-			# Custom Pipeline
-			futures = [executor.submit(lambda file: MainPipeline.Stage2(file, path), file) for file in rate_list]
-
-			# Wait for all futures to complete
-			for future in as_completed(futures):
-				try:
-					future.result()
-				except Exception as e:
-					logConsole(f"Error processing a file: {e}")
-
+		for file in rate_list:
+			MainPipeline.Stage2(file, path)
 
 		# Basic Pipeline no subtraction
 		if noSubtraction:
@@ -103,16 +82,8 @@ def main():
 			if not os.path.exists(noSubtractionPath):
 				os.makedirs(noSubtractionPath)
 
-			# Parallel jobs
-			with ThreadPoolExecutor(max_workers=n) as executor:
-				# No Subtraction
-				futures = [executor.submit(lambda file: MainPipeline.Stage2(file, path, customSubtraction=False), file) for file in rate_list]
-
-				for future in as_completed(futures):
-					try:
-						future.result()
-					except Exception as e:
-						logConsole(f"Error processing a file: {e}")
+			for file in rate_list:
+				MainPipeline.Stage2(file, path, customSubtraction=False)
 
 		# Basic Pipeline
 		if defaultSubtraction:
@@ -124,18 +95,8 @@ def main():
 			if not os.path.exists(defaultPath):
 				os.makedirs(defaultPath)
 
-			# Parallel jobs
-			with ThreadPoolExecutor(max_workers=n) as executor:
-				# No Subtraction
-				futures = [
-					executor.submit(lambda file: MainPipeline.Stage2Default(file, path), file) for
-					file in jsonList]
-				for future in as_completed(futures):
-					try:
-						future.result()
-					except Exception as e:
-						logConsole(f"Error processing a file: {e}")
-
+			for file in jsonList:
+				MainPipeline.Stage2Default(file, path)
 
 		##########
 		# Stage 3
