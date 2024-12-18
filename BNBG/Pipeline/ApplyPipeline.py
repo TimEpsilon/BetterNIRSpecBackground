@@ -1,4 +1,5 @@
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from BNBG.Pipeline import MainPipeline
 from BNBG.utils import getCRDSPath, logConsole
@@ -17,7 +18,7 @@ def main():
 	"""
 	Minimum requirement :
 	An existing mastDownload/JWST folder containing multiple folders for multiple observations
-	Each observation should contain at least _uncal.fits files, a _msa.fits file and a _spec3.json file
+	Each observation should contain at least a _uncal.fits files, a _msa.fits file and a _spec3.json file
 	If the default subtraction is to be applied, the corresponding _spec2.json files should also exist
 	"""
 
@@ -48,9 +49,17 @@ def main():
 		uncal_list = glob(path+"*_uncal.fits")
 		logConsole(f"Found {len(uncal_list)} uncalibrated files.")
 
-		for file in uncal_list:
-			MainPipeline.Stage1(file, path)
+		n = min(os.cpu_count(), len(uncal_list))
+		# Execute in parallel
+		with ThreadPoolExecutor(max_workers=n) as executor:
+			futures = [executor.submit(lambda file : MainPipeline.Stage1(file, path), file) for file in uncal_list]
 
+			# Wait for all futures to complete
+			for future in as_completed(futures):
+				try:
+					future.result()
+				except Exception as e:
+					logConsole(f"Error processing a file: {e}")
 
 	##########
 	# Stage 2
@@ -74,28 +83,58 @@ def main():
 		# 5 - Apply Spec3 to the spec3_asn.json
 		##########
 
-		# Custom Pipeline
-		for file in rate_list:
-			MainPipeline.Stage2(file, path)
+		n = min(os.cpu_count(), len(rate_list))
+		# Execute in parallel
+		with ThreadPoolExecutor(max_workers=n) as executor:
+			# Custom Pipeline
+			futures = [executor.submit(lambda file: MainPipeline.Stage2(file, path), file) for file in rate_list]
+
+			# Wait for all futures to complete
+			for future in as_completed(futures):
+				try:
+					future.result()
+				except Exception as e:
+					logConsole(f"Error processing a file: {e}")
+
 
 		# Basic Pipeline no subtraction
 		if noSubtraction:
 			noSubtractionPath = os.path.join(path, "NoSubtraction/")
 			if not os.path.exists(noSubtractionPath):
 				os.makedirs(noSubtractionPath)
-			for file in rate_list:
-				MainPipeline.Stage2(file, noSubtractionPath, customSubtraction=False)
+
+			# Parallel jobs
+			with ThreadPoolExecutor(max_workers=n) as executor:
+				# No Subtraction
+				futures = [executor.submit(lambda file: MainPipeline.Stage2(file, path, customSubtraction=False), file) for file in rate_list]
+
+				for future in as_completed(futures):
+					try:
+						future.result()
+					except Exception as e:
+						logConsole(f"Error processing a file: {e}")
 
 		# Basic Pipeline
 		if defaultSubtraction:
 			jsonList = glob(path + "*_spec2_*_asn.json")
 			logConsole(f"Found {len(jsonList)} json files.")
+			n = min(os.cpu_count(), len(jsonList))
 
 			defaultPath = os.path.join(path, "Default/")
 			if not os.path.exists(defaultPath):
 				os.makedirs(defaultPath)
-			for file in jsonList:
-				MainPipeline.Stage2Default(file, defaultPath)
+
+			# Parallel jobs
+			with ThreadPoolExecutor(max_workers=n) as executor:
+				# No Subtraction
+				futures = [
+					executor.submit(lambda file: MainPipeline.Stage2Default(file, path), file) for
+					file in jsonList]
+				for future in as_completed(futures):
+					try:
+						future.result()
+					except Exception as e:
+						logConsole(f"Error processing a file: {e}")
 
 
 		##########
