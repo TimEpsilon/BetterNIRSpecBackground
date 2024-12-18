@@ -7,6 +7,7 @@ import stdatamodels.jwst.datamodels as dm
 
 logging.basicConfig(format='%(threadName)s: %(message)s')
 logger = logging.getLogger("stpipe")
+logger.setLevel(10)
 
 
 def logConsole(text, source=None):
