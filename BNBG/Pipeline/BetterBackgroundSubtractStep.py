@@ -312,18 +312,19 @@ def modelBackgroundFromImage(preCalibrationWavelength : np.ndarray,
 	np.ndarray, 2D array of a smooth model of background, or zeros if a fit cannot be made
 	"""
 	x,y,dy = getDataWithMask(data, error, wavelength, source, radius, crop, modelImage, kernelSize=kernelSize, Nsigma=Nsigma)
-	# Weights, as a fraction of total sum, else it breaks the fitting
-	w = 1/dy
-	w /= w.mean()
 
 	# Check if at least 4 points
 	if len(x) < 4:
 		logConsole("Not enough points to fit. Returning zeros", "WARNING")
 		return np.zeros_like(preCalibrationWavelength)
 
-	if x is None and y is None and w is None:
+	if x is None and y is None and dy is None:
 		logConsole("No data was kept in slit. Returning zeros", "WARNING")
 		return np.zeros_like(preCalibrationWavelength)
+
+	# Weights, as a fraction of total sum, else it breaks the fitting
+	w = 1/dy
+	w /= w.mean()
 
 	interp = makeInterpolation(x,y,w,n)
 	# The 2D background model obtained from the 1D spectrum
