@@ -1,5 +1,9 @@
 import os.path
 
+import numpy as np
+from scipy.ndimage import generic_filter
+from scipy.stats import median_abs_deviation
+
 from BNBG.utils import *
 import stdatamodels.jwst.datamodels as dm
 from jwst.flatfield import FlatFieldStep
@@ -32,7 +36,7 @@ class BetterBackgroundStep(Step):
 
 	 Params
 	 ---------
-	 name : str
+	name : str
 		Path to the file to open. Must be a _srctype
 	saveBackgroundImage : bool
 		If true, will save the background image as a fits
@@ -44,6 +48,8 @@ class BetterBackgroundStep(Step):
 		radius = float(default=5) # The radius of extraction around the source
 		crop = integer(default=3) # how many lines will be ignored on top and below the resampled 2D image
 		interpolationKnots = float(default=0.1) # The fraction of the total amount of points which should be knots
+		kernelSize = tuple(default=(1,15)), size of kernel to use for the median filtering
+		Nsigma = float(default=10), number of sigmas above which pixels in error and data will be masked after median filtering
 	     '''
 
 	class_alias = 'bnbg'
@@ -102,11 +108,13 @@ class BetterBackgroundStep(Step):
 		pathClean = os.path.join(self.output_dir, name.replace("srctype", "clean_background"))
 		if not os.path.exists(pathClean) or not self.useCheckpointFiles:
 			self.cleanBackground = workOnSlitlet(self.resampled,
-																	  self.precalibrated,
-																	  pathClean,
-																	  radius=self.radius,
-																	  crop=self.crop,
-																	  n=self.interpolationKnots)
+												self.precalibrated,
+												pathClean,
+												radius=self.radius,
+												crop=self.crop,
+												n=self.interpolationKnots,
+												kernelSize=self.kernelSize,
+												Nsigma=self.Nsigma)
 		else:
 			logConsole(f"Found {pathClean}")
 			self.cleanBackground = dm.open(pathClean)
@@ -130,9 +138,17 @@ class BetterBackgroundStep(Step):
 		return self.result
 
 
-def cleanupImage(data : np.ndarray, error : np.ndarray, crop=3, source=None, radius=5, percent=95):
+def cleanupImage(data : np.ndarray, error : np.ndarray, crop=3, source=None, radius=5, kernelSize=(1,15), Nsigma=10):
 	"""
 	Creates a mask that selects bad pixels for background subtraction
+
+	The algorithm is as such:
+	1) Mask non-physical values (<0, NaN), crop the top and bottom pixels (crop parameter)
+	2) If a source is specified, masks the lines within radius around the source
+	3) Using this temporary mask, apply a median filtering with a given kernelSize on the data and error arrays
+	4) Subtracts this median array to the original data and error and calculates the median absolute deviation from each
+	5) Adds to the mask every pixel outside the range [-Nsigma * MAD, Nsigma * MAD] for both arrays
+
 	Parameters
 	----------
 	data : 2D array
@@ -140,12 +156,16 @@ def cleanupImage(data : np.ndarray, error : np.ndarray, crop=3, source=None, rad
 	crop : float, the amount of pixels to crop above and below the image
 	source : float, the vertical position, in number of lines, from which to mask the source. If None, no source will be masked
 	radius : float, radius of extraction along the source
-	percent : integer, between 0 and 100, the percent of lowest value pixels that should be kept
+	kernelSize : tuple, size of kernel to use for the median filtering. By default, will be 15 pixels wide in spectral direction and 1 in spatial direction
+	Nsigma : float, number of sigmas above which pixels in error and data will be masked after median filtering
 
 	Returns
 	-------
 	mask : 2D array, array of boolean where False means the pixel was kept for background subtraction and True means it was rejected
 	"""
+	data = data.copy()
+	error = error.copy()
+
 	Y, X = np.indices(data.shape)
 	# Gets rid of negative values, crops the top and bottom of the image, ignores pixels marked as nan
 	mask = (data <= 0) | (Y < crop) | (Y > Y.max() - crop) | np.isnan(data)
@@ -153,16 +173,25 @@ def cleanupImage(data : np.ndarray, error : np.ndarray, crop=3, source=None, rad
 	# If source in the image, remove lines in a radius around
 	# This also works if the source is not in frame and the returned position is 1e48
 	if source is not None:
+		# TODO ? : Case of secondary source?
 		mask = mask | (np.round(abs(Y - source)) < radius)
 
-	# Removes top 1% highest error values in already kept values
+	data[mask] = np.nan
 	error[mask] = np.nan
-	_ = error[np.isfinite(error)]
-	cut = np.percentile(_, percent)
-	mask = mask | (error > cut)
+	medianData = generic_filter(data, lambda x : np.nanmedian(x), size=kernelSize, mode="nearest")
+	medianError = generic_filter(error, lambda x : np.nanmedian(x), size=kernelSize, mode="nearest")
 
+	medianSubtractData = data - medianData
+	_ = medianSubtractData.ravel()
+	_ = _[np.isfinite(_)]
+	MADData = median_abs_deviation(_)
 
-	# TODO ? : Case of secondary source?
+	medianSubtractError = error - medianError
+	_ = medianSubtractError.ravel()
+	_ = _[np.isfinite(_)]
+	MADError = median_abs_deviation(_)
+
+	mask = mask | (np.abs(medianSubtractData) > Nsigma*MADData) | (np.abs(medianSubtractError) > Nsigma*MADError)
 
 	return mask
 
@@ -185,6 +214,12 @@ def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, n = 0.1):
 	# S is defined as S = s / len(x), needs to be tweaked for a smoother fit
 	a = 0
 	b = 1
+
+	# Regarding the values outside the range of wavelength :
+	# Extreme wavelengths could be filtered by the masking, thus reducing the range
+	# The default behavior of scipy.interpolate.UnivariateSpline is extrapolating the spline
+	# This is usually not recommended if the value to extrapolate is too far away from the range
+	# As we are however talking about a few pixels, this should normally not be an issue
 	interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=b * len(x))
 	N_b = len(interp.get_knots())
 	N_a = len(x)
@@ -204,6 +239,10 @@ def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, n = 0.1):
 	N_c = N_a
 	iteration = 0
 	while N_c != targetN and iteration < 100:
+		# Sometimes even though a and b are identical, the number of knots is different
+		# This is because the gods of interpolation actually hate me personally
+		if a==b:
+			break
 		iteration += 1
 		c = (a+b)/2
 		interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=c * len(x))
@@ -247,7 +286,9 @@ def modelBackgroundFromImage(preCalibrationWavelength : np.ndarray,
 							 radius = 4,
 							 crop = 3,
 							 n = 0.1,
-							 modelImage = None):
+							 modelImage = None,
+							 kernelSize=(1,15), 
+							 Nsigma=10):
 	"""
 	Creates a 2D image model based on the pre-calibration wavelengths positions of the background
 
@@ -262,12 +303,14 @@ def modelBackgroundFromImage(preCalibrationWavelength : np.ndarray,
 	crop : int, number of lines to ignore above and below
 	n : float, fraction of total datapoints to be knots
 	modelImage : np.ndarray, 2D array representing the envelope-less and noiseless image. Used for testing
+	kernelSize : tuple, size of kernel to use for the median filtering. By default, will be 15 pixels wide in spectral direction and 1 in spatial direction
+	Nsigma : float, number of sigmas above which pixels in error and data will be masked after median filtering
 
 	Returns
 	-------
 	np.ndarray, 2D array of a smooth model of background, or zeros if a fit cannot be made
 	"""
-	x,y,dy = getDataWithMask(data, error, wavelength, source, radius, crop, modelImage)
+	x,y,dy = getDataWithMask(data, error, wavelength, source, radius, crop, modelImage, kernelSize=kernelSize, Nsigma=Nsigma)
 	# Weights, as a fraction of total sum, else it breaks the fitting
 	w = 1/dy
 	w /= w.mean()
@@ -291,7 +334,9 @@ def getDataWithMask(data : np.ndarray,
 							 source = None,
 							 radius = 4,
 							 crop = 3,
-							 modelImage = None):
+							 modelImage = None,
+							 kernelSize=(1,15), 
+							 Nsigma=10):
 	"""
 	Extracts 3 1D arrays x, y and dy from 2D arrays
 
@@ -304,6 +349,8 @@ def getDataWithMask(data : np.ndarray,
 	radius : float, radius of mask around source
 	crop : int, number of lines to ignore above and below
 	modelImage : np.ndarray, 2D array representing the envelope-less and noiseless image. Used for testing
+	kernelSize : tuple, size of kernel to use for the median filtering. By default, will be 15 pixels wide in spectral direction and 1 in spatial direction
+	Nsigma : float, number of sigmas above which pixels in error and data will be masked after median filtering
 
 	Returns
 	-------
@@ -313,7 +360,7 @@ def getDataWithMask(data : np.ndarray,
 	isModelValid = verifySimilarImages(data, modelImage)
 	yModel = None
 
-	mask = cleanupImage(data, error, source=source, radius=radius, crop=crop)
+	mask = cleanupImage(data, error, source=source, radius=radius, crop=crop, kernelSize=kernelSize, Nsigma=Nsigma)
 	if np.all(mask):
 		# No data
 		return None, None, None
@@ -342,7 +389,7 @@ def getDataWithMask(data : np.ndarray,
 	return x,y,dy
 
 
-def modelBackgroundFromSlit(slit, precalSlit, radius=4, crop=3, n=0.1):
+def modelBackgroundFromSlit(slit, precalSlit, radius=4, crop=3, n=0.1, kernelSize=(1,15), Nsigma=10):
 	"""
 	Creates a 2D image model based on the pre-calibration wavelengths positions of the background
 
@@ -353,6 +400,8 @@ def modelBackgroundFromSlit(slit, precalSlit, radius=4, crop=3, n=0.1):
 	radius : float, radius of mask around source
 	crop : int, number of lines to ignore above and below
 	n : float, fraction of total datapoints to be knots
+	kernelSize : tuple, size of kernel to use for the median filtering. By default, will be 15 pixels wide in spectral direction and 1 in spatial direction
+	Nsigma : float, number of sigmas above which pixels in error and data will be masked after median filtering
 
 	Returns
 	-------
@@ -373,7 +422,9 @@ def modelBackgroundFromSlit(slit, precalSlit, radius=4, crop=3, n=0.1):
 									source=source,
 									radius=radius,
 									crop=crop,
-									n=n)
+									n=n,
+									kernelSize=kernelSize, 
+									Nsigma=Nsigma)
 
 
 def subtractBackground(raw, background, pathBNBG):
@@ -413,12 +464,12 @@ def resampling(precalibration, pathResample):
 	return resampled
 
 
-def workOnSlitlet(resampled, precalibration, pathClean, radius=4, crop=3, n=0.1):
+def workOnSlitlet(resampled, precalibration, pathClean, radius=4, crop=3, n=0.1, kernelSize=(1,15), Nsigma=10):
 	# For a given _srctype, for every slit
 	for i,slit in enumerate(resampled.slits):
 		logConsole(f"Opened slitlet {slit.slitlet_id}")
 		logConsole("Starting on modeling of background")
-		fitted = modelBackgroundFromSlit(slit, precalibration.slits[i], radius=radius, crop=crop, n=n)
+		fitted = modelBackgroundFromSlit(slit, precalibration.slits[i], radius=radius, crop=crop, n=n, kernelSize=kernelSize, Nsigma=Nsigma)
 
 		# Overwrite data with background fit
 		precalibration.slits[i].data = fitted

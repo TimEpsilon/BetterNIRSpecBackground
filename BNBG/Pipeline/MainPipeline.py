@@ -41,7 +41,7 @@ def Stage1(uncal,path):
 	return
 
 
-def Stage2(rate,path):
+def Stage2(rate, path, customSubtraction=True):
 	"""
 	Applies the second stage of the pipeline. It is applied in 3 steps :
 	- The first few steps of the pipeline are applied as usual up until srctype
@@ -51,8 +51,12 @@ def Stage2(rate,path):
 	----------
 	rate : path to the file
 	path : path to the folder
+	customSubtraction : bool, if True, will apply the subtraction. Useful if you want to ignore the subtraction and apply it later
 	"""
-	logConsole(f"Starting Stage 2")
+	if customSubtraction:
+		logConsole(f"Starting Stage 2")
+	else :
+		logConsole(f"Starting Stage 2 (No Subtraction)")
 	pathSrctype = rate.replace("_rate.fits", "_srctype.fits")
 	if not os.path.exists(pathSrctype):
 		steps = {'srctype': {'save_results': True},
@@ -72,13 +76,20 @@ def Stage2(rate,path):
 		spec2.run(rate)
 		del spec2
 
-	# Custom Step
-	pathBNBG = rate.replace("_rate.fits", "_BNBG.fits")
-	if not os.path.exists(pathBNBG):
-		step = BkgSubtractStep.BetterBackgroundStep()
-		step.call(pathSrctype,output_dir=os.path.dirname(pathSrctype))
+	if customSubtraction:
+		# Custom Step
+		pathBNBG = rate.replace("_rate.fits", "_BNBG.fits")
+		if not os.path.exists(pathBNBG):
+			step = BkgSubtractStep.BetterBackgroundStep()
+			step.call(pathSrctype,output_dir=os.path.dirname(pathSrctype))
 
-	pathPhotom = rate.replace("_rate.fits", "_BNBG_photomstep.fits")
+		name = os.path.basename(rate.replace("_rate.fits", "_BNBG_photomstep.fits"))
+	else:
+		name = os.path.basename(rate.replace("_rate.fits", "_photomstep.fits"))
+		pathBNBG = pathSrctype
+
+	pathPhotom = os.path.join(path, name)
+
 	if not os.path.exists(pathPhotom):
 		logConsole("Restarting Pipeline Stage 2")
 
@@ -102,54 +113,6 @@ def Stage2(rate,path):
 			calibrated = PhotomStep.call(calibrated, output_dir=path, save_results=True)
 			calibrated = PixelReplaceStep.call(calibrated)
 			calibrated = ResampleSpecStep.call(calibrated, output_dir=path, save_results=True, weight_type="ivm")
-			#calibrated = Extract1dStep.call(calibrated, output_dir=path, save_results=True)
-			del calibrated
-
-
-def Stage2NoSubtraction(rate, path):
-	"""
-	Applies the second stage of the pipeline.
-	This applies the steps as if it was the custom pipeline, but skips the subtraction part
-	Parameters
-	----------
-	rate
-	path
-	"""
-	logConsole(f"Starting Stage 2 (No Subtraction)")
-	pathSrctype = rate.replace("_rate.fits", "_srctype.fits")
-	if not os.path.exists(pathSrctype):
-		steps = {'srctype': {'save_results': True},
-				 'photom': {'skip': True},
-				 'flat_field': {'skip': True},
-				 'master_background_mos': {'skip': True},
-				 'wavecorr': {'skip': True},
-				 'pathloss': {'skip': True},
-				 'barshadow': {'skip': True},
-				 'pixel_replace': {'skip': True},
-				 'extract_1d': {'skip': True},
-				 'cube_build': {'skip': True},
-				 'resample_spec': {'skip': True}}
-
-		spec2 = Spec2Pipeline(steps=steps)
-		spec2.output_dir = path
-		spec2.run(rate)
-		del spec2
-
-	name = os.path.basename(rate.replace("_rate.fits", "_photomstep.fits"))
-	pathPhotom = os.path.join(path, name)
-	if not os.path.exists(pathPhotom):
-		logConsole("Restarting Pipeline Stage 2 (No Subtraction)")
-
-		# Remaining Steps
-		with dm.open(pathSrctype) as data:
-			logConsole("Successfully loaded _BNBG file")
-			calibrated = WavecorrStep.call(data)
-			calibrated = FlatFieldStep.call(calibrated)
-			calibrated = PathLossStep.call(calibrated)
-			calibrated = BarShadowStep.call(calibrated)
-			calibrated = PhotomStep.call(calibrated, output_dir=path, save_results=True)
-			calibrated = PixelReplaceStep.call(calibrated)
-			calibrated = ResampleSpecStep.call(calibrated, output_dir=path, save_results=True)
 			del calibrated
 
 def Stage2Default(rate, path):

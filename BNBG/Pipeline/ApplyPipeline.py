@@ -84,7 +84,7 @@ def main():
 			if not os.path.exists(noSubtractionPath):
 				os.makedirs(noSubtractionPath)
 			for file in rate_list:
-				MainPipeline.Stage2NoSubtraction(file, noSubtractionPath)
+				MainPipeline.Stage2(file, noSubtractionPath, customSubtraction=False)
 
 		# Basic Pipeline
 		if defaultSubtraction:
