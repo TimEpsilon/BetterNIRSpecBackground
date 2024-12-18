@@ -313,13 +313,13 @@ def modelBackgroundFromImage(preCalibrationWavelength : np.ndarray,
 	"""
 	x,y,dy = getDataWithMask(data, error, wavelength, source, radius, crop, modelImage, kernelSize=kernelSize, Nsigma=Nsigma)
 
+	if x is None and y is None and dy is None:
+		logConsole("No data was kept in slit. Returning zeros", "WARNING")
+		return np.zeros_like(preCalibrationWavelength)
+
 	# Check if at least 4 points
 	if len(x) < 4:
 		logConsole("Not enough points to fit. Returning zeros", "WARNING")
-		return np.zeros_like(preCalibrationWavelength)
-
-	if x is None and y is None and dy is None:
-		logConsole("No data was kept in slit. Returning zeros", "WARNING")
 		return np.zeros_like(preCalibrationWavelength)
 
 	# Weights, as a fraction of total sum, else it breaks the fitting
