@@ -48,7 +48,8 @@ class BetterBackgroundStep(Step):
 		radius = float(default=5) # The radius of extraction around the source
 		crop = integer(default=3) # how many lines will be ignored on top and below the resampled 2D image
 		interpolationKnots = float(default=0.1) # The fraction of the total amount of points which should be knots
-		kernelSize = tuple(default=(1,15)), size of kernel to use for the median filtering
+		kernelHeight = integer(default=1), height of kernel to use for the median filtering. By default, will be 1px in spatial direction
+		kernelWidth = integer(default=15), width of kernel to use for the median filtering. By default, will be 15px in spectral direction
 		Nsigma = float(default=10), number of sigmas above which pixels in error and data will be masked after median filtering
 	     '''
 
@@ -113,7 +114,7 @@ class BetterBackgroundStep(Step):
 												radius=self.radius,
 												crop=self.crop,
 												n=self.interpolationKnots,
-												kernelSize=self.kernelSize,
+												kernelSize=(self.kernelHeight,self.kernelWidth),
 												Nsigma=self.Nsigma)
 		else:
 			logConsole(f"Found {pathClean}")

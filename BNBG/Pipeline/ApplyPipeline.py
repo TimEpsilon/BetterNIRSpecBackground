@@ -23,7 +23,7 @@ def main():
 	"""
 
 	# Tells the pipeline to also run the default subtraction or a pipeline with no subtraction at all
-	defaultSubtraction = True
+	defaultSubtraction = False
 	noSubtraction = True
 
 	script_dir = os.path.dirname(os.path.abspath(__file__))
