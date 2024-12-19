@@ -140,7 +140,7 @@ def Stage2Default(rate, path):
 	spec2.run(rate)
 	del spec2
 
-def Stage3_AssociationFile(asn_list, path, suffix="_BNBG_photomstep"):
+def Stage3_AssociationFile(asn_list, path, suffix="BNBG_photomstep"):
 	# Create a separate folder for all final data
 	final = path + "Final/"
 	if not os.path.exists(final):

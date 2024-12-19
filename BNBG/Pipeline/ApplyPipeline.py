@@ -119,7 +119,7 @@ def main():
 					shutil.copy(file, _)
 				noSubtractionAsn.append(_)
 
-			MainPipeline.Stage3_AssociationFile(noSubtractionAsn, noSubtractionPath, suffix="_photomstep")
+			MainPipeline.Stage3_AssociationFile(noSubtractionAsn, noSubtractionPath, suffix="photomstep")
 
 		if defaultSubtraction:
 			defaultPath = os.path.join(path, "Default/")
@@ -130,7 +130,7 @@ def main():
 					shutil.copy(file, _)
 				defaultAsn.append(_)
 
-			MainPipeline.Stage3_AssociationFile(defaultAsn, defaultPath, suffix="_cal")
+			MainPipeline.Stage3_AssociationFile(defaultAsn, defaultPath, suffix="cal")
 
 		MainPipeline.Stage3_AssociationFile(asn_list, path)
 

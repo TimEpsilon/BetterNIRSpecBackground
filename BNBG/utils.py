@@ -23,7 +23,7 @@ def logConsole(text, source=None):
 	logType.get(source,lambda : logger.info(text))()
 
 
-def rewriteJSON(file, suffix="_BNBG_photomstep"):
+def rewriteJSON(file, suffix="BNBG_photomstep"):
 	"""
 	Rewrites the asn.json files in order to apply to the _BNBG files
 
@@ -51,9 +51,9 @@ def rewriteJSON(file, suffix="_BNBG_photomstep"):
 			# We simply get rid of the .fits and every character after nrs1/nrs2
 			# This is a janky solution, but that's the cost of having multiple checkpoint files I suppose
 			if "nrs1" in name:
-				print(f"{name.split('nrs1')[0]}nrs1_{suffix}.fits")
+				name = f"{name.split('nrs1')[0]}nrs1_{suffix}.fits"
 			if "nrs2" in name:
-				print(f"{name.split('nrs2')[0]}nrs2_{suffix}.fits")
+				name = f"{name.split('nrs2')[0]}nrs2_{suffix}.fits"
 			data["products"][0]["members"][i]["expname"] = name
 
 			if not data["products"][0]["members"][i]["exptype"] == "science":
