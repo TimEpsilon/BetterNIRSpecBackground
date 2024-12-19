@@ -45,7 +45,16 @@ def rewriteJSON(file, suffix="_BNBG_photomstep"):
 		# Get calibration indices
 		not_science = []
 		for i in range(len(data["products"][0]["members"])):
-			data["products"][0]["members"][i]["expname"] = data["products"][0]["members"][i]["expname"].replace("_cal",suffix)
+			name = data["products"][0]["members"][i]["expname"]
+			# The name of the file will be as such : jw01345063001_03101_00001_nrs1_BNBG_photomstep.fits
+			# We can't simply use _ as delimiters because of BNBG_something
+			# We simply get rid of the .fits and every character after nrs1/nrs2
+			# This is a janky solution, but that's the cost of having multiple checkpoint files I suppose
+			if "nrs1" in name:
+				print(f"{name.split('nrs1')[0]}nrs1_{suffix}.fits")
+			if "nrs2" in name:
+				print(f"{name.split('nrs2')[0]}nrs2_{suffix}.fits")
+			data["products"][0]["members"][i]["expname"] = name
 
 			if not data["products"][0]["members"][i]["exptype"] == "science":
 				not_science.append(i)
