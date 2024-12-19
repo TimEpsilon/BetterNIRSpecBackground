@@ -83,13 +83,12 @@ def main():
 				os.makedirs(noSubtractionPath)
 
 			for file in rate_list:
-				MainPipeline.Stage2(file, path, customSubtraction=False)
+				MainPipeline.Stage2(file, noSubtractionPath, customSubtraction=False)
 
 		# Basic Pipeline
 		if defaultSubtraction:
 			jsonList = glob(path + "*_spec2_*_asn.json")
 			logConsole(f"Found {len(jsonList)} json files.")
-			n = min(os.cpu_count(), len(jsonList))
 
 			defaultPath = os.path.join(path, "Default/")
 			if not os.path.exists(defaultPath):
