@@ -1,8 +1,6 @@
 import json
 import os
 
-from jwst.extract_1d import Extract1dStep
-
 from BNBG.utils import getCRDSPath
 
 os.environ['CRDS_PATH'] = getCRDSPath()
@@ -11,15 +9,9 @@ os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 from jwst.pipeline import Detector1Pipeline, Spec3Pipeline
 from jwst.pipeline import Spec2Pipeline
 import stdatamodels.jwst.datamodels as dm
-from jwst.wavecorr import WavecorrStep
-from jwst.flatfield import FlatFieldStep
-from jwst.pathloss import PathLossStep
-from jwst.barshadow import BarShadowStep
-from jwst.photom import PhotomStep
-from jwst.pixel_replace import PixelReplaceStep
-from jwst.resample import ResampleSpecStep
+from jwst.extract_1d import Extract1dStep
 
-from BNBG.utils import logConsole, rewriteJSON, DoPipelineWithCheckpoints
+from BNBG.utils import logConsole, rewriteJSON
 import BNBG.Pipeline.BetterBackgroundSubtractStep as BkgSubtractStep
 
 
