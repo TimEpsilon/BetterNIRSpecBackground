@@ -1,6 +1,8 @@
 import json
 import os
 
+from jwst.extract_1d import Extract1dStep
+
 from BNBG.utils import getCRDSPath
 
 os.environ['CRDS_PATH'] = getCRDSPath()
@@ -30,8 +32,9 @@ def Stage1(uncal,path):
 	path : path to the folder
 
 	"""
-	logConsole(f"Starting Stage 1 on {uncal}")
+	logConsole(f"Starting Stage 1 on {os.path.basename(uncal)}")
 	if os.path.exists(uncal.replace("_uncal", "_rate")):
+		logConsole(f"File {os.path.basename(uncal).replace('uncal','rate')} already exists, skipping.")
 		return
 	det1 = Detector1Pipeline()
 	det1.save_results = True
@@ -41,79 +44,28 @@ def Stage1(uncal,path):
 	return
 
 
-def Stage2(rate, path, customSubtraction=True):
+def Stage2(rate, path):
 	"""
-	Applies the second stage of the pipeline. It is applied in 3 steps :
-	- The first few steps of the pipeline are applied as usual up until srctype
-	- The pipeline is stopped and the custom step is applied
-	- The remaining steps are applied
+	Applies the second stage of the pipeline. This used to be where the custom subtraction happened.
+	This now happens after the stage 3 si finished.
 	Parameters
 	----------
 	rate : path to the file
 	path : path to the folder
-	customSubtraction : bool, if True, will apply the subtraction. Useful if you want to ignore the subtraction and apply it later
 	"""
-	if customSubtraction:
-		logConsole(f"Starting Stage 2")
-	else :
-		logConsole(f"Starting Stage 2 (No Subtraction)")
-	pathSrctype = rate.replace("_rate.fits", "_srctype.fits")
-	if not os.path.exists(pathSrctype):
-		steps = {'srctype': {'save_results': True},
-				 'photom': {'skip': True},
-				 'flat_field': {'skip': True},
-				 'master_background_mos': {'skip': True},
-				 'wavecorr': {'skip': True},
-				 'pathloss': {'skip': True},
-				 'barshadow': {'skip': True},
-				 'pixel_replace': {'skip': True},
-				 'extract_1d': {'skip': True},
-				 'cube_build': {'skip': True},
-				 'resample_spec': {'skip': True}}
+	logConsole(f"Starting Stage 2 on {os.path.basename(rate)}")
+	if os.path.exists(rate.replace("_rate.fits", "_cal.fits")):
+		logConsole(f"File {os.path.basename(rate).replace('rate','cal')} already exists, skipping.")
+		return
 
-		spec2 = Spec2Pipeline(steps=steps)
-		spec2.output_dir = path
-		spec2.run(rate)
-		del spec2
+	# No background subtraction
+	steps = {'master_background_mos': {'skip': True},
+			 'bkg_subtract': {'skip': True}}
 
-	if customSubtraction:
-		# Custom Step
-		pathBNBG = rate.replace("_rate.fits", "_BNBG.fits")
-		if not os.path.exists(pathBNBG):
-			step = BkgSubtractStep.BetterBackgroundStep()
-			step.call(pathSrctype,output_dir=os.path.dirname(pathSrctype))
-
-		name = os.path.basename(rate.replace("_rate.fits", "_BNBG_photomstep.fits"))
-	else:
-		name = os.path.basename(rate.replace("_rate.fits", "_photomstep.fits"))
-		pathBNBG = pathSrctype
-
-	pathPhotom = os.path.join(path, name)
-
-	if not os.path.exists(pathPhotom):
-		logConsole("Restarting Pipeline Stage 2")
-
-		# Steps :
-		# wavecorr
-		# flat field
-		# path loss
-		# bar shadow
-		# photom
-		# pixel replace
-		# rectified 2D -> Save
-		# spectral extraction -> Save
-
-		# Remaining Steps
-		with dm.open(pathBNBG) as data:
-			logConsole("Successfully loaded _BNBG file")
-			calibrated = WavecorrStep.call(data)
-			calibrated = FlatFieldStep.call(calibrated)
-			calibrated = PathLossStep.call(calibrated)
-			calibrated = BarShadowStep.call(calibrated)
-			calibrated = PhotomStep.call(calibrated, output_dir=path, save_results=True)
-			calibrated = PixelReplaceStep.call(calibrated)
-			calibrated = ResampleSpecStep.call(calibrated, output_dir=path, save_results=True, weight_type="ivm")
-			del calibrated
+	spec2 = Spec2Pipeline(steps=steps)
+	spec2.output_dir = path
+	spec2.run(rate)
+	del spec2
 
 def Stage2Default(rate, path):
 	"""
@@ -140,7 +92,7 @@ def Stage2Default(rate, path):
 	spec2.run(rate)
 	del spec2
 
-def Stage3_AssociationFile(asn_list, path, suffix="BNBG_photomstep"):
+def Stage3_AssociationFile(asn_list, path, suffix="cal"):
 	# Create a separate folder for all final data
 	final = path + "Final/"
 	if not os.path.exists(final):
@@ -167,3 +119,15 @@ def Stage3_AssociationFile(asn_list, path, suffix="BNBG_photomstep"):
 	finishedFile = open(final+"finished", "w")
 	finishedFile.write("")
 	finishedFile.close()
+
+def Stage4(s2d, path):
+	pathBNBG = s2d.replace("_s2d.fits", "_s2d-BNBG.fits")
+	if not os.path.exists(pathBNBG):
+		step = BkgSubtractStep.BetterBackgroundStep()
+		s2d_BNBG = step.call(pathBNBG, output_dir=os.path.dirname(path))
+		x1dStep = Extract1dStep()
+		x1dStep.suffix = "x1d-BNBG"
+		x1dStep.save_results = True
+		x1dStep.output_dir = path
+		x1dStep.run(s2d_BNBG)
+

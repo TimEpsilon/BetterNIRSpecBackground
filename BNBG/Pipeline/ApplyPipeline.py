@@ -21,10 +21,6 @@ def main():
 	If the default subtraction is to be applied, the corresponding _spec2.json files should also exist
 	"""
 
-	# Tells the pipeline to also run the default subtraction or a pipeline with no subtraction at all
-	defaultSubtraction = False
-	noSubtraction = True
-
 	script_dir = os.path.dirname(os.path.abspath(__file__))
 	working_dir = os.path.join(script_dir, '../../mastDownload/JWST/')
 
@@ -76,32 +72,11 @@ def main():
 		for file in rate_list:
 			MainPipeline.Stage2(file, path)
 
-		# Basic Pipeline no subtraction
-		if noSubtraction:
-			noSubtractionPath = os.path.join(path, "NoSubtraction/")
-			if not os.path.exists(noSubtractionPath):
-				os.makedirs(noSubtractionPath)
-
-			for file in rate_list:
-				MainPipeline.Stage2(file, noSubtractionPath, customSubtraction=False)
-
-		# Basic Pipeline
-		if defaultSubtraction:
-			jsonList = glob(path + "*_spec2_*_asn.json")
-			logConsole(f"Found {len(jsonList)} json files.")
-
-			defaultPath = os.path.join(path, "Default/")
-			if not os.path.exists(defaultPath):
-				os.makedirs(defaultPath)
-
-			for file in jsonList:
-				MainPipeline.Stage2Default(file, path)
-
 		##########
 		# Stage 3
 		##########
 
-		logConsole(f"Stage 2 Finished. Preparing Stage 3")
+	logConsole(f"Stage 2 Finished. Preparing Stage 3")
 
 	for folder in folders:
 		path = working_dir + folder + "/"
@@ -110,30 +85,7 @@ def main():
 		asn_list = glob(path + "*_spec3_*_asn.json")
 		logConsole(f"Found {len(asn_list)} association files")
 
-		if noSubtraction:
-			noSubtractionPath = os.path.join(path, "NoSubtraction/")
-			noSubtractionAsn = []
-			for file in asn_list:
-				_ = noSubtractionPath+file.split("/")[-1]
-				if not os.path.exists(_):
-					shutil.copy(file, _)
-				noSubtractionAsn.append(_)
-
-			MainPipeline.Stage3_AssociationFile(noSubtractionAsn, noSubtractionPath, suffix="photomstep")
-
-		if defaultSubtraction:
-			defaultPath = os.path.join(path, "Default/")
-			defaultAsn = []
-			for file in asn_list:
-				_ = defaultPath+file.split("/")[-1]
-				if not os.path.exists(_):
-					shutil.copy(file, _)
-				defaultAsn.append(_)
-
-			MainPipeline.Stage3_AssociationFile(defaultAsn, defaultPath, suffix="cal")
-
 		MainPipeline.Stage3_AssociationFile(asn_list, path)
-
 
 		logConsole("Finished")
 
