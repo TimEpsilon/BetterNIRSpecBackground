@@ -1,3 +1,4 @@
+import inspect
 import os.path
 
 from scipy.ndimage import generic_filter
@@ -93,7 +94,6 @@ class BetterBackgroundStep(Step):
 			self.background = dm.open(pathBkg)
 
 		# Subtract background from original file
-		# TODO : Make custom subtraction routine
 		pathBNBG = os.path.join(self.output_dir, name.replace("s2d", "s2d-BNBG"))
 		if not os.path.exists(pathBNBG) or not self.useCheckpointFiles:
 			result = subtractBackground(self.raw, self.background, pathBNBG)
@@ -103,10 +103,10 @@ class BetterBackgroundStep(Step):
 
 		return result
 
-def workOnSlitlet(resampled, pathClean, radius=4, crop=3, n=0.1, kernelSize=(1,15), Nsigma=10):
+def workOnSlitlet(resampled, pathClean, **kwargs):
 	# For a given _s2d
 	logConsole("Starting modeling background")
-	fitted = modelBackgroundFromSlit(resampled, radius=radius, crop=crop, n=n, kernelSize=kernelSize, Nsigma=Nsigma)
+	fitted = modelBackgroundFromSlit(resampled, **kwargs)
 
 	# Overwrite data with background fit
 	resampled.data = fitted
@@ -117,18 +117,13 @@ def workOnSlitlet(resampled, pathClean, radius=4, crop=3, n=0.1, kernelSize=(1,1
 
 	return resampled
 
-def modelBackgroundFromSlit(slit, radius=4, crop=3, n=0.1, kernelSize=(1,15), Nsigma=10):
+def modelBackgroundFromSlit(slit, **kwargs):
 	"""
 	Creates a 2D image model based on the wavelengths positions of the background
 
 	Parameters
 	----------
 	slit : a slit object, It is assumed that it contains WCS data and that a resampling step has been applied
-	radius : float, radius of mask around source
-	crop : int, number of lines to ignore above and below
-	n : float, fraction of total datapoints to be knots
-	kernelSize : tuple, size of kernel to use for the median filtering. By default, will be 15 pixels wide in spectral direction and 1 in spatial direction
-	Nsigma : float, number of sigmas above which pixels in error and data will be masked after median filtering
 
 	Returns
 	-------
@@ -143,11 +138,7 @@ def modelBackgroundFromSlit(slit, radius=4, crop=3, n=0.1, kernelSize=(1,15), Ns
 									slit.err.copy(),
 									dataLambda,
 									source=source,
-									radius=radius,
-									crop=crop,
-									n=n,
-									kernelSize=kernelSize,
-									Nsigma=Nsigma)
+									**kwargs)
 
 def getSourcePosition(slit):
 	"""
@@ -165,36 +156,22 @@ def getSourcePosition(slit):
 def modelBackgroundFromImage(data : np.ndarray,
 							 error : np.ndarray,
 							 wavelength : np.ndarray,
-							 source = None,
-							 radius = 4,
-							 crop = 3,
-							 n = 0.1,
-							 modelImage = None,
-							 kernelSize=(1,15),
-							 Nsigma=10):
-	# TODO : replace redundant args by a kwarg thingy
+							 **kwargs):
 	"""
 	Creates a 2D image model based on the pre-calibration wavelengths positions of the background
 
 	Parameters
 	----------
-	preCalibrationWavelength : np.ndarray, 2D array representing the wavelength at each pixel
 	data : np.ndarray, 2D array of the treated image
 	error : np.ndarray, 2D array of the error of the treated image
 	wavelength : np.ndarray, 2D array representing the wavelength of the treated image
-	source : float, the source position along the vertical axis, in pixels
-	radius : float, radius of mask around source
-	crop : int, number of lines to ignore above and below
-	n : float, fraction of total datapoints to be knots
-	modelImage : np.ndarray, 2D array representing the envelope-less and noiseless image. Used for testing
-	kernelSize : tuple, size of kernel to use for the median filtering. By default, will be 15 pixels wide in spectral direction and 1 in spatial direction
-	Nsigma : float, number of sigmas above which pixels in error and data will be masked after median filtering
 
 	Returns
 	-------
 	np.ndarray, 2D array of a smooth model of background, or zeros if a fit cannot be made
 	"""
-	x,y,dy = getDataWithMask(data, error, wavelength, source, radius, crop, modelImage, kernelSize=kernelSize, Nsigma=Nsigma)
+	kwargs_getDataWithMask = {k: v for k, v in kwargs.items() if k in inspect.signature(getDataWithMask).parameters}
+	x,y,dy = getDataWithMask(data, error, wavelength, **kwargs_getDataWithMask)
 
 	if x is None and y is None and dy is None:
 		logConsole("No data was kept in slit. Returning zeros", "WARNING")
@@ -209,19 +186,15 @@ def modelBackgroundFromImage(data : np.ndarray,
 	w = 1/dy
 	w /= w.mean()
 
-	interp = makeInterpolation(x,y,w,n)
+	kwargs_makeInterpolation = {k: v for k, v in kwargs.items() if k in inspect.signature(makeInterpolation).parameters}
+	interp = makeInterpolation(x,y,w,**kwargs_makeInterpolation)
 	# The 2D background model obtained from the 1D spectrum
 	return interp(wavelength)
 
 def getDataWithMask(data : np.ndarray,
 							 error : np.ndarray,
 							 wavelength : np.ndarray,
-							 source = None,
-							 radius = 4,
-							 crop = 3,
-							 modelImage = None,
-							 kernelSize=(1,15),
-							 Nsigma=10):
+							 **kwargs):
 	"""
 	Extracts 3 1D arrays x, y and dy from 2D arrays
 
@@ -230,22 +203,13 @@ def getDataWithMask(data : np.ndarray,
 	data : np.ndarray, 2D array of the treated image
 	error : np.ndarray, 2D array of the error of the treated image
 	wavelength : np.ndarray, 2D array representing the wavelength of the treated image
-	source : float, the source position along the vertical axis, in pixels
-	radius : float, radius of mask around source
-	crop : int, number of lines to ignore above and below
-	modelImage : np.ndarray, 2D array representing the envelope-less and noiseless image. Used for testing
-	kernelSize : tuple, size of kernel to use for the median filtering. By default, will be 15 pixels wide in spectral direction and 1 in spatial direction
-	Nsigma : float, number of sigmas above which pixels in error and data will be masked after median filtering
 
 	Returns
 	-------
 	x, y, dy
 
 	"""
-	isModelValid = verifySimilarImages(data, modelImage)
-	yModel = None
-
-	mask = cleanupImage(data, error, source=source, radius=radius, crop=crop, kernelSize=kernelSize, Nsigma=Nsigma)
+	mask = cleanupImage(data, error, **kwargs)
 	if np.all(mask):
 		# No data
 		return None, None, None
@@ -255,11 +219,6 @@ def getDataWithMask(data : np.ndarray,
 	dy = np.sqrt(extractWithMask(error ** 2, mask))
 
 	nanMask = (np.isnan(y)) | (np.isnan(dy)) | (np.isnan(x))
-
-	if isModelValid:
-		yModel = extractWithMask(modelImage, mask)
-		nanMask = nanMask | (np.isnan(yModel))
-		yModel = yModel[~nanMask]
 
 	x = x[~nanMask]
 	y = y[~nanMask]
@@ -411,11 +370,26 @@ def extractWithMask(data, mask):
 	return x
 
 def subtractBackground(raw, background, pathBNBG):
+	"""
+	Subtracts the background data from raw data, assuming a single slitlet.
+	Also adds the errors appropriately.
+	Parameters
+	----------
+	raw
+	background
+	pathBNBG
 
-	# This then removes slit by slit the background
-	# TODO : No error is propagated, if the fitting ends up being rewritten to account for errors,
-	#  this should be replaced with a custom made function
-	result = nirspec_utils.apply_master_background(raw, background)
+	Returns
+	-------
+
+	"""
+	# TODO : for now, the bkg error is set as the model error, implying that no error is propagated.
+	#  If the error on the background is at one point calculated, this line needs to be removed
+	background.err = raw.err
+
+	result = raw.copy()
+	result.data -= background.data
+	result.err = np.sqrt((result.err**2 + background.err**2)/2)
 
 	result.write(pathBNBG)
 	logConsole(f"Saving File {os.path.basename(pathBNBG)}")
