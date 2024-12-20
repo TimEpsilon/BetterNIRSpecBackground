@@ -56,6 +56,7 @@ def Stage2(rate, path):
 
 	spec2 = Spec2Pipeline(steps=steps)
 	spec2.output_dir = path
+	spec2.save_results = True
 	spec2.run(rate)
 	del spec2
 

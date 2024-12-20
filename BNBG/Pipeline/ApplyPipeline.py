@@ -1,4 +1,5 @@
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from BNBG.Pipeline import MainPipeline
 from BNBG.utils import getCRDSPath, logConsole
@@ -59,18 +60,17 @@ def main():
 		rate_list = glob(path+"*_rate.fits")
 		logConsole(f"Found {len(rate_list)} countrate files.")
 
-		##########
-		# Basic Master Background Algorithm
-		# 0 - Apply Spec2 up until srctype (included) and save them
-		# 1 - Modify the _srctype files, all spectra
-		# 2 - Create a _BNBG file, exact copy
-		# 3 - Apply the rest of Spec2 to _BNBG
-		# 4 - Modify the spec3_asn.json
-		# 5 - Apply Spec3 to the spec3_asn.json
-		##########
+		n = min(os.cpu_count(), len(rate_list))
+		# Execute in parallel
+		with ThreadPoolExecutor(max_workers=n) as executor:
+			futures = [executor.submit(lambda file : MainPipeline.Stage2(file, path), file) for file in rate_list]
 
-		for file in rate_list:
-			MainPipeline.Stage2(file, path)
+			# Wait for all futures to complete
+			for future in as_completed(futures):
+				try:
+					future.result()
+				except Exception as e:
+					logConsole(f"Error processing a file: {e}")
 
 		##########
 		# Stage 3
