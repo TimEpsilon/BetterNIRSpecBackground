@@ -1,107 +1,62 @@
 import inspect
 import os.path
 
+from scipy.interpolate import interpolate
 from scipy.ndimage import generic_filter
 from scipy.stats import median_abs_deviation
 
 from BNBG.utils import *
 import stdatamodels.jwst.datamodels as dm
-from jwst.flatfield import FlatFieldStep
-from jwst.pathloss import PathLossStep
-from jwst.barshadow import BarShadowStep
-from jwst.photom import PhotomStep
-from jwst.resample import ResampleSpecStep
-from scipy import interpolate
-from jwst.master_background import nirspec_utils
-from jwst.stpipe import Step
 
 
-class BetterBackgroundStep(Step):
+def BetterBackgroundStep(s2d, directory, useCheckpoint=True, radius=5, crop=3, interpolationKnots=0.1, kernelSize=(1,15), Nsigma=10):
 	"""
 	 Creates a _s2d-BNBG.fits file from a _s2d file
 
 	 Params
 	 ---------
-	name : str
+	s2d : str
 		Path to the file to open. Must be a _s2d from Stage 3
+	directory : str
+		Output directory
+	useCheckpointFiles : bool
+		If the step will save precalibrations for later use
+	radius : float
+		The radius of extraction around the source
+	crop : int
+		how many lines will be ignored on top and below the resampled 2D image
+	interpolationKnots : float
+		The fraction of the total amount of points which should be knots
+	kernelSize : tuple
+		size of kernel to use for the median filtering
+	Nsigma : float
+		number of sigmas above which pixels in error and data will be masked after median filtering
 	"""
+	resampled = dm.open(s2d)
 
-	spec = '''
-		useCheckpointFiles = boolean(default=True) # If the step will save precalibrations for later use
-		radius = float(default=5) # The radius of extraction around the source
-		crop = integer(default=3) # how many lines will be ignored on top and below the resampled 2D image
-		interpolationKnots = float(default=0.1) # The fraction of the total amount of points which should be knots
-		kernelHeight = integer(default=1), height of kernel to use for the median filtering. By default, will be 1px in spatial direction
-		kernelWidth = integer(default=15), width of kernel to use for the median filtering. By default, will be 15px in spectral direction
-		Nsigma = float(default=10), number of sigmas above which pixels in error and data will be masked after median filtering
-	     '''
+	# Getting background
+	pathBkg = os.path.join(directory, s2d.replace("s2d", "bkg-BNBG"))
+	if not os.path.exists(pathBkg) or not useCheckpoint:
+		background = workOnSlitlet(resampled,
+										pathBkg,
+										radius=radius,
+										crop=crop,
+										n=interpolationKnots,
+										kernelSize=kernelSize,
+										Nsigma=Nsigma)
+	else:
+		logConsole(f"Found {os.path.basename(pathBkg)}")
+		background = dm.open(pathBkg)
 
-	class_alias = 'bnbg'
+	# Subtract background from original file
+	pathBNBG = os.path.join(directory, s2d.replace("s2d", "s2d-BNBG"))
+	if not os.path.exists(pathBNBG) or not useCheckpoint:
+		result = subtractBackground(resampled, background, pathBNBG)
+	else:
+		logConsole(f"Found {os.path.basename(pathBNBG)}")
+		result = dm.open(pathBNBG)
 
-	def __init__(
-			self,
-			name=None,
-			parent=None,
-			config_file=None,
-			_validate_kwds=True,
-			**kws,
-	):
-		super().__init__(name, parent, config_file, _validate_kwds)
-		self.raw = None
-		self.background = None
-		self.resampled = None
-		self.useCheckpointFiles = None
-		self.Nsigma = None
-		self.kernelWidth = None
-		self.kernelHeight = None
-		self.interpolationKnots = None
-		self.crop = None
-		self.radius = None
-		self.output_dir = ""
-
-	# noinspection PyTypeChecker
-	def process(self, s2d):
-		"""
-		Calculates an interpolated background and subtracts it
-
-		Parameters
-		----------
-		s2d : a SlitModel or a path
-
-		Returns
-		-------
-		The background subtracted data model
-		"""
-
-		# s2d can be either a datamodel or the path to a slit fits
-		# either case, we need both info
-		self.raw = dm.open(s2d)
-		name = os.path.basename(self._input_filename)
-
-		# Getting background
-		directory = self.output_dir
-		pathBkg = os.path.join(directory, name.replace("s2d", "bkg-BNBG"))
-		if not os.path.exists(pathBkg) or not self.useCheckpointFiles:
-			self.background = workOnSlitlet(self.resampled,
-											pathBkg,
-											radius=self.radius,
-											crop=self.crop,
-											n=self.interpolationKnots,
-											kernelSize=(self.kernelHeight,self.kernelWidth),
-											Nsigma=self.Nsigma)
-		else:
-			logConsole(f"Found {os.path.basename(pathBkg)}")
-			self.background = dm.open(pathBkg)
-
-		# Subtract background from original file
-		pathBNBG = os.path.join(self.output_dir, name.replace("s2d", "s2d-BNBG"))
-		if not os.path.exists(pathBNBG) or not self.useCheckpointFiles:
-			result = subtractBackground(self.raw, self.background, pathBNBG)
-		else:
-			logConsole(f"Found {os.path.basename(pathBNBG)}")
-			result = dm.open(pathBNBG)
-
-		return result
+	return result
 
 def workOnSlitlet(resampled, pathClean, **kwargs):
 	# For a given _s2d
@@ -247,16 +202,13 @@ def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, n = 0.1):
 	-------
 	interp : a function which approximates the data
 	"""
-	# S is defined as S = s / len(x), needs to be tweaked for a smoother fit
-	a = 0
-	b = 1
 
 	# Regarding the values outside the range of wavelength :
 	# Extreme wavelengths could be filtered by the masking, thus reducing the range
-	# The default behavior of scipy.interpolate.UnivariateSpline is extrapolating the spline
+	# The default behavior of scipy is extrapolating the spline
 	# This is usually not recommended if the value to extrapolate is too far away from the range
 	# As we are however talking about a few pixels, this should normally not be an issue
-	interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=b * len(x))
+	interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=n*len(x))
 	N_b = len(interp.get_knots())
 	N_a = len(x)
 

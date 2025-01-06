@@ -3,7 +3,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from BNBG.Pipeline import MainPipeline
 from BNBG.utils import getCRDSPath, logConsole
-import shutil
 
 # Needs to be overwritten in ../CRDS_PATH
 os.environ['CRDS_PATH'] = getCRDSPath()
@@ -38,7 +37,6 @@ def main():
 	##########
 	# Stage 1
 	##########
-
 	for folder in folders:
 		logConsole(f"Starting on {folder}")
 		path = working_dir + folder + "/"
@@ -51,7 +49,6 @@ def main():
 	##########
 	# Stage 2
 	##########
-
 	logConsole(f"Stage 1 Finished. Preparing Stage 2")
 
 	for folder in folders:
@@ -72,10 +69,9 @@ def main():
 				except Exception as e:
 					logConsole(f"Error processing a file: {e}")
 
-		##########
-		# Stage 3
-		##########
-
+	##########
+	# Stage 3
+	##########
 	logConsole(f"Stage 2 Finished. Preparing Stage 3")
 
 	for folder in folders:
@@ -88,6 +84,22 @@ def main():
 		MainPipeline.Stage3_AssociationFile(asn_list, path)
 
 		logConsole("Finished")
+
+	############
+	# Stage 4
+	# Custom Subtraction
+	############
+	logConsole(f"Stage 3 Finished. Preparing Final Stage")
+
+	for folder in folders:
+		path = working_dir + folder + "/Final/"
+
+		logConsole(f"Starting on {folder}")
+		s2d_list = glob(path+"*_s2d.fits")
+		logConsole(f"Found {len(s2d_list)} s2d files.")
+
+		for s2d in s2d_list:
+			MainPipeline.Stage4(s2d, path)
 
 if __name__ == "__main__":
 	main()

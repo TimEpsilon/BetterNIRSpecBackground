@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 from BNBG.utils import getCRDSPath
 
@@ -114,13 +115,15 @@ def Stage3_AssociationFile(asn_list, path, suffix="cal"):
 	finishedFile.close()
 
 def Stage4(s2d, path):
+	startTime = time.time()
 	pathBNBG = s2d.replace("_s2d.fits", "_s2d-BNBG.fits")
 	if not os.path.exists(pathBNBG):
-		step = BkgSubtractStep.BetterBackgroundStep()
-		s2d_BNBG = step.call(pathBNBG, output_dir=os.path.dirname(path))
+		s2d_BNBG = BkgSubtractStep.BetterBackgroundStep(s2d, path)
 		x1dStep = Extract1dStep()
 		x1dStep.suffix = "x1d-BNBG"
 		x1dStep.save_results = True
 		x1dStep.output_dir = path
 		x1dStep.run(s2d_BNBG)
+	endTime = time.time()
+	logConsole(f"Finished in {round(endTime - startTime, 3)}s")
 
