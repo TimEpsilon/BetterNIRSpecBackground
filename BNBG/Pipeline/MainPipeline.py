@@ -9,7 +9,6 @@ os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
 from jwst.pipeline import Detector1Pipeline, Spec3Pipeline
 from jwst.pipeline import Spec2Pipeline
-import stdatamodels.jwst.datamodels as dm
 from jwst.extract_1d import Extract1dStep
 
 from BNBG.utils import logConsole, rewriteJSON
@@ -116,14 +115,15 @@ def Stage3_AssociationFile(asn_list, path, suffix="cal"):
 
 def Stage4(s2d, path):
 	startTime = time.time()
-	pathBNBG = s2d.replace("_s2d.fits", "_s2d-BNBG.fits")
+	name = os.path.basename(s2d)
+	pathBNBG = path + name.replace("_s2d.fits", "_s2d-BNBG.fits")
+	logConsole(f"Starting work on {name}")
+
 	if not os.path.exists(pathBNBG):
 		s2d_BNBG = BkgSubtractStep.BetterBackgroundStep(s2d, path)
 		x1dStep = Extract1dStep()
-		x1dStep.suffix = "x1d-BNBG"
-		x1dStep.save_results = True
-		x1dStep.output_dir = path
-		x1dStep.run(s2d_BNBG)
+		x1d = x1dStep.run(s2d_BNBG)
+		x1d.save(pathBNBG.replace("_s2d", "_x1d"))
 	endTime = time.time()
 	logConsole(f"Finished in {round(endTime - startTime, 3)}s")
 

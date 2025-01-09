@@ -22,7 +22,8 @@ def main():
 	"""
 
 	script_dir = os.path.dirname(os.path.abspath(__file__))
-	working_dir = os.path.join(script_dir, '../../mastDownload/JWST/')
+	script_dir = os.path.dirname(os.path.dirname(script_dir))
+	working_dir = os.path.join(script_dir, 'mastDownload/JWST/')
 
 	folders = os.listdir(working_dir) #Default, needs to be overwritten
 	try :
@@ -97,6 +98,10 @@ def main():
 		logConsole(f"Starting on {folder}")
 		s2d_list = glob(path+"*_s2d.fits")
 		logConsole(f"Found {len(s2d_list)} s2d files.")
+
+		path = path + "BNBG/"
+		if not os.path.exists(path):
+			os.mkdir(path)
 
 		for s2d in s2d_list:
 			MainPipeline.Stage4(s2d, path)

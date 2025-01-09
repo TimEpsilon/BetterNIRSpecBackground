@@ -1,15 +1,23 @@
 import inspect
 import os.path
 
-from scipy.interpolate import interpolate
+import matplotlib.pyplot as plt
 from scipy.ndimage import generic_filter
 from scipy.stats import median_abs_deviation
 
+from BNBG.Pipeline.BSplineLSQ import BSplineLSQ
 from BNBG.utils import *
 import stdatamodels.jwst.datamodels as dm
 
-
-def BetterBackgroundStep(s2d, directory, useCheckpoint=True, radius=5, crop=3, interpolationKnots=0.1, kernelSize=(1,15), Nsigma=10):
+def BetterBackgroundStep(s2d, directory,
+						 useCheckpoint=True,
+						 radius=5,
+						 crop=3,
+						 interpolationKnots=0.1,
+						 curvatureConstraint=1,
+						 endpointConstraint=0.1,
+						 kernelSize=(1,15),
+						 Nsigma=10):
 	"""
 	 Creates a _s2d-BNBG.fits file from a _s2d file
 
@@ -27,6 +35,12 @@ def BetterBackgroundStep(s2d, directory, useCheckpoint=True, radius=5, crop=3, i
 		how many lines will be ignored on top and below the resampled 2D image
 	interpolationKnots : float
 		The fraction of the total amount of points which should be knots
+	curvatureConstraint : float
+			An hyperparameter used for regularizing, i.e., how much the curvature will be minimized. Useful if gaps are present in the data
+			If equal to 0, this will entirely ignore curvature
+	endpointConstraint : float
+		An hyperparameter used for the endpoints, i.e., how much the slope on each side of the spline will be minimized.
+		If equal to 0, this will entirely ignore the endpoint slopes
 	kernelSize : tuple
 		size of kernel to use for the median filtering
 	Nsigma : float
@@ -35,7 +49,8 @@ def BetterBackgroundStep(s2d, directory, useCheckpoint=True, radius=5, crop=3, i
 	resampled = dm.open(s2d)
 
 	# Getting background
-	pathBkg = os.path.join(directory, s2d.replace("s2d", "bkg-BNBG"))
+	name = os.path.basename(s2d)
+	pathBkg = directory + name.replace("s2d", "bkg-BNBG")
 	if not os.path.exists(pathBkg) or not useCheckpoint:
 		background = workOnSlitlet(resampled,
 										pathBkg,
@@ -43,13 +58,15 @@ def BetterBackgroundStep(s2d, directory, useCheckpoint=True, radius=5, crop=3, i
 										crop=crop,
 										n=interpolationKnots,
 										kernelSize=kernelSize,
-										Nsigma=Nsigma)
+										Nsigma=Nsigma,
+								   		curvatureConstraint=curvatureConstraint,
+								   		endpointConstraint=endpointConstraint)
 	else:
 		logConsole(f"Found {os.path.basename(pathBkg)}")
 		background = dm.open(pathBkg)
 
 	# Subtract background from original file
-	pathBNBG = os.path.join(directory, s2d.replace("s2d", "s2d-BNBG"))
+	pathBNBG = directory + name.replace("s2d", "s2d-BNBG")
 	if not os.path.exists(pathBNBG) or not useCheckpoint:
 		result = subtractBackground(resampled, background, pathBNBG)
 	else:
@@ -61,14 +78,15 @@ def BetterBackgroundStep(s2d, directory, useCheckpoint=True, radius=5, crop=3, i
 def workOnSlitlet(resampled, pathClean, **kwargs):
 	# For a given _s2d
 	logConsole("Starting modeling background")
-	fitted = modelBackgroundFromSlit(resampled, **kwargs)
+	fitted, error = modelBackgroundFromSlit(resampled, **kwargs)
 
 	# Overwrite data with background fit
 	resampled.data = fitted
+	resampled.err = error
 	logConsole("Background Calculated!")
 
 	logConsole("Saving Clean Background File...")
-	resampled.write(pathClean)
+	resampled.save(pathClean)
 
 	return resampled
 
@@ -123,28 +141,36 @@ def modelBackgroundFromImage(data : np.ndarray,
 
 	Returns
 	-------
-	np.ndarray, 2D array of a smooth model of background, or zeros if a fit cannot be made
+	interp : np.ndarray,
+		2D array of a smooth model of background, or zeros if a fit cannot be made
+	error : np.ndarray,
+		Corresponding error of the model
 	"""
 	kwargs_getDataWithMask = {k: v for k, v in kwargs.items() if k in inspect.signature(getDataWithMask).parameters}
 	x,y,dy = getDataWithMask(data, error, wavelength, **kwargs_getDataWithMask)
 
 	if x is None and y is None and dy is None:
 		logConsole("No data was kept in slit. Returning zeros", "WARNING")
-		return np.zeros_like(wavelength)
+		return np.zeros_like(wavelength), error
 
 	# Check if at least 4 points
 	if len(x) < 4:
 		logConsole("Not enough points to fit. Returning zeros", "WARNING")
-		return np.zeros_like(wavelength)
+		return np.zeros_like(wavelength), error
 
 	# Weights, as a fraction of total sum, else it breaks the fitting
 	w = 1/dy
-	w /= w.mean()
+	#w /= w.mean()
 
-	kwargs_makeInterpolation = {k: v for k, v in kwargs.items() if k in inspect.signature(makeInterpolation).parameters}
-	interp = makeInterpolation(x,y,w,**kwargs_makeInterpolation)
+	kwargs_makeInterpolation = {k: v for k, v in kwargs.items() if k in inspect.signature(BSplineLSQ).parameters}
+	bspline = BSplineLSQ(x,y,w,**kwargs_makeInterpolation)
+
+	plt.figure()
+	bspline.plot(plt.gca())
+	plt.show()
+
 	# The 2D background model obtained from the 1D spectrum
-	return interp(wavelength)
+	return bspline(wavelength), bspline.getError(wavelength)
 
 def getDataWithMask(data : np.ndarray,
 							 error : np.ndarray,
@@ -186,67 +212,6 @@ def getDataWithMask(data : np.ndarray,
 	dy = dy[indices]
 
 	return x,y,dy
-
-def makeInterpolation(x: np.ndarray, y: np.ndarray, w: np.ndarray, n = 0.1):
-	"""
-	Creates a spline interpolation / approximation of order 3.
-
-	Parameters
-	----------
-	x : wavelength 1D array
-	y : corresponding data 1D array
-	w : weights of the data points, inverse of their error
-	n : float, with N the number of knots and m the number of points, n = N/m
-
-	Returns
-	-------
-	interp : a function which approximates the data
-	"""
-
-	# Regarding the values outside the range of wavelength :
-	# Extreme wavelengths could be filtered by the masking, thus reducing the range
-	# The default behavior of scipy is extrapolating the spline
-	# This is usually not recommended if the value to extrapolate is too far away from the range
-	# As we are however talking about a few pixels, this should normally not be an issue
-	interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=n*len(x))
-	N_b = len(interp.get_knots())
-	N_a = len(x)
-
-	# We want N = n*m knots
-	# Since the backend of scipy uses a Fortran library which only allows for a smoothing factor or a given set of knots
-	# We use a binary search to pinpoint the S value which gives a spline of N knots
-	targetN = round(n * len(x))
-
-	# Check if targetN is between the max amount of points and the first estimate N
-	# Assign a higher S value if not
-	if not N_a > targetN > N_b:
-		b = 100 * len(x)
-		interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=b * len(x))
-		N_b = len(interp.get_knots())
-
-	N_c = N_a
-	iteration = 0
-	while N_c != targetN and iteration < 100:
-		# Sometimes even though a and b are identical, the number of knots is different
-		# This is because the gods of interpolation actually hate me personally
-		if a==b:
-			break
-		iteration += 1
-		c = (a+b)/2
-		interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=c * len(x))
-		N_c = len(interp.get_knots())
-		if N_a > targetN > N_c:
-			b = c
-			interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=b * len(x))
-			N_b = len(interp.get_knots())
-		else:
-			a = c
-			interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=a * len(x))
-			N_a = len(interp.get_knots())
-
-	logConsole(f"Finished Interpolation with {iteration} iterations, found S = {a*len(x)}")
-	interp = interpolate.UnivariateSpline(x, y, w=w, k=3, s=a * len(x), ext=1)
-	return interp
 
 def cleanupImage(data : np.ndarray, error : np.ndarray, crop=3, source=None, radius=5, kernelSize=(1,15), Nsigma=10):
 	"""
@@ -335,15 +300,11 @@ def subtractBackground(raw, background, pathBNBG):
 	-------
 
 	"""
-	# TODO : for now, the bkg error is set as the model error, implying that no error is propagated.
-	#  If the error on the background is at one point calculated, this line needs to be removed
-	background.err = raw.err
-
 	result = raw.copy()
 	result.data -= background.data
 	result.err = np.sqrt((result.err**2 + background.err**2)/2)
 
-	result.write(pathBNBG)
+	result.save(pathBNBG)
 	logConsole(f"Saving File {os.path.basename(pathBNBG)}")
 
 	return result
