@@ -14,7 +14,7 @@ def BetterBackgroundStep(s2d, directory,
 						 radius=5,
 						 crop=3,
 						 interpolationKnots=0.1,
-						 curvatureConstraint=1,
+						 curvatureConstraint=0.5,
 						 endpointConstraint=0.1,
 						 kernelSize=(1,15),
 						 Nsigma=10):
@@ -52,7 +52,7 @@ def BetterBackgroundStep(s2d, directory,
 	name = os.path.basename(s2d)
 	pathBkg = directory + name.replace("s2d", "bkg-BNBG")
 	if not os.path.exists(pathBkg) or not useCheckpoint:
-		background = workOnSlitlet(resampled,
+		background = workOnSlitlet(resampled.copy(),
 										pathBkg,
 										radius=radius,
 										crop=crop,
@@ -164,11 +164,14 @@ def modelBackgroundFromImage(data : np.ndarray,
 
 	kwargs_makeInterpolation = {k: v for k, v in kwargs.items() if k in inspect.signature(BSplineLSQ).parameters}
 	bspline = BSplineLSQ(x,y,w,**kwargs_makeInterpolation)
-
+	"""
 	plt.figure()
 	bspline.plot(plt.gca())
-	plt.show()
 
+	plt.figure()
+	plt.imshow(wavelength, origin='lower')
+	plt.show()
+	"""
 	# The 2D background model obtained from the 1D spectrum
 	return bspline(wavelength), bspline.getError(wavelength)
 
@@ -190,6 +193,10 @@ def getDataWithMask(data : np.ndarray,
 	x, y, dy
 
 	"""
+	data = data.copy()
+	wavelength = wavelength.copy()
+	error = error.copy()
+
 	mask = cleanupImage(data, error, **kwargs)
 	if np.all(mask):
 		# No data

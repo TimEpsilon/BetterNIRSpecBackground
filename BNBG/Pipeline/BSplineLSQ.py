@@ -109,6 +109,7 @@ class BSplineLSQ:
 			ax.plot(x, y, color='b')
 			ax.fill_between(x, y-dy, y+dy, color='b', alpha=0.1)
 			ax.scatter(self.t, self(self.t), color='b', marker='D')
+			ax.set_ylim(0, np.max(y)*1.05)
 
 	def updateParameters(self, lambdaRegularization=None, lambdaEndpoints=None):
 		"""
