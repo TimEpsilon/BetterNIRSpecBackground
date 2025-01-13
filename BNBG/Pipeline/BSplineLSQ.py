@@ -1,4 +1,7 @@
 import numpy as np
+from astropy.visualization import ZScaleInterval
+from matplotlib.colors import LogNorm
+from matplotlib.widgets import Slider
 from scipy.interpolate import BSpline
 import matplotlib.pyplot as plt
 
@@ -92,24 +95,45 @@ class BSplineLSQ:
 			df[j] = np.sqrt(b.T @ self.cov @ b)
 		return df.reshape(shape)
 
-	def plot(self, ax, residual=False):
-		ax.grid()
+	def plot(self, ax):
+		# Slider
+		plt.subplots_adjust(bottom=0.2)
+		ax_slider1 = plt.axes((0.2, 0.1, 0.6, 0.03))
+		slider1 = Slider(ax_slider1, 'CurvatureConstraint', 0, 5, valinit=self.curvatureConstraint, valstep=0.01)
+		ax_slider2 = plt.axes((0.2, 0.05, 0.6, 0.03))
+		slider2 = Slider(ax_slider2, 'EndpointConstraint', 0, 1, valinit=self.endpointConstraint, valstep=0.01)
 
-		if residual:
-			res = self.y - self(self.x)
-			dy = self.getError(self.x)
-			ax.errorbar(self.x, res, color='k',yerr=np.sqrt(dy**2+1/self.w**2),capsize=10, alpha=0.3, linestyle='none')
-			ax.set_ylim(-np.max(np.abs(res)), np.max(np.abs(res)))
-		else:
-			ax.scatter(self.x, self.y, color='k', alpha=0.5, marker='+')
-			ax.plot(self.x, 1/self.w, color='r', linewidth=1)
+		def update(val):
+			ax[0].clear()
+			ax[1].clear()
+
+			c1 = slider1.val
+			c2 = slider2.val
+
+			self.updateParameters(c1, c2)
+
+			ax[0].grid()
+
+			ax[0].scatter(self.x, self.y, color='k', alpha=0.1, marker='+')
+			ax[0].plot(self.x, 1 / self.w, color='r', linewidth=1)
 			x = np.linspace(np.min(self.x), np.max(self.x), 300)
 			y = self(x)
 			dy = self.getError(x)
-			ax.plot(x, y, color='b')
-			ax.fill_between(x, y-dy, y+dy, color='b', alpha=0.1)
-			ax.scatter(self.t, self(self.t), color='b', marker='D')
-			ax.set_ylim(0, np.max(y)*1.05)
+			ax[0].plot(x, y, color='b')
+			ylim = ax[0].get_ylim()
+			ax[0].fill_between(x, y - dy, y + dy, color='b', alpha=0.1)
+			ax[0].scatter(self.t, self(self.t), color='b', marker='D')
+			ax[0].set_ylim(*ylim)
+
+			ax[1].imshow(np.abs(self.W), norm=LogNorm(), cmap='plasma')
+
+		update(0)
+
+		# Attach the update function to the slider
+		slider1.on_changed(update)
+		slider2.on_changed(update)
+
+		return slider1, slider2
 
 	def updateParameters(self, lambdaRegularization=None, lambdaEndpoints=None):
 		"""
@@ -127,7 +151,6 @@ class BSplineLSQ:
 			self.curvatureConstraint = lambdaRegularization
 		if lambdaEndpoints is not None:
 			self.endpointConstraint = lambdaEndpoints
-
 		self.invcov, self.cov, self.c, self.spline = self._calculateCoefficients()
 
 	########################

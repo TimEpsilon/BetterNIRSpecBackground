@@ -320,3 +320,6 @@ Rapport/main.fdb_latexmk
 /mastDownload/JWST/CEERS-NIRSPEC-P5-PRISM-MSATA/Default/Final/finished
 /mastDownload/JWST/CEERS-NIRSPEC-P5-PRISM-MSATA/Final/finished
 /mastDownload/JWST/CEERS-NIRSPEC-P5-PRISM-MSATA/NoSubtraction/Final/finished
+/mastDownload/JWST/CEERS-NIRSPEC-P5-PRISM-MSATA/TestSingleSlit/compileData.py
+/mastDownload/JWST/CEERS-NIRSPEC-P5-PRISM-MSATA/TestSingleSlit/default.log
+/mastDownload/JWST/CEERS-NIRSPEC-P5-PRISM-MSATA/TestSingleSlit/nosub.log

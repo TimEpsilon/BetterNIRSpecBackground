@@ -164,14 +164,11 @@ def modelBackgroundFromImage(data : np.ndarray,
 
 	kwargs_makeInterpolation = {k: v for k, v in kwargs.items() if k in inspect.signature(BSplineLSQ).parameters}
 	bspline = BSplineLSQ(x,y,w,**kwargs_makeInterpolation)
-	"""
-	plt.figure()
-	bspline.plot(plt.gca())
 
-	plt.figure()
-	plt.imshow(wavelength, origin='lower')
+	fig, ax = plt.subplots(1,2,figsize=(14,6))
+	s1,s2 = bspline.plot(ax)
 	plt.show()
-	"""
+
 	# The 2D background model obtained from the 1D spectrum
 	return bspline(wavelength), bspline.getError(wavelength)
 
@@ -290,7 +287,6 @@ def extractWithMask(data, mask):
 	"""
 	data[mask] = np.nan
 	x = np.nanmean(data,axis=0)
-
 	return x
 
 def subtractBackground(raw, background, pathBNBG):
