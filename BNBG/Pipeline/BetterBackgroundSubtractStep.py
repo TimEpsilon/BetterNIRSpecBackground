@@ -4,9 +4,10 @@ import os.path
 import matplotlib.pyplot as plt
 from scipy.ndimage import generic_filter
 from scipy.stats import median_abs_deviation
+import numpy as np
 
 from BNBG.Pipeline.BSplineLSQ import BSplineLSQ
-from BNBG.utils import *
+from BNBG.utils import logConsole, getSourcePosition
 import stdatamodels.jwst.datamodels as dm
 
 def BetterBackgroundStep(s2d, directory,
@@ -113,19 +114,6 @@ def modelBackgroundFromSlit(slit, **kwargs):
 									source=source,
 									**kwargs)
 
-def getSourcePosition(slit):
-	"""
-	Returns the vertical position, in detector space (pixels), of the source
-	Parameters
-	----------
-	slit : a slit object, it is assumed that assign_wcs has been applied beforehand
-
-	Returns
-	-------
-	vertical source position in pixels, can be ~1e48 if the source is outside in the case of a 2 slit slitlet
-	"""
-	return slit.meta.wcs.transform('world', 'detector', slit.source_ra, slit.source_dec, 3)[1]
-
 def modelBackgroundFromImage(data : np.ndarray,
 							 error : np.ndarray,
 							 wavelength : np.ndarray,
@@ -165,6 +153,7 @@ def modelBackgroundFromImage(data : np.ndarray,
 	kwargs_makeInterpolation = {k: v for k, v in kwargs.items() if k in inspect.signature(BSplineLSQ).parameters}
 	bspline = BSplineLSQ(x,y,w,**kwargs_makeInterpolation)
 
+	# TODO : High uncertainty for certain slits, probably due to photometry step, needs some renormalization
 	fig, ax = plt.subplots(1,2,figsize=(14,6))
 	s1,s2 = bspline.plot(ax)
 	plt.show()

@@ -1,9 +1,7 @@
-import numpy as np
 import json
 import logging
 import os
 import stdatamodels.jwst.datamodels as dm
-
 
 logger = logging.getLogger("stpipe")
 
@@ -76,17 +74,6 @@ def getCRDSPath():
 			raise Exception("CRDS_PATH.txt not found or file empty")
 		return txt
 
-def verifySimilarImages(A, B):
-	"""
-	Verifies if 2 images A and B are both valid ndarrays and have the same shape
-
-	Parameters
-	----------
-	A : ndarray
-	B : ndarray
-	"""
-	return isinstance(A, np.ndarray) and isinstance(B, np.ndarray) and A.shape == B.shape
-
 # Will keep this in case it is needed at one point
 # However, it is currently useless as the Stage2 Pipeline is hardcoded to stop if assign_wcs is skipped
 # Which is a problem if I want to use any kind of checkpoint file
@@ -132,3 +119,16 @@ def DoPipelineWithCheckpoints(pipeline, file):
 		pipeline.run(ASN)
 	else:
 		pipeline.run(model)
+
+def getSourcePosition(slit):
+	"""
+	Returns the vertical position, in detector space (pixels), of the source
+	Parameters
+	----------
+	slit : a slit object, it is assumed that assign_wcs has been applied beforehand
+
+	Returns
+	-------
+	vertical source position in pixels, can be ~1e48 if the source is outside in the case of a 2 slit slitlet
+	"""
+	return slit.meta.wcs.transform('world', 'detector', slit.source_ra, slit.source_dec, 3)[1]
