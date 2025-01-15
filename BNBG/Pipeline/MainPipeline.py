@@ -1,15 +1,14 @@
-import json
 import os
 import time
 
-from BNBG.utils import getCRDSPath
+from BNBG.utils import getCRDSPath, PathManager
 
 os.environ['CRDS_PATH'] = getCRDSPath()
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
-from jwst.pipeline import Detector1Pipeline, Spec3Pipeline
-from jwst.pipeline import Spec2Pipeline
+from jwst.pipeline import Detector1Pipeline, Spec3Pipeline, Spec2Pipeline
 from jwst.extract_1d import Extract1dStep
+from stdatamodels.jwst import datamodels as dm
 
 from BNBG.utils import logConsole, rewriteJSON
 import BNBG.Pipeline.BetterBackgroundSubtractStep as BkgSubtractStep
@@ -24,66 +23,42 @@ def Stage1(uncal,path):
 	path : path to the folder
 
 	"""
-	logConsole(f"Starting Stage 1 on {os.path.basename(uncal)}")
-	if os.path.exists(uncal.replace("_uncal", "_rate")):
-		logConsole(f"File {os.path.basename(uncal).replace('uncal','rate')} already exists, skipping.")
-		return
-	det1 = Detector1Pipeline()
-	det1.save_results = True
-	det1.output_dir = path
-	det1.run(uncal)
-	del det1
-	return
+	uncalPath = PathManager(uncal)
+	logConsole(f"Starting Stage 1 on {uncalPath.filename}")
 
+	def pipe1():
+		det1 = Detector1Pipeline()
+		det1.save_results = True
+		det1.output_dir = path
+		det1.run(uncal)
+	# Handles the logic of checkpoint files, i.e. will apply the pipeline only if output file can't be found
+	uncalPath.openSuffix("rate", pipe1, open=False)
 
-def Stage2(rate, path):
+def Stage2(asn, path):
 	"""
-	Applies the second stage of the pipeline. This used to be where the custom subtraction happened.
-	This now happens after the stage 3 si finished.
+	Applies the second stage of the pipeline. This is where the custom subtraction happens, after the pipeline has run.
 	Parameters
 	----------
-	rate : path to the file
+	asn : path to the file
 	path : path to the folder
 	"""
-	logConsole(f"Starting Stage 2 on {os.path.basename(rate)}")
-	if os.path.exists(rate.replace("_rate.fits", "_cal.fits")):
-		logConsole(f"File {os.path.basename(rate).replace('rate','cal')} already exists, skipping.")
-		return
+	ratePath = PathManager(asn)
+	logConsole(f"Starting Stage 2 on {ratePath.filename}")
 
-	# No background subtraction
-	steps = {'master_background_mos': {'skip': True},
-			 'bkg_subtract': {'skip': True}}
+	def pipe2():
+		# No background subtraction
+		steps = {'master_background_mos': {'skip': True},
+				 'bkg_subtract': {'skip': True}}
+		spec2 = Spec2Pipeline(steps=steps)
+		spec2.output_dir = path
+		spec2.save_results = True
+		cal = spec2.run(asn)
+		return cal
 
-	spec2 = Spec2Pipeline(steps=steps)
-	spec2.output_dir = path
-	spec2.save_results = True
-	spec2.run(rate)
-	del spec2
+	cal = ratePath.openSuffix("cal", pipe2)
+	s2d = dm.open(ratePath.withSuffix("s2d"))  # The pipeline also saves a resampled file, which we need for the background.
 
-def Stage2Default(rate, path):
-	"""
-	Applies the second stage of the pipeline as usual.
-	Parameters
-	----------
-	rate : should be the path to a spec2.json
-	path
-	"""
-	logConsole(f"Starting Basic Stage 2 (Default)")
-
-	with open(rate) as file:
-		_ = json.load(file)
-
-	calFile = _["products"][0]["name"] + "_cal.fits"
-
-	if os.path.exists(os.path.join(path, calFile)):
-		logConsole("File already exists, skipping...")
-		return
-
-	spec2 = Spec2Pipeline()
-	spec2.output_dir = path
-	spec2.save_results = True
-	spec2.run(rate)
-	del spec2
+	# TODO : custom subtraction
 
 def Stage3_AssociationFile(asn_list, path, suffix="cal"):
 	# Create a separate folder for all final data
