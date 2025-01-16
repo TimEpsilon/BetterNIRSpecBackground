@@ -17,22 +17,24 @@ def main():
 	"""
 	Minimum requirement :
 	An existing mastDownload/JWST folder containing multiple folders for multiple observations
-	Each observation should contain at least a _uncal.fits files, a _msa.fits file and a _spec3.json file
-	If the default subtraction is to be applied, the corresponding _spec2.json files should also exist
+	Each observation should contain at least an _uncal.fits files, a _msa.fits file and a _spec3 file
+	Stage 2 should still take the _spec2 association files, as the multiple exposure are still used.
 	"""
 
-	script_dir = os.path.dirname(os.path.abspath(__file__))
-	script_dir = os.path.dirname(os.path.dirname(script_dir))
-	working_dir = os.path.join(script_dir, 'mastDownload/JWST/')
+	thisDirectory = os.path.dirname(os.path.abspath(__file__))
+	thisDirectory = os.path.dirname(os.path.dirname(thisDirectory)) # Go up 2 directories
+	workingDirectory = os.path.join(thisDirectory, 'mastDownload/JWST/')
 
-	folders = os.listdir(working_dir) #Default, needs to be overwritten
+	folders = os.listdir(workingDirectory) #Default, needs to be overwritten
 	try :
+		# If file is executed from command prompt, get folders passed as argument
+		# $ python ApplyPipeline.py dir1 dir2 dir3 ...
 		_ = sys.argv[1:]
 		if len(_) > 0:
 			folders = [f for f in folders if f in _]
-	except :
-		logConsole("No Folders Specified. Defaulting to all Folders")
-	logConsole(f"Found {len(folders)} folders")
+			logConsole(f"Found {len(folders)} folders")
+	except IndexError:
+		logConsole("No Folders Specified. Defaulting to all Folders", source="WARNING")
 
 
 	##########
@@ -40,12 +42,11 @@ def main():
 	##########
 	for folder in folders:
 		logConsole(f"Starting on {folder}")
-		path = working_dir + folder + "/"
-		uncal_list = glob(path+"*_uncal.fits")
-		logConsole(f"Found {len(uncal_list)} uncalibrated files.")
+		path = os.path.join(workingDirectory, folder)
+		uncalList = glob(os.path.join(path, "*_uncal.fits"))
+		logConsole(f"Found {len(uncalList)} uncalibrated files.")
 
-		for file in uncal_list:
-			MainPipeline.Stage1(file, path)
+		_runParallel(uncalList, lambda file : MainPipeline.Stage1(file, path))
 
 	##########
 	# Stage 2
@@ -53,22 +54,12 @@ def main():
 	logConsole(f"Stage 1 Finished. Preparing Stage 2")
 
 	for folder in folders:
-		path = working_dir + folder + "/"
 		logConsole(f"Starting on {folder}")
-		rate_list = glob(path+"*_rate.fits")
-		logConsole(f"Found {len(rate_list)} countrate files.")
+		path = os.path.join(workingDirectory, folder)
+		rateList = glob(os.path.join(path, "*_rate.fits"))
+		logConsole(f"Found {len(rateList)} countrate files.")
 
-		n = min(os.cpu_count(), len(rate_list))
-		# Execute in parallel
-		with ThreadPoolExecutor(max_workers=n) as executor:
-			futures = [executor.submit(lambda file : MainPipeline.Stage2(file, path), file) for file in rate_list]
-
-			# Wait for all futures to complete
-			for future in as_completed(futures):
-				try:
-					future.result()
-				except Exception as e:
-					logConsole(f"Error processing a file: {e}")
+		_runParallel(rateList, lambda file: MainPipeline.Stage2(file, path))
 
 	##########
 	# Stage 3
@@ -76,35 +67,39 @@ def main():
 	logConsole(f"Stage 2 Finished. Preparing Stage 3")
 
 	for folder in folders:
-		path = working_dir + folder + "/"
-
 		logConsole(f"Starting on {folder}")
-		asn_list = glob(path + "*_spec3_*_asn.json")
-		logConsole(f"Found {len(asn_list)} association files")
+		path = os.path.join(workingDirectory, folder)
+		asn = glob(path + "*_spec3_*_asn.json")[0] # Only keep 1st _spec3
+		logConsole(f"Found a _spec3 association files")
 
-		MainPipeline.Stage3_AssociationFile(asn_list, path)
+		MainPipeline.Stage3(asn, path)
 
-		logConsole("Finished")
+	logConsole("Finished")
 
-	############
-	# Stage 4
-	# Custom Subtraction
-	############
-	logConsole(f"Stage 3 Finished. Preparing Final Stage")
+def _runParallel(files : list, function : callable):
+	"""
+	Replaces a for loop but runs in parallel. Probably not threadsafe, whatever that means.
 
-	for folder in folders:
-		path = working_dir + folder + "/Final/"
+	Parameters
+	----------
+	files : list
+		List of file paths
 
-		logConsole(f"Starting on {folder}")
-		s2d_list = glob(path+"*_s2d.fits")
-		logConsole(f"Found {len(s2d_list)} s2d files.")
+	function : callable
+		Function to apply to each file. Takes a single file as parameter
+	"""
+	n = min(os.cpu_count(), len(files))
 
-		path = path + "BNBG/"
-		if not os.path.exists(path):
-			os.mkdir(path)
+	# Execute in parallel
+	with ThreadPoolExecutor(max_workers=n) as executor:
+		futures = [executor.submit(lambda file: function(file), file) for file in files]
 
-		for s2d in s2d_list:
-			MainPipeline.Stage4(s2d, path)
+		# Wait for all futures to complete
+		for future in as_completed(futures):
+			try:
+				future.result()
+			except Exception as e:
+				logConsole(f"Error processing a file: {e}")
 
 if __name__ == "__main__":
 	main()

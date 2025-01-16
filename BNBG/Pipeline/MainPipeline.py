@@ -1,26 +1,27 @@
 import os
-import time
 
+from BNBG.Pipeline.BetterBackgroundSubtractStep import BetterBackgroundStep
 from BNBG.utils import getCRDSPath, PathManager
 
 os.environ['CRDS_PATH'] = getCRDSPath()
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
 from jwst.pipeline import Detector1Pipeline, Spec3Pipeline, Spec2Pipeline
-from jwst.extract_1d import Extract1dStep
 from stdatamodels.jwst import datamodels as dm
 
 from BNBG.utils import logConsole, rewriteJSON
-import BNBG.Pipeline.BetterBackgroundSubtractStep as BkgSubtractStep
 
 
-def Stage1(uncal,path):
+def Stage1(uncal : str,path : str):
 	"""
 	Applies the first stage of the pipeline. No notable modifications to the steps are made
 	Parameters
 	----------
-	uncal : path to the file
-	path : path to the folder
+	uncal : str
+		Path to the file
+
+	path : str
+		Path to the folder
 
 	"""
 	uncalPath = PathManager(uncal)
@@ -34,13 +35,17 @@ def Stage1(uncal,path):
 	# Handles the logic of checkpoint files, i.e. will apply the pipeline only if output file can't be found
 	uncalPath.openSuffix("rate", pipe1, open=False)
 
-def Stage2(asn, path):
+def Stage2(asn : str, path : str):
 	"""
 	Applies the second stage of the pipeline. This is where the custom subtraction happens, after the pipeline has run.
 	Parameters
 	----------
-	asn : path to the file
-	path : path to the folder
+	asn : str
+		Path to the _spec2 asn file. Should work as a single fits but not recommended
+
+	path : str
+		Path to the folder
+
 	"""
 	ratePath = PathManager(asn)
 	logConsole(f"Starting Stage 2 on {ratePath.filename}")
@@ -58,47 +63,48 @@ def Stage2(asn, path):
 	cal = ratePath.openSuffix("cal", pipe2)
 	s2d = dm.open(ratePath.withSuffix("s2d"))  # The pipeline also saves a resampled file, which we need for the background.
 
-	# TODO : custom subtraction
+	BetterBackgroundStep(ratePath, cal, s2d)
 
-def Stage3_AssociationFile(asn_list, path, suffix="cal"):
+def Stage3(asn : str, path : str, suffix="cal-BNBG"):
+	"""
+	Applies the last stage of the pipeline.
+	Parameters
+	----------
+	asn : str
+		Path to the _spec3 asn file
+
+	path : str
+		Path to the folder
+
+	suffix : str
+		The suffix to which files will be changed in the association json; i.e. the suffix of input files.
+
+	"""
+
 	# Create a separate folder for all final data
-	final = path + "Final/"
-	if not os.path.exists(final):
-		os.makedirs(final)
+	finalDirectory = os.path.join(path,"Final/")
+	if not os.path.exists(finalDirectory):
+		os.makedirs(finalDirectory)
 
-	finishedFile = os.path.join(final, "finished")
+	# Skip folder if finished file already exists
+	# This is an empty file
+	finishedFile = os.path.join(finalDirectory, "finished")
 	if os.path.exists(finishedFile):
 		logConsole("Folder has already been processed")
 		return
 
-	for asn in asn_list:
-		logConsole(f"Starting Stage 3")
-		logConsole("Modifying Stage 3 association files")
-		rewriteJSON(asn, suffix=suffix)
+	logConsole(f"Starting Stage 3 on {os.path.basename(asn)}")
+	rewriteJSON(asn, suffix=suffix)
 
-		spec3 = Spec3Pipeline()
-		spec3.save_results = True
-		spec3.output_dir = final
-		spec3.run(asn)
-		del spec3
+	# No PathManager here because filename changes
+	spec3 = Spec3Pipeline()
+	spec3.save_results = True
+	spec3.output_dir = finalDirectory
+	spec3.run(asn)
 
 	# Used to determine if the code has been run
 	# Delete this file if you want the stage 3 to happen again
-	finishedFile = open(final+"finished", "w")
+	finishedFile = open(finalDirectory+"finished", "w")
 	finishedFile.write("")
 	finishedFile.close()
-
-def Stage4(s2d, path):
-	startTime = time.time()
-	name = os.path.basename(s2d)
-	pathBNBG = path + name.replace("_s2d.fits", "_s2d-BNBG.fits")
-	logConsole(f"Starting work on {name}")
-
-	if not os.path.exists(pathBNBG):
-		s2d_BNBG = BkgSubtractStep.BetterBackgroundStep(s2d, path)
-		x1dStep = Extract1dStep()
-		x1d = x1dStep.run(s2d_BNBG)
-		x1d.save(pathBNBG.replace("_s2d", "_x1d"))
-	endTime = time.time()
-	logConsole(f"Finished in {round(endTime - startTime, 3)}s")
 

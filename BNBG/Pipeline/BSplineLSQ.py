@@ -1,5 +1,4 @@
 import numpy as np
-from astropy.visualization import ZScaleInterval
 from matplotlib.colors import LogNorm
 from matplotlib.widgets import Slider
 from scipy.interpolate import BSpline
@@ -10,23 +9,31 @@ class BSplineLSQ:
 		"""
 		A simple class for BSpline objects. Relies on the BSplines objects of scipy,
 		but allows for more control on the fitting than the usual LSQ algorithm of scipy.interpolate.
+
 		Parameters
 		----------
 		x : ndarray
 			1D array of x values
+
 		y : ndarray
 			1D array of corresponding y values
+
 		w : ndarray
 			1D array of weights, usually 1/dy. NaNs will break the code so they need to be filtered beforehand
+
 		t : ndarray
 			The knots of the spline. Is of the shape [(k-1),(n-k+2),(k-1)], the n-k+2 points being interior knots
+
 		n : float
 			In range [0, 1], the fraction of len(x) used to determine the amount of interior knots
+
 		k : int
 			The rank of the spline, i.e. the polynomials will be of order k-1
+
 		curvatureConstraint : float
 			An hyperparameter used for regularizing, i.e., how much the curvature will be minimized. Useful if gaps are present in the data
 			If equal to 0, this will entirely ignore curvature
+
 		endpointConstraint : float
 			An hyperparameter used for the endpoints, i.e., how much the slope on each side of the spline will be minimized.
 			If equal to 0, this will entirely ignore the endpoint slopes
@@ -96,6 +103,19 @@ class BSplineLSQ:
 		return df.reshape(shape)
 
 	def plot(self, ax):
+		"""
+		Plots the spline and the data, along with 2 sliders allowing to calculate on the fly the effect of both hyperparameters.
+
+		Parameters
+		----------
+		ax : matplotlib.axes.Axes
+			Axis on which to plot the data
+
+		Returns
+		-------
+
+		"""
+
 		# Slider
 		plt.subplots_adjust(bottom=0.2)
 		ax_slider1 = plt.axes((0.2, 0.1, 0.6, 0.03))
@@ -138,13 +158,14 @@ class BSplineLSQ:
 	def updateParameters(self, lambdaRegularization=None, lambdaEndpoints=None):
 		"""
 		Recalculates the spline with new values for both hyperparameters.
+
 		Parameters
 		----------
-		lambdaRegularization
-		lambdaEndpoints
+		lambdaRegularization : float
+			New value for the curvature constraint
 
-		Returns
-		-------
+		lambdaEndpoints : float
+			New value for the endpoints constraint
 
 		"""
 		if lambdaRegularization is not None:
