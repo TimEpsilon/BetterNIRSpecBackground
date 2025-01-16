@@ -1,15 +1,18 @@
 import inspect
 import os.path
+from BNBG.utils import logConsole, getSourcePosition, PathManager, getCRDSPath
+
+os.environ['CRDS_PATH'] = getCRDSPath()
+os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
 import matplotlib.pyplot as plt
-from jwst.barshadow import BarShadowStep
 from scipy.ndimage import generic_filter
 from scipy.stats import median_abs_deviation
 import numpy as np
 from stdatamodels.jwst.datamodels import MultiSlitModel
+from jwst.barshadow import BarShadowStep
 
 from BNBG.Pipeline.BSplineLSQ import BSplineLSQ
-from BNBG.utils import logConsole, getSourcePosition, PathManager
 
 def BetterBackgroundStep(ratePath,
 						 s2d,

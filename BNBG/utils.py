@@ -1,9 +1,10 @@
 import json
 import logging
 import os
+
 import stdatamodels.jwst.datamodels as dm
-import jwst.lib.suffix as sufx
 from stdatamodels.jwst.datamodels import SlitModel
+import jwst.lib.suffix as sufx
 
 # Update suffixes
 suffixList = ["bkg-BNBG", "cal-BNBG"]
@@ -31,7 +32,6 @@ def logConsole(text : str, source=None):
 			   }
 
 	logType.get(source,lambda : logger.info(text))()
-
 
 def rewriteJSON(file, suffix="BNBG_photomstep"):
 	"""
@@ -84,6 +84,7 @@ def getCRDSPath() -> str:
 		txt = file.readline()
 		if txt is None or txt == "":
 			raise Exception("CRDS_PATH.txt not found or file empty")
+		logConsole(f"CRDS folder at {txt}")
 		return txt
 
 def getSourcePosition(slit : SlitModel) -> float:
