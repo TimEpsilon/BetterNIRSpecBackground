@@ -1,5 +1,8 @@
 import inspect
 import os.path
+
+from astropy.visualization import ZScaleInterval
+
 from BNBG.utils import logConsole, getSourcePosition, PathManager, getCRDSPath
 
 os.environ['CRDS_PATH'] = getCRDSPath()
@@ -76,7 +79,16 @@ def BetterBackgroundStep(ratePath,
 	# FlatField, Pathloss, Barshadow, Photom in EXTENDED source type, we will only apply Barshadow,
 	# as it is an almost purely spatial effect, and is usually skipped for point sources
 	# This allows to get rid of the separation between the slits and helps for the extraction
-	s2d = BarShadowStep().call(s2d, source_type="EXTENDED")
+	# TODO : This appears to break in a multiprocessing environment
+	def barshadow(s2dInput):
+		step = BarShadowStep()
+		step.source_type = "EXTENDED"
+		result = step.run(s2dInput)
+		logConsole("Saving clean s2d")
+		result.save(ratePath.withSuffix("s2d-BNBG"))
+		return result
+
+	s2d = ratePath.openSuffix("s2d-BNBG", lambda : barshadow(s2d))
 
 	# Calculate background
 	logConsole("Calculating Background")
@@ -91,8 +103,17 @@ def BetterBackgroundStep(ratePath,
 																  curvatureConstraint=curvatureConstraint,
 																  endpointConstraint=endpointConstraint))
 
-	# The Barshadow step now needs to be reversed
-	background = BarShadowStep().call(background, source_type="EXTENDED", inverse=True)
+	def invBarshadow(bkgInput):
+		# The Barshadow step now needs to be reversed
+		step = BarShadowStep()
+		step.source_type = "EXTENDED"
+		step.inverse = True
+		result = step.run(bkgInput)
+		logConsole("Saving clean background")
+		result.save(ratePath.withSuffix("cleanBkg-BNBG"))
+		return result
+
+	background = ratePath.openSuffix("cleanBkg-BNBG", lambda : invBarshadow(background))
 
 	# Subtract background from original
 	logConsole("Subtracting Background")
@@ -130,7 +151,7 @@ def process(s2d, cal, pathClean, **kwargs):
 	"""
 	for i, slit in enumerate(s2d.slits):
 		logConsole("Calculating Background")
-		s2dSlit = s2d
+		s2dSlit = slit
 		calSlit = cal.slits[i]
 
 		Y, X = np.indices(calSlit.data.shape)
@@ -195,24 +216,26 @@ def modelBackgroundFromImage(data : np.ndarray,
 	kwargs_getDataWithMask = {k: v for k, v in kwargs.items() if k in inspect.signature(getDataWithMask).parameters}
 	x,y,dy = getDataWithMask(data.copy(), error.copy(), wavelength.copy(), **kwargs_getDataWithMask)
 
-	# Check if enough data points (spline of order 4 needs at least 4 points)
-	if (x is None and y is None and dy is None) or len(x) < 4:
+	# Check if enough data points (spline of order 4 needs at least 10 points)
+	if (x is None and y is None and dy is None) or len(x) < 10:
 		logConsole("Not enough points to fit. Returning zeros", "WARNING")
 		return None, None
 
 	# Weights
-	w = 1/dy
+	w = 1/dy**2
 
 	# Creating bspline object
 	kwargs_makeInterpolation = {k: v for k, v in kwargs.items() if k in inspect.signature(BSplineLSQ).parameters}
 	bspline = BSplineLSQ(x,y,w,**kwargs_makeInterpolation)
 
-	# TODO : High uncertainty for certain slits, probably due to photometry step, needs some renormalization
-	"""
-	fig, ax = plt.subplots(1,2,figsize=(14,6))
-	s1,s2 = bspline.plot(ax)
-	plt.show()
-	"""
+	if True:
+		plt.figure(figsize=(14,2))
+		z1, z2 = ZScaleInterval().get_limits(data)
+		plt.imshow(data, cmap='plasma', vmin=z1, vmax=z2, origin='lower')
+		fig, ax = plt.subplots(figsize=(14,6))
+		s1,s2 = bspline.plot(ax)
+		plt.show()
+
 
 	# The 2D background model obtained from the 1D spectrum
 	return bspline(targetWavelength), bspline.getError(targetWavelength)

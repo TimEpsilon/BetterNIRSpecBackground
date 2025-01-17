@@ -7,7 +7,7 @@ from stdatamodels.jwst.datamodels import SlitModel
 import jwst.lib.suffix as sufx
 
 # Update suffixes
-suffixList = ["bkg-BNBG", "cal-BNBG"]
+suffixList = ["bkg-BNBG", "cal-BNBG", "cleanBkg-BNBG", "s2d-BNBG"]
 sufx.SUFFIXES_TO_ADD += suffixList
 sufx.KNOW_SUFFIXES = sufx.combine_suffixes()
 

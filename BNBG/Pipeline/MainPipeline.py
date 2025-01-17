@@ -63,6 +63,7 @@ def Stage2(asn : str, path : str):
 		return cal
 
 	cal = ratePath.openSuffix("cal", pipe2)
+	logConsole(f"Opening corresponding s2d file...")
 	s2d = dm.open(ratePath.withSuffix("s2d"))  # The pipeline also saves a resampled file, which we need for the background.
 
 	BetterBackgroundStep(ratePath, cal, s2d)

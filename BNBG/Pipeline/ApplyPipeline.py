@@ -1,4 +1,5 @@
 import os
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from BNBG.Pipeline import MainPipeline
@@ -89,6 +90,7 @@ def _runParallel(files : list, function : callable):
 		Function to apply to each file. Takes a single file as parameter
 	"""
 	n = min(os.cpu_count(), len(files))
+	n = 1
 
 	# Execute in parallel
 	with ThreadPoolExecutor(max_workers=n) as executor:
@@ -100,6 +102,7 @@ def _runParallel(files : list, function : callable):
 				future.result()
 			except Exception as e:
 				logConsole(f"Error processing a file: {e}")
+				logConsole(traceback.format_exc())
 
 if __name__ == "__main__":
 	main()

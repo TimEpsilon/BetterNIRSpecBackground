@@ -19,7 +19,7 @@ class BSplineLSQ:
 			1D array of corresponding y values
 
 		w : ndarray
-			1D array of weights, usually 1/dy. NaNs will break the code so they need to be filtered beforehand
+			1D array of weights, usually 1/var(y). NaNs will break the code so they need to be filtered beforehand
 
 		t : ndarray
 			The knots of the spline. Is of the shape [(k-1),(n-k+2),(k-1)], the n-k+2 points being interior knots
@@ -124,28 +124,25 @@ class BSplineLSQ:
 		slider2 = Slider(ax_slider2, 'EndpointConstraint', 0, 1, valinit=self.endpointConstraint, valstep=0.01)
 
 		def update(val):
-			ax[0].clear()
-			ax[1].clear()
+			ax.clear()
 
 			c1 = slider1.val
 			c2 = slider2.val
 
 			self.updateParameters(c1, c2)
 
-			ax[0].grid()
+			ax.grid()
 
-			ax[0].scatter(self.x, self.y, color='k', alpha=0.1, marker='+')
-			ax[0].plot(self.x, 1 / self.w, color='r', linewidth=1)
+			ax.scatter(self.x, self.y, color='k', alpha=0.1, marker='+')
+			ax.plot(self.x, 1 / np.sqrt(self.w), color='r', linewidth=1)
 			x = np.linspace(np.min(self.x), np.max(self.x), 300)
 			y = self(x)
 			dy = self.getError(x)
-			ax[0].plot(x, y, color='b')
-			ylim = ax[0].get_ylim()
-			ax[0].fill_between(x, y - dy, y + dy, color='b', alpha=0.1)
-			ax[0].scatter(self.t, self(self.t), color='b', marker='D')
-			ax[0].set_ylim(*ylim)
-
-			ax[1].imshow(np.abs(self.W), norm=LogNorm(), cmap='plasma')
+			ax.plot(x, y, color='b')
+			ylim = ax.get_ylim()
+			ax.fill_between(x, y - dy, y + dy, color='b', alpha=0.1)
+			ax.scatter(self.t, self(self.t), color='b', marker='D')
+			ax.set_ylim(*ylim)
 
 		update(0)
 
@@ -227,9 +224,17 @@ class BSplineLSQ:
 		return np.trapezoid(A22, x=self.x, axis=2)
 
 	def _calculateCoefficients(self):
-		invcov = ((self.X.T @ self.W @ self.X)  # Basic LSQ normal form
-				  + self.curvatureConstraint ** 2 * self.G2  # Curvature correction
-				  + self.endpointConstraint ** 2 * (self.A1_b + self.A1_a))  # Endpoint correction
+		invcov = (self.X.T @ self.W @ self.X)  # Basic LSQ normal form
+
+		# Normalisation coeffs to account for high W values
+		# This affects the hyperparameters and allows them to always keep the same effect on the fitting
+		normCurv = np.trace(invcov) / np.trace(self.G2)
+		normEnd = np.trace(invcov) / np.trace(self.A1_b + self.A1_a)
+
+		invcov += normCurv * self.curvatureConstraint ** 2 * self.G2  # Curvature correction
+		invcov += normEnd * self.endpointConstraint ** 2 * (self.A1_b + self.A1_a)  # Endpoint correction
+
+
 		cov = np.linalg.inv(invcov)
 
 		# Final Coefficients
