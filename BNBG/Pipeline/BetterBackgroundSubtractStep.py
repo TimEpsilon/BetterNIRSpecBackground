@@ -134,9 +134,9 @@ def process(s2d, cal, pathClean, **kwargs):
 		calSlit = cal.slits[i]
 
 		Y, X = np.indices(calSlit.data.shape)
-		_, _, targetLambda = slit.meta.wcs.transform("detector", "world", X, Y)
+		_, _, targetLambda = calSlit.meta.wcs.transform("detector", "world", X, Y)
 		Y, X = np.indices(s2dSlit.data.shape)
-		_, _, dataLambda = slit.meta.wcs.transform("detector", "world", X, Y)
+		_, _, dataLambda = s2dSlit.meta.wcs.transform("detector", "world", X, Y)
 
 		source = getSourcePosition(slit)
 
