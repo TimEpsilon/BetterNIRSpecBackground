@@ -1,8 +1,6 @@
 import inspect
 import os.path
 
-from astropy.visualization import ZScaleInterval
-
 from BNBG.utils import logConsole, getSourcePosition, PathManager, getCRDSPath
 
 os.environ['CRDS_PATH'] = getCRDSPath()
@@ -13,7 +11,7 @@ from scipy.ndimage import generic_filter
 from scipy.stats import median_abs_deviation
 import numpy as np
 from stdatamodels.jwst.datamodels import MultiSlitModel
-from jwst.barshadow import BarShadowStep
+from astropy.visualization import ZScaleInterval
 
 from BNBG.Pipeline.BSplineLSQ import BSplineLSQ
 
@@ -73,23 +71,6 @@ def BetterBackgroundStep(ratePath,
 	 	The background MultiSlitModel, where each slit contains the corresponding background and error
 
 	"""
-	# The s2d model only serves for the extraction
-	# No modification to it should be saved
-	# Contrary to the master_background_mos step in the pipeline, which precalibrates each slit with the steps
-	# FlatField, Pathloss, Barshadow, Photom in EXTENDED source type, we will only apply Barshadow,
-	# as it is an almost purely spatial effect, and is usually skipped for point sources
-	# This allows to get rid of the separation between the slits and helps for the extraction
-	# TODO : This appears to break in a multiprocessing environment
-	def barshadow(s2dInput):
-		step = BarShadowStep()
-		step.source_type = "EXTENDED"
-		result = step.run(s2dInput)
-		logConsole("Saving clean s2d")
-		result.save(ratePath.withSuffix("s2d-BNBG"))
-		return result
-
-	s2d = ratePath.openSuffix("s2d-BNBG", lambda : barshadow(s2d))
-
 	# Calculate background
 	logConsole("Calculating Background")
 	background = ratePath.openSuffix("bkg-BNBG", lambda : process(s2d,
@@ -103,25 +84,11 @@ def BetterBackgroundStep(ratePath,
 																  curvatureConstraint=curvatureConstraint,
 																  endpointConstraint=endpointConstraint))
 
-	def invBarshadow(bkgInput):
-		# The Barshadow step now needs to be reversed
-		step = BarShadowStep()
-		step.source_type = "EXTENDED"
-		step.inverse = True
-		result = step.run(bkgInput)
-		logConsole("Saving clean background")
-		result.save(ratePath.withSuffix("cleanBkg-BNBG"))
-		return result
-
-	background = ratePath.openSuffix("cleanBkg-BNBG", lambda : invBarshadow(background))
-
 	# Subtract background from original
 	logConsole("Subtracting Background")
-	result = ratePath.openSuffix("cal-BNBG", lambda : subtractBackground(cal,
-																		 background,
-																		 ratePath.withSuffix("cal-BNBG")))
-
-	return result
+	ratePath.openSuffix("cal-BNBG",
+						lambda : subtractBackground(cal, background, ratePath.withSuffix("cal-BNBG")),
+						open=False)
 
 def process(s2d, cal, pathClean, **kwargs):
 	"""
@@ -228,13 +195,14 @@ def modelBackgroundFromImage(data : np.ndarray,
 	kwargs_makeInterpolation = {k: v for k, v in kwargs.items() if k in inspect.signature(BSplineLSQ).parameters}
 	bspline = BSplineLSQ(x,y,w,**kwargs_makeInterpolation)
 
-	if True:
-		plt.figure(figsize=(14,2))
-		z1, z2 = ZScaleInterval().get_limits(data)
-		plt.imshow(data, cmap='plasma', vmin=z1, vmax=z2, origin='lower')
-		fig, ax = plt.subplots(figsize=(14,6))
-		s1,s2 = bspline.plot(ax)
-		plt.show()
+	"""
+	plt.figure(figsize=(14,2))
+	z1, z2 = ZScaleInterval().get_limits(data)
+	plt.imshow(data, cmap='plasma', vmin=z1, vmax=z2, origin='lower')
+	fig, ax = plt.subplots(figsize=(14,6))
+	s1,s2 = bspline.plot(ax)
+	plt.show()
+	"""
 
 
 	# The 2D background model obtained from the 1D spectrum

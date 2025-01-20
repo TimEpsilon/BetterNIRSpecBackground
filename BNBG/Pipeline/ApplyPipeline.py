@@ -70,7 +70,7 @@ def main():
 	for folder in folders:
 		logConsole(f"Starting on {folder}")
 		path = os.path.join(workingDirectory, folder)
-		asn = glob(path + "*_spec3_*_asn.json")[0] # Only keep 1st _spec3
+		asn = glob(os.path.join(path, "*_spec3_*_asn.json"))[0] # Only keep 1st _spec3
 		logConsole(f"Found a _spec3 association files")
 
 		MainPipeline.Stage3(asn, path)
@@ -90,7 +90,7 @@ def _runParallel(files : list, function : callable):
 		Function to apply to each file. Takes a single file as parameter
 	"""
 	n = min(os.cpu_count(), len(files))
-	n = 1
+	#n = 1
 
 	# Execute in parallel
 	with ThreadPoolExecutor(max_workers=n) as executor:

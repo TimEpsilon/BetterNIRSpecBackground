@@ -7,7 +7,7 @@ from stdatamodels.jwst.datamodels import SlitModel
 import jwst.lib.suffix as sufx
 
 # Update suffixes
-suffixList = ["bkg-BNBG", "cal-BNBG", "cleanBkg-BNBG", "s2d-BNBG"]
+suffixList = ["bkg-BNBG", "cal-BNBG"]
 sufx.SUFFIXES_TO_ADD += suffixList
 sufx.KNOW_SUFFIXES = sufx.combine_suffixes()
 
@@ -25,7 +25,7 @@ def logConsole(text : str, source=None):
 	source : str
 		 WARNING, ERROR, DEBUG, INFO/None
 	"""
-	text = f" - [BetterBackground]  : {text}"
+	text = f" [BetterBackground]  : {text}"
 	logType = {"WARNING": lambda : logger.warning(text),
 			   "ERROR": lambda : logger.error(text),
 			   "DEBUG": lambda : logger.debug(text)
@@ -116,7 +116,7 @@ class PathManager :
 		"""
 		path = os.path.normpath(path)
 
-		self.dirname = os.path.dirname(path)  # Name of directory
+		self.dirname : str = os.path.dirname(path)  # Name of directory
 
 		# In case of json asn file
 		if os.path.splitext(path)[1] == ".json":

@@ -55,12 +55,14 @@ def Stage2(asn : str, path : str):
 	def pipe2():
 		# No background subtraction
 		steps = {'master_background_mos': {'skip': True},
-				 'bkg_subtract': {'skip': True}}
+				 'bkg_subtract': {'skip': True},
+				 'barshadow' : {'source_type': "EXTENDED"}, # Treat all slits as extended, allows for a better extraction
+				 'extract_1d' : {'skip': True}}
 		spec2 = Spec2Pipeline(steps=steps)
 		spec2.output_dir = path
 		spec2.save_results = True
-		cal = spec2.run(asn)
-		return cal
+		_ = spec2.run(asn)
+		return _
 
 	cal = ratePath.openSuffix("cal", pipe2)
 	logConsole(f"Opening corresponding s2d file...")
