@@ -43,7 +43,7 @@ class BSplineLSQ:
 		self.y = y
 		self.w = w
 		self.k = k
-		self.nInsideKnots = max(int(n * len(x)), k - 1)
+		self.nInsideKnots = max(int(n * len(x)), k) # Needs at least 4 interior knots
 		self.nAllKnots = self.nInsideKnots + 2 * (k - 1)
 		self.ncoeffs = self.nAllKnots - k - 1
 		self.curvatureConstraint = curvatureConstraint
