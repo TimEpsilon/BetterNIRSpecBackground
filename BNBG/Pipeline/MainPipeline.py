@@ -62,13 +62,13 @@ def Stage2(asn : str, path : str):
 		spec2.output_dir = path
 		spec2.save_results = True
 		_ = spec2.run(asn)
-		return _
+		return _[0]
 
 	cal = ratePath.openSuffix("cal", pipe2)
 	logConsole(f"Opening corresponding s2d file...")
 	s2d = dm.open(ratePath.withSuffix("s2d"))  # The pipeline also saves a resampled file, which we need for the background.
 
-	BetterBackgroundStep(ratePath, cal, s2d)
+	BetterBackgroundStep(ratePath, s2d, cal)
 
 def Stage3(asn : str, path : str, suffix="cal-BNBG"):
 	"""

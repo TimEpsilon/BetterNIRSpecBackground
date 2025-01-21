@@ -33,7 +33,7 @@ def logConsole(text : str, source=None):
 
 	logType.get(source,lambda : logger.info(text))()
 
-def rewriteJSON(file, suffix="BNBG_photomstep"):
+def rewriteJSON(file, suffix="cal-BNBG"):
 	"""
 	Rewrites the asn.json files in order to apply to the _BNBG files
 
