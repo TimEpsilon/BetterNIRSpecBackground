@@ -1,5 +1,6 @@
 import inspect
-import os.path
+import os
+import time
 
 from BNBG.utils import logConsole, getSourcePosition, PathManager, getCRDSPath
 
@@ -12,6 +13,7 @@ from scipy.stats import median_abs_deviation
 import numpy as np
 from stdatamodels.jwst.datamodels import MultiSlitModel
 from astropy.visualization import ZScaleInterval
+import pandas as pd
 
 from BNBG.Pipeline.BSplineLSQ import BSplineLSQ
 
@@ -20,7 +22,7 @@ def BetterBackgroundStep(ratePath,
 						 cal,
 						 radius=5,
 						 crop=3,
-						 interpolationKnots=0.1,
+						 interpolationKnots=0.05,
 						 curvatureConstraint=0.5,
 						 endpointConstraint=0.1,
 						 kernelSize=(1,15),
@@ -72,7 +74,7 @@ def BetterBackgroundStep(ratePath,
 
 	"""
 	# Calculate background
-	logConsole("Calculating Background")
+	logConsole("Starting Better Background NIRSpec")
 	background = ratePath.openSuffix("bkg-BNBG", lambda : process(s2d,
 																  cal,
 																  ratePath.withSuffix("bkg-BNBG"),
@@ -116,8 +118,11 @@ def process(s2d, cal, pathClean, **kwargs):
 		This is the 'pure' spectral background, with no spatial effects.
 
 	"""
+	# Will serve as a logger file, giving info on the fit of each slit
+	fitInfo = pd.DataFrame({"slit":[],"source":[],"datapoints":[],"insideKnots":[],"chi2":[],"reducedChi2":[],"dof":[]})
+
 	for i, slit in enumerate(s2d.slits):
-		logConsole("Calculating Background")
+		logConsole(f"Calculating Background for slit {slit.name}")
 		s2dSlit = slit
 		calSlit = cal.slits[i]
 
@@ -128,30 +133,43 @@ def process(s2d, cal, pathClean, **kwargs):
 
 		source = getSourcePosition(slit)
 
-		model, error = modelBackgroundFromImage(s2dSlit.data.copy(),
+		bspline = modelBackgroundFromImage(s2dSlit.data.copy(),
 												s2dSlit.err.copy(),
 												dataLambda,
-												targetLambda,
 												source=source,
 												**kwargs)
 
-		if model is None:
+		if bspline is None:
 			calSlit.data = np.zeros_like(calSlit.data)
 			# calSlit.err remains unchanged
+			fitInfo.loc[len(fitInfo)] = [slit.name,
+										 slit.source_id,
+										 None,
+										 None,
+										 None,
+										 None,
+										 None]
 		else:
-			calSlit.data, calSlit.err = model, error
+			calSlit.data, calSlit.err = bspline(targetLambda), bspline.getError(targetLambda)
+			fitInfo.loc[len(fitInfo)] = [slit.name,
+										 slit.source_id,
+										 len(bspline.x),
+										 bspline.nInsideKnots,
+										 bspline.getChiSquare(),
+										 bspline.getReducedChi(),
+										 bspline.getDegreesOfFreedom()]
 
 		logConsole("Background Calculated!")
 
 	logConsole("Saving Clean Background File...")
 	cal.save(pathClean)
+	fitInfo.to_csv(pathClean.replace("fits","csv"), index=False, sep="\t")
 
 	return cal
 
 def modelBackgroundFromImage(data : np.ndarray,
 							 error : np.ndarray,
 							 wavelength : np.ndarray,
-							 targetWavelength : np.ndarray,
 							 **kwargs):
 	"""
 	Creates a 2D image model based on the pre-calibration wavelengths positions of the background
@@ -167,16 +185,13 @@ def modelBackgroundFromImage(data : np.ndarray,
 	wavelength : np.ndarray
 		2D array of the wavelengths of the s2d image
 
-	targetWavelength : np.ndarray
-		2D array of the wavelengths of the cal image
-
 	**kwargs :
 		Arguments to pass to getDataWithMask and BSplineLSQ
 
 	Returns
 	-------
-	results : (np.ndarray, np.ndarray)
-		2D array of a smooth model of background and 2D array of its error, or zeros if a fit cannot be made
+	results : BSplineLSQ
+		bspline object fitted on the data.
 	"""
 
 	# Getting 1D arrays
@@ -186,14 +201,17 @@ def modelBackgroundFromImage(data : np.ndarray,
 	# Check if enough data points (spline of order 4 needs at least 10 points)
 	if (x is None and y is None and dy is None) or len(x) < 10:
 		logConsole("Not enough points to fit. Returning zeros", "WARNING")
-		return None, None
+		return None
 
 	# Weights
 	w = 1/dy**2
 
 	# Creating bspline object
 	kwargs_makeInterpolation = {k: v for k, v in kwargs.items() if k in inspect.signature(BSplineLSQ).parameters}
+	logConsole(f"Starting BSpline fitting with {len(x)} data points (at least {int(kwargs_makeInterpolation['n'] * len(x))} inside knots)...")
+	startTime = time.time()
 	bspline = BSplineLSQ(x,y,w,**kwargs_makeInterpolation)
+	logConsole(f"Finished fitting in {round(time.time() - startTime,3)}s")
 
 	"""
 	plt.figure(figsize=(14,2))
@@ -204,9 +222,10 @@ def modelBackgroundFromImage(data : np.ndarray,
 	plt.show()
 	"""
 
+	logConsole(f"Model found with reduced_chi2 = {np.round(bspline.getReducedChi(),5)}")
 
 	# The 2D background model obtained from the 1D spectrum
-	return bspline(targetWavelength), bspline.getError(targetWavelength)
+	return bspline
 
 def getDataWithMask(data : np.ndarray,
 							 error : np.ndarray,
@@ -379,11 +398,11 @@ def subtractBackground(raw, background, pathBNBG):
 	"""
 	result = raw.copy()
 	for i, slit in enumerate(result.slits):
-		resultSlit = slit
+		rawSlit = raw.slits[i]
 		bkgSlit = background.slits[i]
 
-		resultSlit.data -= bkgSlit.data
-		resultSlit.err = np.sqrt((resultSlit.err**2 + bkgSlit.err**2)/2)
+		slit.data = rawSlit.data - bkgSlit.data
+		slit.err = np.sqrt((rawSlit.err**2 + bkgSlit.err**2)/2)
 
 	result.save(pathBNBG)
 	logConsole(f"Saving File {os.path.basename(pathBNBG)}")

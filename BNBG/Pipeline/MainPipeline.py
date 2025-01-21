@@ -52,6 +52,9 @@ def Stage2(asn : str, path : str):
 	ratePath = PathManager(asn)
 	logConsole(f"Starting Stage 2 on {ratePath.filename}")
 
+	if os.path.exists(ratePath.withSuffix("cal-BNBG")):
+		return
+
 	def pipe2():
 		# No background subtraction
 		steps = {'master_background_mos': {'skip': True},

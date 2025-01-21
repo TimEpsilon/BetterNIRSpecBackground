@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 
 import stdatamodels.jwst.datamodels as dm
 from stdatamodels.jwst.datamodels import SlitModel
@@ -10,6 +11,10 @@ import jwst.lib.suffix as sufx
 suffixList = ["bkg-BNBG", "cal-BNBG"]
 sufx.SUFFIXES_TO_ADD += suffixList
 sufx.KNOW_SUFFIXES = sufx.combine_suffixes()
+sufx.REMOVE_SUFFIX_REGEX = re.compile(
+    '^(?P<root>.+?)((?P<separator>_|-)(' +
+    '|'.join(sufx.KNOW_SUFFIXES) + '))?$'
+)
 
 # Get logger of jwst pipeline
 logger = logging.getLogger("stpipe")
@@ -51,8 +56,8 @@ def rewriteJSON(file, suffix="cal-BNBG"):
 
 		not_science = [] # Removes other type of files, like images
 		for i in range(len(data["products"][0]["members"])):
-			name = data["products"][0]["members"][i]["expname"]
-			name = sufx.remove_suffix(name)
+			name = data["products"][0]["members"][i]["expname"].split(".")[0]
+			name = sufx.remove_suffix(name)[0]
 			name = name + "_" + suffix + ".fits"
 			data["products"][0]["members"][i]["expname"] = name
 

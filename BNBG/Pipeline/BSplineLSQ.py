@@ -5,7 +5,7 @@ from scipy.interpolate import BSpline
 import matplotlib.pyplot as plt
 
 class BSplineLSQ:
-	def __init__(self, x : np.ndarray, y : np.ndarray, w : np.ndarray, t=None, n=0.1, k=4, curvatureConstraint=1, endpointConstraint=0.1):
+	def __init__(self, x : np.ndarray, y : np.ndarray, w : np.ndarray, t : np.ndarray = None, n=0.1, k=4, curvatureConstraint=1, endpointConstraint=0.1):
 		"""
 		A simple class for BSpline objects. Relies on the BSplines objects of scipy,
 		but allows for more control on the fitting than the usual LSQ algorithm of scipy.interpolate.
@@ -43,7 +43,7 @@ class BSplineLSQ:
 		self.y = y
 		self.w = w
 		self.k = k
-		self.nInsideKnots = max(int(n * len(x)), k) # Needs at least 4 interior knots
+		self.nInsideKnots = max(int(n * len(x)), k+1)
 		self.nAllKnots = self.nInsideKnots + 2 * (k - 1)
 		self.ncoeffs = self.nAllKnots - k - 1
 		self.curvatureConstraint = curvatureConstraint
@@ -55,6 +55,9 @@ class BSplineLSQ:
 			self.t = self._regularSpacedKnots()
 		else:
 			self.t = t
+			self.nAllKnots = len(t)
+			self.nInsideKnots = self.nAllKnots - 2 * (k - 1)
+			self.ncoeffs = self.nAllKnots - k - 1
 
 		self.X, A1_a, A1_b, A2 = self._getSplineMatrices()
 
@@ -110,9 +113,6 @@ class BSplineLSQ:
 		----------
 		ax : matplotlib.axes.Axes
 			Axis on which to plot the data
-
-		Returns
-		-------
 
 		"""
 
@@ -170,6 +170,49 @@ class BSplineLSQ:
 		if lambdaEndpoints is not None:
 			self.endpointConstraint = lambdaEndpoints
 		self.invcov, self.cov, self.c, self.spline = self._calculateCoefficients()
+
+	def getChiSquare(self):
+		"""
+		Calculates the chi square of the fit, as defined by ||sqrt(W) (y - A @ c)||²
+
+		Returns
+		-------
+		chi2 : float
+			The chi square
+		"""
+		residual = self.y - self(self.x)
+		chi2 = residual.T @ self.W @ residual
+		return chi2
+
+	def getDegreesOfFreedom(self):
+		"""
+		Calculates the amount of degrees of freedom, defined as
+		dof = N - Tr(H).
+
+		*H =  X @ cov @ X.T @ W* and N the number of datapoints.
+		Returns
+		-------
+		dof : int
+			The amount of degrees of freedom
+		"""
+		H = self.X @ self.cov @ self.X.T @ self.W
+		dof = len(self.x) - np.trace(H)
+		return dof
+
+	def getReducedChi(self):
+		"""
+		Calculates the reduced chi square of the fit, as defined by chi² / dof,
+		dof being the number of degrees of freedom.
+
+		Returns
+		-------
+		redchi2 : float
+			The reduced chi square
+		"""
+
+		chi2 = self.getChiSquare()
+		dof = self.getDegreesOfFreedom()
+		return chi2 / dof
 
 	########################
 	# Private
