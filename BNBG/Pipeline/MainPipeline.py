@@ -37,7 +37,7 @@ def Stage1(uncal : str,path : str):
 	# Handles the logic of checkpoint files, i.e. will apply the pipeline only if output file can't be found
 	uncalPath.openSuffix("rate", pipe1, open=False)
 
-def Stage2(asn : str, path : str):
+def Stage2(asn : str, path : str, **kwargs):
 	"""
 	Applies the second stage of the pipeline. This is where the custom subtraction happens, after the pipeline has run.
 	Parameters
@@ -47,6 +47,9 @@ def Stage2(asn : str, path : str):
 
 	path : str
 		Path to the folder
+
+	**kwargs :
+		Arguments to pass to BetterBackgroundStep
 
 	"""
 	ratePath = PathManager(asn)
@@ -71,7 +74,7 @@ def Stage2(asn : str, path : str):
 	logConsole(f"Opening corresponding s2d file...")
 	s2d = dm.open(ratePath.withSuffix("s2d"))  # The pipeline also saves a resampled file, which we need for the background.
 
-	BetterBackgroundStep(ratePath, s2d, cal)
+	BetterBackgroundStep(ratePath, s2d, cal, **kwargs)
 
 def Stage3(asn : str, path : str, suffix="cal-BNBG"):
 	"""

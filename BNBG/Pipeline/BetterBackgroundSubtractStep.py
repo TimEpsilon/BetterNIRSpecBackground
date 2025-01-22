@@ -121,6 +121,8 @@ def process(s2d, cal, pathClean, **kwargs):
 	# Will serve as a logger file, giving info on the fit of each slit
 	fitInfo = pd.DataFrame({"slit":[],"source":[],"datapoints":[],"insideKnots":[],"chi2":[],"reducedChi2":[],"dof":[]})
 
+	# Make copy or else will be overwritten
+	cal = cal.copy()
 	for i, slit in enumerate(s2d.slits):
 		logConsole(f"Calculating Background for slit {slit.name}")
 		s2dSlit = slit
@@ -400,9 +402,6 @@ def subtractBackground(raw, background, pathBNBG):
 	for i, slit in enumerate(result.slits):
 		rawSlit = raw.slits[i]
 		bkgSlit = background.slits[i]
-
-		slit.data = rawSlit.data - bkgSlit.data
-		slit.err = np.sqrt((rawSlit.err**2 + bkgSlit.err**2)/2)
 
 	result.save(pathBNBG)
 	logConsole(f"Saving File {os.path.basename(pathBNBG)}")
