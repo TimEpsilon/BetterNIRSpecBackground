@@ -403,6 +403,9 @@ def subtractBackground(raw, background, pathBNBG):
 		rawSlit = raw.slits[i]
 		bkgSlit = background.slits[i]
 
+		slit.data = rawSlit.data - bkgSlit.data
+		slit.err = np.sqrt((rawSlit.err ** 2 + bkgSlit.err ** 2) / 2)
+
 	result.save(pathBNBG)
 	logConsole(f"Saving File {os.path.basename(pathBNBG)}")
 

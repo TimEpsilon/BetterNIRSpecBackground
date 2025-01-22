@@ -62,7 +62,7 @@ def Stage2(asn : str, path : str, **kwargs):
 		# No background subtraction
 		steps = {'master_background_mos': {'skip': True},
 				 'bkg_subtract': {'skip': True},
-				 'barshadow' : {'source_type': "EXTENDED"}, # Treat all slits as extended, allows for a better extraction
+				 'srctype' : {'source_type': "EXTENDED"}, # Treat all slits as extended, allows for a better extraction
 				 'extract_1d' : {'skip': True}}
 		spec2 = Spec2Pipeline(steps=steps)
 		spec2.output_dir = path
