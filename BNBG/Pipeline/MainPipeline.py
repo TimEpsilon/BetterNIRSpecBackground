@@ -60,10 +60,14 @@ def Stage2(asn : str, path : str, **kwargs):
 
 	def pipe2():
 		# No background subtraction
+		# Since the goal is to detect secondary sources, point sources will be treated as extended
 		steps = {'master_background_mos': {'skip': True},
 				 'bkg_subtract': {'skip': True},
-				 'srctype' : {'source_type': "EXTENDED"}, # Treat all slits as extended, allows for a better extraction
-				 'extract_1d' : {'skip': True}}
+				 'extract_1d': {'skip': True},
+				 "photom": {"source_type": "EXTENDED"}, # Will normalize every flux by the size of a pixel
+				 "pathloss": {"source_type": "EXTENDED"}, # Spectral correction to be independent of spatial position
+				 "barshadow": {"source_type": "EXTENDED"} # (Almost) gets rid of envelope around each shutter
+				 }
 		spec2 = Spec2Pipeline(steps=steps)
 		spec2.output_dir = path
 		spec2.save_results = True
