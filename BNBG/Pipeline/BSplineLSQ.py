@@ -1,4 +1,5 @@
 import numpy as np
+from astropy.visualization import ZScaleInterval
 from matplotlib.colors import LogNorm
 from matplotlib.widgets import Slider
 from scipy.interpolate import BSpline
@@ -38,39 +39,31 @@ class BSplineLSQ:
 			An hyperparameter used for the endpoints, i.e., how much the slope on each side of the spline will be minimized.
 			If equal to 0, this will entirely ignore the endpoint slopes
 		"""
-
 		self.x = x
 		self.y = y
 		self.w = w
+
 		self.k = k
-		self.nInsideKnots = max(int(n * len(x)), k+1)
-		self.nAllKnots = self.nInsideKnots + 2 * (k - 1)
-		self.ncoeffs = self.nAllKnots - k - 1
-		self.curvatureConstraint = curvatureConstraint
-		self.endpointConstraint = endpointConstraint
 
-		# Uniform knots based on the data distribution
-		# i.e. if there is a higher density of points, there will be more knots
-		if t is None:
-			self.t = self._regularSpacedKnots()
-		else:
-			self.t = t
-			self.nAllKnots = len(t)
-			self.nInsideKnots = self.nAllKnots - 2 * (k - 1)
-			self.ncoeffs = self.nAllKnots - k - 1
+		# Init values
+		# These attributes are modified with a method in order to redefine them if necessary
+		self.nInsideKnots = None
+		self.nAllKnots = None
+		self.ncoeffs = None
+		self.t = None
+		self.curvatureConstraint = None
+		self.endpointConstraint = None
+		self.X = None
+		self.A1_a = None
+		self.A1_b = None
+		self.W = None
+		self.G2 = None
+		self.invcov = None
+		self.cov = None
+		self.c = None
+		self.spline = None
 
-		self.X, A1_a, A1_b, A2 = self._getSplineMatrices()
-
-		# Creating the matrix A1.T @ A1
-		self.A1_a = np.outer(A1_a, A1_a)
-		self.A1_b = np.outer(A1_b, A1_b)
-
-		# Weight matrix
-		self.W = np.diagflat(w)
-
-		self.G2 = self._getGramMatrix(A2)
-
-		self.invcov, self.cov, self.c, self.spline = self._calculateCoefficients()
+		self.updateParameters(t=t, n=n, curvatureConstraint=curvatureConstraint, endpointConstraint=endpointConstraint)
 
 	def __call__(self, x):
 		return self.spline(x)
@@ -105,7 +98,7 @@ class BSplineLSQ:
 			df[j] = np.sqrt(b.T @ self.cov @ b)
 		return df.reshape(shape)
 
-	def plot(self, ax):
+	def plot(self, ax, ax2, wavelength):
 		"""
 		Plots the spline and the data, along with 2 sliders allowing to calculate on the fly the effect of both hyperparameters.
 
@@ -117,19 +110,22 @@ class BSplineLSQ:
 		"""
 
 		# Slider
-		plt.subplots_adjust(bottom=0.2)
+		plt.subplots_adjust(bottom=0.3)
 		ax_slider1 = plt.axes((0.2, 0.1, 0.6, 0.03))
 		slider1 = Slider(ax_slider1, 'CurvatureConstraint', 0, 5, valinit=self.curvatureConstraint, valstep=0.01)
 		ax_slider2 = plt.axes((0.2, 0.05, 0.6, 0.03))
 		slider2 = Slider(ax_slider2, 'EndpointConstraint', 0, 1, valinit=self.endpointConstraint, valstep=0.01)
+		ax_slider3 = plt.axes((0.2, 0.15, 0.6, 0.03))
+		slider3 = Slider(ax_slider3, 'n', 0, 1, valinit=0.1, valstep=0.01)
 
 		def update(val):
 			ax.clear()
 
-			c1 = slider1.val
-			c2 = slider2.val
+			curv = slider1.val
+			end = slider2.val
+			n = slider3.val
 
-			self.updateParameters(c1, c2)
+			self.updateParameters(n=n, curvatureConstraint=curv, endpointConstraint=end)
 
 			ax.grid()
 
@@ -143,33 +139,70 @@ class BSplineLSQ:
 			ax.fill_between(x, y - dy, y + dy, color='b', alpha=0.1)
 			ax.scatter(self.t, self(self.t), color='b', marker='D')
 			ax.set_ylim(*ylim)
+			ax.set_title(fr"$\chi_\nu^2$ = {self.getReducedChi()}")
 
+			model = self(wavelength)
+			z1, z2 = ZScaleInterval().get_limits(model)
+			ax2.imshow(model, cmap='plasma', vmin=z1, vmax=z2, origin='lower')
+			ax2.axis('off')
 		update(0)
 
 		# Attach the update function to the slider
 		slider1.on_changed(update)
 		slider2.on_changed(update)
+		slider3.on_changed(update)
 
-		return slider1, slider2
+		return slider1, slider2, slider3
 
-	def updateParameters(self, lambdaRegularization=None, lambdaEndpoints=None):
+	def updateParameters(self, t : np.ndarray = None, n=0.1, curvatureConstraint=None, endpointConstraint=None):
 		"""
 		Recalculates the spline with new values for both hyperparameters.
 
 		Parameters
 		----------
-		lambdaRegularization : float
+		t : ndarray
+			The knots of the spline. Is of the shape [(k-1),(n-k+2),(k-1)], the n-k+2 points being interior knots
+
+		n : float
+			In range [0, 1], the fraction of len(x) used to determine the amount of interior knots
+
+		curvatureConstraint : float
 			New value for the curvature constraint
 
-		lambdaEndpoints : float
+		endpointConstraint : float
 			New value for the endpoints constraint
 
 		"""
-		if lambdaRegularization is not None:
-			self.curvatureConstraint = lambdaRegularization
-		if lambdaEndpoints is not None:
-			self.endpointConstraint = lambdaEndpoints
+		# Uniform knots based on the data distribution
+		# i.e. if there is a higher density of points, there will be more knots
+		if t is None:
+			# knot determination
+			self.nInsideKnots = max(int(n * len(self.x)), self.k + 1)
+			self.nAllKnots = self.nInsideKnots + 2 * (self.k - 1)
+			self.ncoeffs = self.nAllKnots - self.k - 1
+			self.t = self._regularSpacedKnots()
+		else:
+			self.t = t
+			self.nAllKnots = len(t)
+			self.nInsideKnots = self.nAllKnots - 2 * (self.k - 1)
+			self.ncoeffs = self.nAllKnots - self.k - 1
+
+		self.curvatureConstraint = curvatureConstraint
+		self.endpointConstraint = endpointConstraint
+
+		self.X, A1_a, A1_b, A2 = self._getSplineMatrices()
+
+		# Creating the matrix A1.T @ A1
+		self.A1_a = np.outer(A1_a, A1_a)
+		self.A1_b = np.outer(A1_b, A1_b)
+
+		# Weight matrix
+		self.W = np.diagflat(self.w)
+
+		self.G2 = self._getGramMatrix(A2)
+
 		self.invcov, self.cov, self.c, self.spline = self._calculateCoefficients()
+
 
 	def getChiSquare(self):
 		"""

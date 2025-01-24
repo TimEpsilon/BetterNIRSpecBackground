@@ -197,8 +197,8 @@ def modelBackgroundFromImage(data : np.ndarray,
 	"""
 
 	# Getting 1D arrays
-	kwargs_getDataWithMask = {k: v for k, v in kwargs.items() if k in inspect.signature(getDataWithMask).parameters}
-	x,y,dy = getDataWithMask(data.copy(), error.copy(), wavelength.copy(), **kwargs_getDataWithMask)
+	kwargs_cleanupImage = {k: v for k, v in kwargs.items() if k in inspect.signature(cleanupImage).parameters}
+	x,y,dy = getDataWithMask(data.copy(), error.copy(), wavelength.copy(), **kwargs_cleanupImage)
 
 	# Check if enough data points (spline of order 4 needs at least 10 points)
 	if (x is None and y is None and dy is None) or len(x) < 10:
@@ -215,14 +215,18 @@ def modelBackgroundFromImage(data : np.ndarray,
 	bspline = BSplineLSQ(x,y,w,**kwargs_makeInterpolation)
 	logConsole(f"Finished fitting in {round(time.time() - startTime,3)}s")
 
-	"""
-	plt.figure(figsize=(14,2))
+
+	fig, ax = plt.subplots(3,1, figsize=(16,10), gridspec_kw={'height_ratios': [1,1,8]})
 	z1, z2 = ZScaleInterval().get_limits(data)
-	plt.imshow(data, cmap='plasma', vmin=z1, vmax=z2, origin='lower')
-	fig, ax = plt.subplots(figsize=(14,6))
-	s1,s2 = bspline.plot(ax)
-	plt.show()
-	"""
+	ax[0].imshow(data, cmap='gray', vmin=z1, vmax=z2, origin='lower', interpolation='none')
+	mask = cleanupImage(data.copy(), error.copy(), **kwargs_cleanupImage)
+	data[mask] = np.nan
+	ax[0].imshow(data, cmap='plasma', vmin=z1, vmax=z2, origin='lower', interpolation='none')
+	ax[0].axis('off')
+	ax[0].hlines(kwargs_cleanupImage["source"],0,data.shape[0],color="r",linestyle="dotted")
+	s1,s2,s3 = bspline.plot(ax[2],ax[1], wavelength)
+	plt.show(block=True)
+
 
 	logConsole(f"Model found with reduced_chi2 = {np.round(bspline.getReducedChi(),5)}")
 
