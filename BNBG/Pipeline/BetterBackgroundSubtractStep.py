@@ -7,12 +7,10 @@ from BNBG.utils import logConsole, getSourcePosition, PathManager, getCRDSPath
 os.environ['CRDS_PATH'] = getCRDSPath()
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
-import matplotlib.pyplot as plt
 from scipy.ndimage import generic_filter
 from scipy.stats import median_abs_deviation
 import numpy as np
 from stdatamodels.jwst.datamodels import MultiSlitModel
-from astropy.visualization import ZScaleInterval
 import pandas as pd
 
 from BNBG.Pipeline.BSplineLSQ import BSplineLSQ
@@ -20,9 +18,9 @@ from BNBG.Pipeline.BSplineLSQ import BSplineLSQ
 def BetterBackgroundStep(ratePath,
 						 s2d,
 						 cal,
-						 radius=5,
+						 radius=4,
 						 crop=3,
-						 interpolationKnots=0.1,
+						 interpolationKnots=0.2,
 						 curvatureConstraint=0.5,
 						 endpointConstraint=0.1,
 						 kernelSize=(1,15),
@@ -125,8 +123,22 @@ def process(s2d, cal, pathClean, **kwargs):
 	cal = cal.copy()
 	for i, slit in enumerate(s2d.slits):
 		logConsole(f"Calculating Background for slit {slit.name}")
+
 		s2dSlit = slit
 		calSlit = cal.slits[i]
+
+		if len(slit.shutter_state) == 1:
+			logConsole(f"Only 1 shutter in slit, skipping...", "WARNING")
+			calSlit.data = np.zeros_like(slit.data)
+			# calSlit.err remains unchanged
+			fitInfo.loc[len(fitInfo)] = [slit.name,
+										 slit.source_id,
+										 None,
+										 None,
+										 None,
+										 None,
+										 None]
+			continue
 
 		Y, X = np.indices(calSlit.data.shape)
 		_, _, targetLambda = calSlit.meta.wcs.transform("detector", "world", X, Y)
@@ -215,22 +227,8 @@ def modelBackgroundFromImage(data : np.ndarray,
 	bspline = BSplineLSQ(x,y,w,**kwargs_makeInterpolation)
 	logConsole(f"Finished fitting in {round(time.time() - startTime,3)}s")
 
-
-	fig, ax = plt.subplots(3,1, figsize=(16,10), gridspec_kw={'height_ratios': [1,1,8]})
-	z1, z2 = ZScaleInterval().get_limits(data)
-	ax[0].imshow(data, cmap='gray', vmin=z1, vmax=z2, origin='lower', interpolation='none')
-	mask = cleanupImage(data.copy(), error.copy(), **kwargs_cleanupImage)
-	data[mask] = np.nan
-	ax[0].imshow(data, cmap='plasma', vmin=z1, vmax=z2, origin='lower', interpolation='none')
-	ax[0].axis('off')
-	ax[0].hlines(kwargs_cleanupImage["source"],0,data.shape[0],color="r",linestyle="dotted")
-	s1,s2,s3 = bspline.plot(ax[2],ax[1], wavelength)
-	plt.show(block=True)
-
-
 	logConsole(f"Model found with reduced_chi2 = {np.round(bspline.getReducedChi(),5)}")
 
-	# The 2D background model obtained from the 1D spectrum
 	return bspline
 
 def getDataWithMask(data : np.ndarray,
@@ -287,7 +285,7 @@ def getDataWithMask(data : np.ndarray,
 
 	return x,y,dy
 
-def cleanupImage(data : np.ndarray, error : np.ndarray, crop=3, source=None, radius=5, kernelSize=(1,15), Nsigma=10):
+def cleanupImage(data : np.ndarray, error : np.ndarray, crop=3, source=None, radius=4, kernelSize=(1,15), Nsigma=10):
 	"""
 	Creates a mask that selects bad pixels for background subtraction
 

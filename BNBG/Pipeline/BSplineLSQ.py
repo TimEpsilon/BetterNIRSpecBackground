@@ -1,12 +1,11 @@
 import numpy as np
 from astropy.visualization import ZScaleInterval
-from matplotlib.colors import LogNorm
 from matplotlib.widgets import Slider
 from scipy.interpolate import BSpline
 import matplotlib.pyplot as plt
 
 class BSplineLSQ:
-	def __init__(self, x : np.ndarray, y : np.ndarray, w : np.ndarray, t : np.ndarray = None, n=0.1, k=4, curvatureConstraint=1, endpointConstraint=0.1):
+	def __init__(self, x : np.ndarray, y : np.ndarray, w : np.ndarray, t : np.ndarray = None, n=0.2, k=4, curvatureConstraint=1, endpointConstraint=0.1):
 		"""
 		A simple class for BSpline objects. Relies on the BSplines objects of scipy,
 		but allows for more control on the fitting than the usual LSQ algorithm of scipy.interpolate.
@@ -98,7 +97,7 @@ class BSplineLSQ:
 			df[j] = np.sqrt(b.T @ self.cov @ b)
 		return df.reshape(shape)
 
-	def plot(self, ax, ax2, wavelength):
+	def plot(self, ax, ax2, data, wavelength):
 		"""
 		Plots the spline and the data, along with 2 sliders allowing to calculate on the fly the effect of both hyperparameters.
 
@@ -139,10 +138,16 @@ class BSplineLSQ:
 			ax.fill_between(x, y - dy, y + dy, color='b', alpha=0.1)
 			ax.scatter(self.t, self(self.t), color='b', marker='D')
 			ax.set_ylim(*ylim)
-			ax.set_title(fr"$\chi_\nu^2$ = {self.getReducedChi()}")
+			ax.set_title(fr"$\chi^2$ = {self.getChiSquare()}")
 
-			model = self(wavelength)
-			z1, z2 = ZScaleInterval().get_limits(model)
+			model = data-self(wavelength)
+
+			imgs = ax.get_images()
+			if len(imgs) > 0:
+				z1, z2 = imgs[0].get_clim()
+			else:
+				z1, z2 = ZScaleInterval().get_limits(model)
+			ax2.clear()
 			ax2.imshow(model, cmap='plasma', vmin=z1, vmax=z2, origin='lower')
 			ax2.axis('off')
 		update(0)
