@@ -3,7 +3,9 @@ import logging
 import os
 import re
 
+import numpy as np
 import stdatamodels.jwst.datamodels as dm
+from scipy.optimize import curve_fit
 from stdatamodels.jwst.datamodels import SlitModel
 import jwst.lib.suffix as sufx
 
@@ -94,7 +96,9 @@ def getCRDSPath() -> str:
 
 def getSourcePosition(slit : SlitModel) -> float:
 	"""
-	Returns the vertical position, in detector space (pixels), of the source
+	Returns the vertical position, in detector space (pixels), of the source.
+	Will try to approximate the highest spatial peak as the source.
+	If however such a peak can't be found, will default to the approximate source position given by the pipeline.
 
 	Parameters
 	----------
@@ -106,7 +110,35 @@ def getSourcePosition(slit : SlitModel) -> float:
 	position : float
 		Vertical source position in pixels, can be ~1e48 if the source is outside in the case of a 2 slit slitlet
 	"""
-	return slit.meta.wcs.transform('world', 'detector', slit.source_ra, slit.source_dec, 3)[1]
+	source = slit.meta.wcs.transform('world', 'detector', slit.source_ra, slit.source_dec, 3)[1]
+
+	data = slit.data.copy()
+	# Quick cleanup of negatives + crop
+	Y, _ = np.indices(data.shape)
+	mask = (data <= 0) | (Y < 3) | (Y > Y.max() - 3) | np.isnan(data)
+	data[mask] = np.nan
+
+	# Spatial distribution
+	distribution = np.nanmedian(data, axis=1)
+	X = np.indices(distribution.shape)[0]
+	mask = np.isfinite(distribution)
+	X = X[mask]
+	distribution = distribution[mask]
+
+	coeff, err = curve_fit(lambda x, x0, s, A, c : A*np.exp(-(x-x0)**2/(2*s**2))+c,
+					  X,
+					  distribution,
+					  p0=[source, 3, distribution[int(source)], np.min(distribution)],
+					  bounds=([source-4, 0.01, 0, np.min(distribution)],
+							  [source+4, 10, np.max(distribution), np.max(distribution)]))
+
+	# We approximate the SNR as (A+c)/c = A/c + 1, and we only keep A/c > 0.8
+	# We also exclude fits where the uncertainty on the position is too large
+	snr = coeff[2]/coeff[3]
+	if snr < 0.8 or err[1][1] > data.shape[1] / 2:
+		return source
+	else:
+		return coeff[0]
 
 class PathManager :
 	def __init__(self, path : str):
