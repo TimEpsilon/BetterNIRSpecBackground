@@ -120,15 +120,21 @@ def getSourcePosition(slit : SlitModel) -> float:
 
 	# Spatial distribution
 	distribution = np.nanmedian(data, axis=1)
+	if 0 <= int(source) < len(distribution):
+		peak = distribution[int(source)]
+	else :
+		peak = np.nanmax(distribution)
+
 	X = np.indices(distribution.shape)[0]
 	mask = np.isfinite(distribution)
 	X = X[mask]
 	distribution = distribution[mask]
 
+
 	coeff, err = curve_fit(lambda x, x0, s, A, c : A*np.exp(-(x-x0)**2/(2*s**2))+c,
 					  X,
 					  distribution,
-					  p0=[source, 3, distribution[int(source)], np.min(distribution)],
+					  p0=[source, 3, peak, np.min(distribution)],
 					  bounds=([source-4, 0.01, 0, np.min(distribution)],
 							  [source+4, 10, np.max(distribution), np.max(distribution)]))
 
