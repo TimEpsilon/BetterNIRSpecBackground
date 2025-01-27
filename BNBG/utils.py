@@ -94,11 +94,12 @@ def getCRDSPath() -> str:
 		logConsole(f"CRDS folder at {txt}")
 		return txt
 
-def getSourcePosition(slit : SlitModel) -> float:
+def getSourcePosition(slit : SlitModel) -> float | None:
 	"""
 	Returns the vertical position, in detector space (pixels), of the source.
 	Will try to approximate the highest spatial peak as the source.
 	If however such a peak can't be found, will default to the approximate source position given by the pipeline.
+	If somehow the pipeline returns nothing, will return None.
 
 	Parameters
 	----------
@@ -111,6 +112,10 @@ def getSourcePosition(slit : SlitModel) -> float:
 		Vertical source position in pixels, can be ~1e48 if the source is outside in the case of a 2 slit slitlet
 	"""
 	source = slit.meta.wcs.transform('world', 'detector', slit.source_ra, slit.source_dec, 3)[1]
+
+	# Somehow this can happen
+	if np.isnan(source):
+		return None
 
 	data = slit.data.copy()
 	# Quick cleanup of negatives + crop
@@ -130,21 +135,25 @@ def getSourcePosition(slit : SlitModel) -> float:
 	X = X[mask]
 	distribution = distribution[mask]
 
+	try :
+		coeff, err = curve_fit(lambda x, x0, s, A, c : A*np.exp(-(x-x0)**2/(2*s**2))+c,
+						  X,
+						  distribution,
+						  p0=[source, 3, peak, np.min(distribution)],
+						  bounds=([source-4, 0.01, 0, np.min(distribution)],
+								  [source+4, 10, np.max(distribution), np.max(distribution)]))
 
-	coeff, err = curve_fit(lambda x, x0, s, A, c : A*np.exp(-(x-x0)**2/(2*s**2))+c,
-					  X,
-					  distribution,
-					  p0=[source, 3, peak, np.min(distribution)],
-					  bounds=([source-4, 0.01, 0, np.min(distribution)],
-							  [source+4, 10, np.max(distribution), np.max(distribution)]))
+		# We approximate the SNR as (A+c)/c = A/c + 1, and we only keep A/c > 0.8
+		# We also exclude fits where the uncertainty on the position is too large
+		snr = coeff[2]/coeff[3]
+		if snr < 0.8 or err[1][1] > data.shape[1] / 2:
+			return source
+		else:
+			return coeff[0]
 
-	# We approximate the SNR as (A+c)/c = A/c + 1, and we only keep A/c > 0.8
-	# We also exclude fits where the uncertainty on the position is too large
-	snr = coeff[2]/coeff[3]
-	if snr < 0.8 or err[1][1] > data.shape[1] / 2:
+	except Exception as e:
+		logConsole("Can't find a suitable fit for source position. Defaulting to approximate position.")
 		return source
-	else:
-		return coeff[0]
 
 class PathManager :
 	def __init__(self, path : str):
