@@ -129,7 +129,7 @@ def process(s2d, cal, pathClean, **kwargs):
 
 		if len(slit.shutter_state) == 1:
 			logConsole(f"Only 1 shutter in slit, skipping...", "WARNING")
-			calSlit.data = np.zeros_like(slit.data)
+			calSlit.data = np.zeros_like(calSlit.data)
 			# calSlit.err remains unchanged
 			fitInfo.loc[len(fitInfo)] = [slit.name,
 										 slit.source_id,
