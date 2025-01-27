@@ -120,7 +120,7 @@ def getSourcePosition(slit : SlitModel) -> float:
 
 	# Spatial distribution
 	distribution = np.nanmedian(data, axis=1)
-	if 0 <= int(source) < len(distribution):
+	if 0 <= source < len(distribution):
 		peak = distribution[int(source)]
 	else :
 		peak = np.nanmax(distribution)
