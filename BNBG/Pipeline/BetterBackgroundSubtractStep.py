@@ -406,7 +406,9 @@ def subtractBackground(raw, background, pathBNBG):
 		bkgSlit = background.slits[i]
 
 		slit.data = rawSlit.data - bkgSlit.data
-		slit.err = np.sqrt((rawSlit.err ** 2 + bkgSlit.err ** 2) / 2)
+		slit.err = np.sqrt((rawSlit.err ** 2 + bkgSlit.err ** 2)) # The error will be larger or equal
+		# The original master background from the pipeline does not propagate errors
+		# This is unfair imo
 
 	result.save(pathBNBG)
 	logConsole(f"Saving File {os.path.basename(pathBNBG)}")
