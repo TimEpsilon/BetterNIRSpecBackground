@@ -5,7 +5,7 @@ from scipy.interpolate import BSpline
 import matplotlib.pyplot as plt
 
 class BSplineLSQ:
-	def __init__(self, x : np.ndarray, y : np.ndarray, w : np.ndarray, t : np.ndarray = None, n=0.2, k=4, curvatureConstraint=1, endpointConstraint=0.1):
+	def __init__(self, x : np.ndarray, y : np.ndarray, w : np.ndarray, t : np.ndarray = None, interpolationKnots=0.25, k=4, curvatureConstraint=1, endpointConstraint=0.1):
 		"""
 		A simple class for BSpline objects. Relies on the BSplines objects of scipy,
 		but allows for more control on the fitting than the usual LSQ algorithm of scipy.interpolate.
@@ -24,7 +24,7 @@ class BSplineLSQ:
 		t : ndarray
 			The knots of the spline. Is of the shape [(k-1),(n-k+2),(k-1)], the n-k+2 points being interior knots
 
-		n : float
+		interpolationKnots : float
 			In range [0, 1], the fraction of len(x) used to determine the amount of interior knots
 
 		k : int
@@ -62,7 +62,7 @@ class BSplineLSQ:
 		self.c = None
 		self.spline = None
 
-		self.updateParameters(t=t, n=n, curvatureConstraint=curvatureConstraint, endpointConstraint=endpointConstraint)
+		self.updateParameters(t=t, interpolationKnots=interpolationKnots, curvatureConstraint=curvatureConstraint, endpointConstraint=endpointConstraint)
 
 	def __call__(self, x):
 		return self.spline(x)
@@ -124,7 +124,7 @@ class BSplineLSQ:
 			end = slider2.val
 			n = slider3.val
 
-			self.updateParameters(n=n, curvatureConstraint=curv, endpointConstraint=end)
+			self.updateParameters(interpolationKnots=n, curvatureConstraint=curv, endpointConstraint=end)
 
 			ax.grid()
 
@@ -159,7 +159,7 @@ class BSplineLSQ:
 
 		return slider1, slider2, slider3
 
-	def updateParameters(self, t : np.ndarray = None, n=0.1, curvatureConstraint=None, endpointConstraint=None):
+	def updateParameters(self, t : np.ndarray = None, interpolationKnots=0.1, curvatureConstraint=None, endpointConstraint=None):
 		"""
 		Recalculates the spline with new values for both hyperparameters.
 
@@ -168,7 +168,7 @@ class BSplineLSQ:
 		t : ndarray
 			The knots of the spline. Is of the shape [(k-1),(n-k+2),(k-1)], the n-k+2 points being interior knots
 
-		n : float
+		interpolationKnots : float
 			In range [0, 1], the fraction of len(x) used to determine the amount of interior knots
 
 		curvatureConstraint : float
@@ -182,7 +182,7 @@ class BSplineLSQ:
 		# i.e. if there is a higher density of points, there will be more knots
 		if t is None:
 			# knot determination
-			self.nInsideKnots = max(int(n * len(self.x)), self.k + 1)
+			self.nInsideKnots = max(int(interpolationKnots * len(self.x)), self.k + 1)
 			self.nAllKnots = self.nInsideKnots + 2 * (self.k - 1)
 			self.ncoeffs = self.nAllKnots - self.k - 1
 			self.t = self._regularSpacedKnots()

@@ -64,7 +64,6 @@ def Stage2(asn : str, path : str, **kwargs):
 		steps = {'master_background_mos': {'skip': True},
 				 'bkg_subtract': {'skip': True},
 				 'extract_1d': {'skip': True},
-				 "photom": {"source_type": "EXTENDED"}, # Will normalize every flux by the size of a pixel
 				 "pathloss": {"source_type": "EXTENDED"}, # Spectral correction to be independent of spatial position
 				 "barshadow": {"source_type": "EXTENDED"} # (Almost) gets rid of envelope around each shutter
 				 }
