@@ -10,8 +10,10 @@ dependencies:
   - argon2-cffi-bindings=21.2.0=py311h5eee18b_0
   - async-lru=2.0.4=py311h06a4308_0
   - beautifulsoup4=4.12.3=py311h06a4308_0
+  - bleach=4.1.0=pyhd3eb1b0_0
+  - brotli-python=1.0.9=py311h6a678d5_8
   - bzip2=1.0.8=h5eee18b_6
-  - ca-certificates=2024.3.11=h06a4308_0
+  - ca-certificates=2024.12.31=h06a4308_0
   - cyrus-sasl=2.1.28=h52b45da_1
   - dbus=1.13.18=hb2f20db_0
   - decorator=5.1.1=pyhd3eb1b0_0
@@ -24,12 +26,23 @@ dependencies:
   - glib-tools=2.78.4=h6a678d5_0
   - gst-plugins-base=1.14.1=h6a678d5_1
   - gstreamer=1.14.1=h5eee18b_1
+  - h11=0.14.0=py311h06a4308_0
   - icu=73.1=h6a678d5_0
   - importlib_metadata=8.5.0=hd8ed1ab_0
   - importlib_resources=6.4.5=pyhd8ed1ab_0
+  - ipykernel=6.28.0=py311h06a4308_0
+  - jedi=0.18.1=py311h06a4308_1
   - jinja2=3.1.4=py311h06a4308_0
   - jpeg=9e=h5eee18b_1
+  - jsonschema=4.23.0=py311h06a4308_0
+  - jupyter_client=8.6.0=py311h06a4308_0
   - jupyter_console=6.6.3=py311h06a4308_0
+  - jupyter_core=5.5.0=py311h06a4308_0
+  - jupyter_events=0.8.0=py311h06a4308_0
+  - jupyter_server=2.10.0=py311h06a4308_0
+  - jupyter_server_terminals=0.4.4=py311h06a4308_1
+  - jupyterlab_pygments=0.1.2=py_0
+  - jupyterlab_server=2.25.1=py311h06a4308_0
   - krb5=1.20.1=h143b758_1
   - ld_impl_linux-64=2.38=h1181459_1
   - libclang=14.0.6=default_hc6dbbc7_1
@@ -52,26 +65,42 @@ dependencies:
   - libxml2=2.10.4=hfdd30dd_2
   - lz4-c=1.9.4=h6a678d5_1
   - mysql=5.7.24=h721c034_2
+  - nbconvert=7.10.0=py311h06a4308_0
+  - nbformat=5.9.2=py311h06a4308_0
   - ncurses=6.4=h6a678d5_0
   - nest-asyncio=1.6.0=py311h06a4308_0
-  - openssl=3.0.14=h5eee18b_0
+  - notebook=7.0.8=py311h06a4308_2
+  - openssl=3.0.15=h5eee18b_0
+  - packaging=24.2=py311h06a4308_0
+  - parso=0.8.3=pyhd3eb1b0_0
   - pcre2=10.42=hebb0a14_1
   - pkgutil-resolve-name=1.3.10=pyhd8ed1ab_1
   - ply=3.11=py311h06a4308_0
+  - prometheus_client=0.14.1=py311h06a4308_0
   - prompt_toolkit=3.0.43=hd3eb1b0_0
   - ptyprocess=0.7.0=pyhd3eb1b0_2
+  - pure_eval=0.2.2=pyhd3eb1b0_0
   - pysocks=1.7.1=py311h06a4308_0
   - python=3.11.8=h955ad1f_0
   - python-dateutil=2.9.0post0=py311h06a4308_2
+  - python-fastjsonschema=2.16.2=py311h06a4308_0
   - python-json-logger=2.0.7=py311h06a4308_0
+  - pyyaml=6.0.1=py311h5eee18b_0
+  - pyzmq=25.1.2=py311h6a678d5_0
   - qt-main=5.15.2=h53bd1ea_10
   - readline=8.2=h5eee18b_0
+  - requests=2.32.2=py311h06a4308_0
   - rfc3339-validator=0.1.4=py311h06a4308_0
   - rfc3986-validator=0.1.1=py311h06a4308_0
   - six=1.16.0=pyhd3eb1b0_1
   - sqlite=3.45.3=h5eee18b_0
+  - stack_data=0.2.0=pyhd3eb1b0_0
   - tk=8.6.14=h39e8969_0
+  - tornado=6.3.3=py311h5eee18b_0
   - traitlets=5.14.3=py311h06a4308_0
+  - typing-extensions=4.11.0=py311h06a4308_0
+  - typing_extensions=4.11.0=py311h06a4308_0
+  - urllib3=2.2.1=py311h06a4308_0
   - webencodings=0.5.1=pyhd8ed1ab_2
   - websocket-client=1.8.0=py311h06a4308_0
   - xz=5.4.6=h5eee18b_1
@@ -99,7 +128,6 @@ dependencies:
       - babel==2.16.0
       - backports-tarfile==1.2.0
       - bayesicfitting==3.2.2
-      - bleach==6.2.0
       - bqplot==0.12.43
       - bqplot-gl==0.0.0
       - bqplot-image-gl==1.5.0
@@ -125,7 +153,6 @@ dependencies:
       - et-xmlfile==2.0.0
       - executing==2.1.0
       - fast-histogram==0.14
-      - fastjsonschema==2.20.0
       - filelock==3.16.1
       - fonttools==4.55.0
       - fqdn==1.5.1
@@ -139,8 +166,7 @@ dependencies:
       - glue-jupyter==0.23.1
       - glue-qt==0.3.1
       - glue-vispy-viewers==1.2.2
-      - gwcs==0.21.0
-      - h11==0.14.0
+      - gwcs==0.22.1
       - hsluv==5.0.4
       - html5lib==1.1
       - httpcore==1.0.7
@@ -152,7 +178,6 @@ dependencies:
       - ipydatagrid==1.3.2
       - ipydatawidgets==4.3.5
       - ipygoldenlayout==0.4.0
-      - ipykernel==6.29.5
       - ipympl==0.9.4
       - ipypopout==2.0.0
       - ipysplitpanes==0.2.0
@@ -168,27 +193,22 @@ dependencies:
       - jaraco-context==6.0.1
       - jaraco-functools==4.1.0
       - jdaviz==4.0.0
-      - jedi==0.19.2
       - jeepney==0.8.0
       - jmespath==1.0.1
       - joblib==1.4.2
       - json5==0.9.28
       - jsonpointer==3.0.0
-      - jsonschema==4.23.0
       - jsonschema-specifications==2024.10.1
       - jupyter==1.1.1
       - jupyter-client==8.6.3
-      - jupyter-core==5.7.2
-      - jupyter-events==0.10.0
       - jupyter-lsp==2.2.5
       - jupyter-rfb==0.4.4
       - jupyter-server==2.14.2
       - jupyter-server-terminals==0.5.3
       - jupyterlab==4.2.6
       - jupyterlab-pygments==0.3.0
-      - jupyterlab-server==2.27.3
       - jupyterlab-widgets==3.0.13
-      - jwst==1.16.1
+      - jwst==1.17.1
       - keyring==25.5.0
       - kiwisolver==1.4.7
       - lazy-loader==0.4
@@ -204,21 +224,16 @@ dependencies:
       - mosviz==0.4
       - mpl-scatter-density==0.7
       - nbclient==0.10.0
-      - nbconvert==7.16.4
-      - nbformat==5.10.4
       - ndcube==2.2.4
       - networkx==3.4.2
-      - notebook==7.2.2
       - notebook-shim==0.2.4
-      - numpy==1.26.4
+      - numpy==2.2.2
       - opencv-python-headless==4.10.0.84
       - openpyxl==3.1.5
       - overrides==7.7.0
-      - packaging==24.2
       - pandas==2.2.3
       - pandocfilters==1.5.1
       - parsley==1.3
-      - parso==0.8.4
       - partd==1.4.2
       - pexpect==4.9.0
       - photutils==2.0.2
@@ -226,7 +241,6 @@ dependencies:
       - pip==24.3.1
       - platformdirs==4.3.6
       - poppy==1.1.1
-      - prometheus-client==0.21.0
       - prompt-toolkit==3.0.48
       - psutil==6.1.0
       - pure-eval==0.2.3
@@ -244,20 +258,17 @@ dependencies:
       - pythreejs==2.4.2
       - pytz==2024.2
       - pyvo==1.6
-      - pyyaml==6.0.2
-      - pyzmq==26.2.0
       - qtconsole==5.6.1
       - qtpy==2.4.2
       - radio-beam==0.3.8
       - reacton==1.8.3
       - referencing==0.35.1
       - regions==0.10
-      - requests==2.32.3
       - rich==13.9.4
       - rich-click==1.8.4
       - rpds-py==0.21.0
       - scikit-image==0.24.0
-      - scipy==1.14.1
+      - scipy==1.15.0
       - secretstorage==3.3.3
       - semantic-version==2.10.0
       - send2trash==1.8.3
@@ -276,9 +287,9 @@ dependencies:
       - spherical-geometry==1.3.2
       - stack-data==0.6.3
       - starlette==0.41.3
-      - stcal==1.10.0
-      - stdatamodels==2.1.2
-      - stpipe==0.7.0
+      - stcal==1.11.0
+      - stdatamodels==2.2.0
+      - stpipe==0.8.0
       - stsci-image==2.3.9
       - stsci-imagestats==1.8.3
       - stsci-stimage==0.2.9
@@ -288,14 +299,11 @@ dependencies:
       - tinycss2==1.4.0
       - tomli==2.1.0
       - toolz==1.0.0
-      - tornado==6.4.2
       - traittypes==0.2.1
       - tweakwcs==0.8.9
       - types-python-dateutil==2.9.0.20241003
-      - typing-extensions==4.12.2
       - tzdata==2024.2
       - uri-template==1.3.0
-      - urllib3==2.2.3
       - uvicorn==0.32.1
       - vispy==0.14.3
       - voila==0.5.8
@@ -309,4 +317,3 @@ dependencies:
       - wiimatch==0.3.2
       - xlrd==2.0.1
       - zipp==3.21.0
-prefix: /home/tim-dewachter/anaconda3/envs/BNBG
