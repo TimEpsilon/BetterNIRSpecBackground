@@ -222,7 +222,7 @@ def modelBackgroundFromImage(data : np.ndarray,
 
 	# Creating bspline object
 	kwargs_makeInterpolation = {k: v for k, v in kwargs.items() if k in inspect.signature(BSplineLSQ).parameters}
-	logConsole(f"Starting BSpline fitting with {len(x)} data points (at least {int(kwargs_makeInterpolation['n'] * len(x))} inside knots)...")
+	logConsole(f"Starting BSpline fitting with {len(x)} data points (at least {int(kwargs_makeInterpolation['interpolationKnots'] * len(x))} inside knots)...")
 	startTime = time.time()
 	bspline = BSplineLSQ(x,y,w,**kwargs_makeInterpolation)
 	logConsole(f"Finished fitting in {round(time.time() - startTime,3)}s")
