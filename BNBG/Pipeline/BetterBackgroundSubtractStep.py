@@ -164,14 +164,14 @@ def process(s2d, cal, pathClean, **kwargs):
 										 None,
 										 None]
 		else:
-			calSlit.data, calSlit.err = bspline(targetLambda), bspline.getError(targetLambda)
+			calSlit.data = bspline(targetLambda)
 			fitInfo.loc[len(fitInfo)] = [slit.name,
 										 slit.source_id,
 										 len(bspline.x),
-										 bspline.nInsideKnots,
-										 bspline.getChiSquare(),
-										 bspline.getReducedChi(),
-										 bspline.getDegreesOfFreedom()]
+										 None,
+										 None,
+										 None,
+										 None]
 
 		logConsole("Background Calculated!")
 
@@ -217,17 +217,11 @@ def modelBackgroundFromImage(data : np.ndarray,
 		logConsole("Not enough points to fit. Returning zeros", "WARNING")
 		return None
 
-	# Weights
-	w = 1/dy**2
-
 	# Creating bspline object
-	kwargs_makeInterpolation = {k: v for k, v in kwargs.items() if k in inspect.signature(BSplineLSQ).parameters}
-	logConsole(f"Starting BSpline fitting with {len(x)} data points (at least {int(kwargs_makeInterpolation['interpolationKnots'] * len(x))} inside knots)...")
+	logConsole(f"Starting BSpline fitting with {len(x)} data points...")
 	startTime = time.time()
-	bspline = BSplineLSQ(x,y,w,**kwargs_makeInterpolation)
+	bspline = BSplineLSQ(x,y)
 	logConsole(f"Finished fitting in {round(time.time() - startTime,3)}s")
-
-	logConsole(f"Model found with reduced_chi2 = {np.round(bspline.getReducedChi(),5)}")
 
 	return bspline
 
