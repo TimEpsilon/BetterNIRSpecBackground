@@ -1,11 +1,11 @@
 import os
 from glob import glob
 from astropy.io import fits
-from astropy.table import QTable, vstack
+from astropy.table import Table, vstack, join
 from argparse import ArgumentParser
 import pandas as pd
 
-def main(directory, folders, redshifts, suffix):
+def main(directory, folders, redshifts, photom):
 	"""
 	Allows to generate a CIGALE input file ::
 
@@ -22,26 +22,26 @@ def main(directory, folders, redshifts, suffix):
 	redshifts : list of str
 		The relative paths to each csv containing the table mapping each source to its redshift. Can be None
 
-	suffix : list of str
-		suffixes to search within the folders
+	photom : list of str
+		The relative paths to each file containing the table mapping each source to its photometry. Can be None
 	"""
 	folders = [os.path.join(directory,folder) for folder in folders]
 	redshifts = [pd.read_csv(os.path.join(directory, redshift)) if not redshift is None else None for redshift in redshifts]
-	n = 0
+	photom = [Table.read(os.path.join(directory, _)) if not _ is None else None for _ in photom]
 	table1 = None
 	for i in range(len(folders)):
-		for j,s in enumerate(suffix):
-			folder = folders[i]
-			redshift = redshifts[i]
-			table2 = generateCigaleFile(folder, suffix=s, redshift_map=redshift)
-			if table1 is None:
-				table1 = table2
-			else:
-				table1 = combineTable(table1, table2, n)
-			n+=1
+		folder = folders[i]
+		redshift = redshifts[i]
+		pho = photom[i]
+		table2 = generateCigaleFile(directory, folder, redshift_map=redshift, photom=pho)
+		if table1 is None:
+			table1 = table2
+		else:
+			table1 = combineTable(table1, table2, i)
+
 	table1.sort("id")
 	print(table1)
-	table1.write(os.path.join(directory, 'cigale-data.fits'), overwrite=True, format='ascii')
+	table1.write(os.path.join(directory, 'cigale-data.fits'), overwrite=True, format='fits')
 
 def combineTable(table1, table2, n):
 	"""
@@ -70,33 +70,38 @@ def combineTable(table1, table2, n):
 	return vstack([table1, table2])
 
 
-def generateCigaleFile(folder, suffix="x1d", redshift_map=None):
+def generateCigaleFile(directory, folder, redshift_map=None, photom=None):
 	"""
 	Get a table formated for CIGALE with data from a folder.
 
 	Parameters
 	----------
+	directory : str
+		Working directory which will be used as the starting point for each following relative path
+
 	folder : str
 		Absolute path to folder containing _suffix files
-
-	suffix : str, optional
-		The suffix to look for in files
 
 	redshift_map : pd.DataFrame, optional
 		A dataframe with a column "id" and another column "redshift", allowing to map a redshift to each object.
 		If None, will default to -1
 
+	photom : Table, optional
+		A table with a column 'id' and multiple columns 'filter' and 'filter_err'.
+
 	Returns
 	-------
-	table : astropy.table.QTable
-		A table formatted as such : id, redshift, spectrum, mode, norm
+	table : astropy.table.Table
+		A table formatted as such : id, redshift, spectrum, mode, norm, and the filters of photom
 	"""
 	ids = []
 	paths = []
 	modes = []
 
-	for file in glob(os.path.join(folder, f'*_{suffix}.fits')):
+	for file in glob(os.path.join(folder, f'*_x1d.fits')):
 		data = fits.open(file)
+		file = os.path.relpath(file, directory)
+		file = str(file).encode('utf-8', 'ignore') # Encode in utf-8
 
 		# Getting file info
 		srcid = data[1].header["SOURCEID"]
@@ -121,8 +126,13 @@ def generateCigaleFile(folder, suffix="x1d", redshift_map=None):
 
 	norm = ["wave" for _ in range(len(ids))]
 
-	table = QTable([ids, redshift, paths, modes, norm],
+	table = Table([ids, redshift, paths, modes, norm],
 				   names=('id', 'redshift', 'spectrum', 'mode', 'norm'))
+
+	# Photometry mapping
+	if not photom is None:
+		table = join(table, photom, keys="id")
+
 	return table
 
 
@@ -154,10 +164,10 @@ if __name__ == "__main__":
 	)
 
 	parser.add_argument(
-		"--suffix",
+		"--photom",
 		type=str,
 		nargs='+',
-		help="Suffixes to search within the files, such as 'x1d' or 'x1d_optext'"
+		help="Relative paths to photometry tables to use"
 	)
 
 	args = parser.parse_args()
@@ -167,4 +177,9 @@ if __name__ == "__main__":
 
 	args.redshifts = [None if r.lower() == 'none' else r for r in args.redshifts]
 
-	main(args.directory, args.folders, args.redshifts, args.suffix)
+	if len(args.folders) != len(args.photom):
+		parser.error("The number of photometry must match the number of folders")
+
+	args.photom = [None if r.lower() == 'none' else r for r in args.photom]
+
+	main(args.directory, args.folders, args.redshifts, args.photom)
