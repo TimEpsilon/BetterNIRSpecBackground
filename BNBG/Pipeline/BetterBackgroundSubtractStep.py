@@ -1,8 +1,7 @@
-import inspect
 import os
 import time
 
-from BNBG.utils import logConsole, getSourcePosition, PathManager, getCRDSPath
+from ..utils.utils import logConsole, getSourcePosition, PathManager, getCRDSPath
 
 os.environ['CRDS_PATH'] = getCRDSPath()
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
@@ -10,352 +9,392 @@ os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 from scipy.ndimage import generic_filter
 from scipy.stats import median_abs_deviation
 import numpy as np
-from stdatamodels.jwst.datamodels import MultiSlitModel
+from stdatamodels.jwst.datamodels import MultiSlitModel, SlitModel
 import pandas as pd
 
-from BNBG.Pipeline.BSplineLSQ import BSplineLSQ
+from ..Pipeline.BSplineLSQ import BSplineLSQ
 
-def BetterBackgroundStep(ratePath,
-						 s2d,
-						 cal,
-						 radius=4,
-						 crop=3,
-						 interpolationKnots=0.25,
-						 curvatureConstraint=0.5,
-						 endpointConstraint=0.1,
-						 kernelSize=(1,15),
-						 Nsigma=10):
-	"""
-	 Creates a _s2d-BNBG.fits file from a _s2d file
 
-	 Parameters
-	 ----------
-	 ratePath : PathManager
-	 	Path based on initial rate file created at the start of Stage 2
+class BetterBackgroundStep:
+	def __init__(self,
+				 ratePath,
+				 s2d,
+				 cal,
+				 radius=4,
+				 crop=3,
+				 interpolationKnots=0.15,
+				 curvatureConstraint=1,
+				 endpointConstraint=0.1,
+				 kernelSize=(1,15),
+				 Nsigma=10):
+		"""
+		Creates a _bkg-BNBG.fits file from a _s2d file and _cal file.
 
-	 s2d : MultiSlitModel
-	 	DataModel post Stage 2. Must be a _s2d
+		Parameters
+		----------
+		ratePath : PathManager
+		    Path based on the initial rate file created at the start of Stage 2.
 
-	 cal : MultiSlitModel
-	 	Datamodel post Stage2. Must be a _cal
+		s2d : MultiSlitModel
+		    DataModel after Stage 2. Must be a _s2d file.
 
-	 radius : float
-	 	The radius of extraction around the source
+		cal : MultiSlitModel
+		    DataModel after Stage 2. Must be a _cal file.
 
-	 crop : int
-	 	How many lines will be ignored on top and below the resampled 2D image
+		radius : float
+		    The radius of extraction around the source.
 
-	 interpolationKnots : float
-	 	The fraction of the total amount of points which should be knots
+		crop : int
+		    Number of lines ignored at the top and bottom of the resampled 2D image.
 
-	 curvatureConstraint : float
-	 	An hyperparameter used for regularizing, 
-	 	(how much the curvature will be minimized).
-	 	Useful if gaps are present in the data.
-	 	If equal to 0, this will entirely ignore curvature
+		interpolationKnots : float
+		    Fraction of total data points used as knots (between 0 and 1).
 
-	 endpointConstraint : float
-	 	An hyperparameter used for the endpoints
-	 	(how much the slope on each side of the spline will be minimized).
-	 	If equal to 0, this will entirely ignore the endpoint slopes.
-	 	
-	 kernelSize : tuple
-	 	size of kernel to use for the median filtering
-	 	
-	 Nsigma : float
-	 	number of sigmas above which pixels in error and data will be masked after median filtering
+		curvatureConstraint : float
+		    A hyperparameter that controls how much the curvature is minimized.
+		    Useful when gaps are present in the data. If set to 0, curvature is ignored.
 
-	 Returns
-	 -------
-	 results : MultiSlitModel
-	 	The background MultiSlitModel, where each slit contains the corresponding background and error
+		endpointConstraint : float
+		    A hyperparameter that controls the smoothing at the endpoints of the spline.
+		    If set to 0, endpoint slopes are ignored.
 
-	"""
-	# Calculate background
-	logConsole("Starting Better Background NIRSpec")
-	background = ratePath.openSuffix("bkg-BNBG", lambda : process(s2d,
-																  cal,
-																  ratePath.withSuffix("bkg-BNBG"),
-																  radius=radius,
-																  crop=crop,
-																  interpolationKnots=interpolationKnots,
-																  kernelSize=kernelSize,
-																  Nsigma=Nsigma,
-																  curvatureConstraint=curvatureConstraint,
-																  endpointConstraint=endpointConstraint))
+		kernelSize : tuple[int, int]
+		    Size of the kernel used for median filtering (e.g., (1,15)).
 
-	# Subtract background from original
-	logConsole("Subtracting Background")
-	ratePath.openSuffix("cal-BNBG",
-						lambda : subtractBackground(cal, background, ratePath.withSuffix("cal-BNBG")),
-						open=False)
+		Nsigma : float
+		    Number of standard deviations above which pixels in error and data
+		    will be masked after median filtering.
+		"""
 
-def process(s2d, cal, pathClean, **kwargs):
-	"""
-	Calculates background per slit for a MultiSlitModel
+		logConsole("Initializing Better Background NIRSpec")
 
-	Parameters
-	----------
-	s2d : MultiSlitModel
-		A _s2d datamodel (resampling has happened).
+		self.ratePath : PathManager = ratePath
+		self.s2d : MultiSlitModel = s2d
+		self.cal : MultiSlitModel = cal
+		self.radius : float = radius
+		self.crop : int = crop
+		self.interpolationKnots : float = interpolationKnots
+		self.curvatureConstraint : float = curvatureConstraint
+		self.endpointConstraint : float = endpointConstraint
+		self.kernelSize : tuple = kernelSize
+		self.Nsigma : float = Nsigma
 
-	cal : MultiSlitModel
-		A _cal datamodel (output of Stage 2)
+		# Inits for later calls
+		self.background = None
 
-	pathClean : str
-		Path to save the resulting file
+	def __call__(self):
+		return self.process()
 
-	**kwargs :
-		Arguments to pass to getDataWithMask and BSplineLSQ
+	def process(self):
+		"""
+		Core method of BNBG.
+		Calculates / gets a MultiSlitModel background file (bkg-BNBG).
+		Subtracts it to a similar MultiSlitModel (cal) to generate a background corrected MultiSlitModel (cal-BNBG).
 
-	Returns
-	-------
-	results : MultiSlitModel
-		a copy of ``cal``, for each slit,
-		slit.data and slit.err correspond to the modelled background, and it's error.
-		This is the 'pure' spectral background, with no spatial effects.
+		Returns
+		-------
+		results : MultiSlitModel
+			a copy of ``cal``, for each slit,
+			slit.data and slit.err correspond to the modelled background, and it's error.
+			This is the 'pure' spectral background, with no spatial effects.
 
-	"""
-	# Will serve as a logger file, giving info on the fit of each slit
-	fitInfo = pd.DataFrame({"slit":[],"source":[],"datapoints":[],"insideKnots":[],"chi2":[],"reducedChi2":[],"dof":[]})
+		"""
+		logConsole("Calculating background")
+		self.background = self.ratePath.openSuffix("bkg-BNBG", self._generateBackground)
 
-	# Make copy or else will be overwritten
-	cal = cal.copy()
-	for i, slit in enumerate(s2d.slits):
-		logConsole(f"Calculating Background for slit {slit.name}")
+		# Subtract background from original
+		logConsole("Subtracting Background")
+		return self.ratePath.openSuffix("cal-BNBG",
+										lambda: self._subtractBackground)
 
-		s2dSlit = slit
-		calSlit = cal.slits[i]
 
-		if len(slit.shutter_state) == 1:
-			logConsole(f"Only 1 shutter in slit, skipping...", "WARNING")
-			calSlit.data = np.zeros_like(calSlit.data)
-			# calSlit.err remains unchanged
-			fitInfo.loc[len(fitInfo)] = [slit.name,
-										 slit.source_id,
-										 None,
-										 None,
-										 None,
-										 None,
-										 None]
-			continue
 
-		Y, X = np.indices(calSlit.data.shape)
-		_, _, targetLambda = calSlit.meta.wcs.transform("detector", "world", X, Y)
+	def _generateBackground(self):
+		"""
+		Calculates background per slit for a MultiSlitModel (s2d)
+
+		Returns
+		-------
+		bkg : MultiSlitModel
+			Background MultiSlitModel. 1 Shutter slits will be skipped.
+		"""
+
+		# Will serve as a logger file, giving info on the fit of each slit
+		fitInfo = pd.DataFrame(
+			{"slit": [], "source": [], "datapoints": [], "insideKnots": [], "chi2": [], "reducedChi2": [], "dof": []})
+
+		# Make copy or else will be overwritten
+		cal = self.cal.copy()
+		for i, slit in enumerate(self.s2d.slits):
+			logConsole(f"Calculating Background for slit {slit.name}")
+
+			s2dSlit = slit
+			calSlit = cal.slits[i]
+
+			if len(slit.shutter_state) == 1:
+				logConsole(f"Only 1 shutter in slit, skipping...", "WARNING")
+				calSlit.data = np.zeros_like(calSlit.data)
+				# calSlit.err remains unchanged
+				fitInfo.loc[len(fitInfo)] = [slit.name,
+											 slit.source_id,
+											 None,
+											 None,
+											 None,
+											 None,
+											 None]
+				continue
+
+			bspline = self._modelBackgroundFromSlit(s2dSlit)
+
+			if bspline is None:
+				calSlit.data = np.zeros_like(calSlit.data)
+				# calSlit.err remains unchanged
+				fitInfo.loc[len(fitInfo)] = [slit.name,
+											 slit.source_id,
+											 None,
+											 None,
+											 None,
+											 None,
+											 None]
+			else:
+				Y, X = np.indices(calSlit.data.shape)
+				_, _, targetLambda = calSlit.meta.wcs.transform("detector", "world", X, Y)
+
+				calSlit.data, calSlit.err = bspline(targetLambda), bspline.getError(targetLambda)
+				fitInfo.loc[len(fitInfo)] = [slit.name,
+											 slit.source_id,
+											 len(bspline.x),
+											 bspline.nInsideKnots,
+											 bspline.getChiSquare(),
+											 bspline.getReducedChi(),
+											 bspline.getDegreesOfFreedom()]
+
+			logConsole("Background Calculated!")
+
+		logConsole("Saving Clean Background File...")
+
+		pathClean = self.ratePath.withSuffix("bkg-BNBG")
+		cal.save(pathClean)
+		fitInfo.to_csv(pathClean.replace("fits", "csv"), index=False, sep="\t")
+
+		return cal
+
+	def _modelBackgroundFromSlit(self, s2dSlit : SlitModel):
+
 		Y, X = np.indices(s2dSlit.data.shape)
 		_, _, dataLambda = s2dSlit.meta.wcs.transform("detector", "world", X, Y)
 
-		source = getSourcePosition(slit)
+		source = getSourcePosition(s2dSlit)
 
-		bspline = modelBackgroundFromImage(s2dSlit.data.copy(),
-												s2dSlit.err.copy(),
-												dataLambda,
-												source=source,
-												**kwargs)
+		bspline = self._modelBackgroundFromImage(s2dSlit.data.copy(),
+												 s2dSlit.err.copy(),
+												 dataLambda,
+												 source=source)
+		return bspline
 
-		if bspline is None:
-			calSlit.data = np.zeros_like(calSlit.data)
-			# calSlit.err remains unchanged
-			fitInfo.loc[len(fitInfo)] = [slit.name,
-										 slit.source_id,
-										 None,
-										 None,
-										 None,
-										 None,
-										 None]
-		else:
-			calSlit.data, calSlit.err = bspline(targetLambda), bspline.getError(targetLambda)
-			fitInfo.loc[len(fitInfo)] = [slit.name,
-										 slit.source_id,
-										 len(bspline.x),
-										 bspline.nInsideKnots,
-										 bspline.getChiSquare(),
-										 bspline.getReducedChi(),
-										 bspline.getDegreesOfFreedom()]
 
-		logConsole("Background Calculated!")
+	def _modelBackgroundFromImage(self,
+								  data : np.ndarray,
+								  error : np.ndarray,
+								  wavelength : np.ndarray,
+								  source : float | None = None):
+		"""
+		Creates a 2D image model based on the pre-calibration wavelengths positions of the background
 
-	logConsole("Saving Clean Background File...")
-	cal.save(pathClean)
-	fitInfo.to_csv(pathClean.replace("fits","csv"), index=False, sep="\t")
+		Parameters
+		----------
+		data : np.ndarray
+			2D array of the s2d image
 
-	return cal
+		error : np.ndarray
+			2D array of the error of the s2d image
 
-def modelBackgroundFromImage(data : np.ndarray,
-							 error : np.ndarray,
-							 wavelength : np.ndarray,
-							 **kwargs):
-	"""
-	Creates a 2D image model based on the pre-calibration wavelengths positions of the background
+		wavelength : np.ndarray
+			2D array of the wavelengths of the s2d image
 
-	Parameters
-	----------
-	data : np.ndarray
-		2D array of the s2d image
+		source : float,
+			Vertical position of the source in pixel space.
 
-	error : np.ndarray
-		2D array of the error of the s2d image
+		Returns
+		-------
+		results : BSplineLSQ
+			bspline object fitted on the data.
+		"""
 
-	wavelength : np.ndarray
-		2D array of the wavelengths of the s2d image
+		# Getting 1D arrays
+		x,y,dy = self._getDataWithMask(data.copy(), error.copy(), wavelength.copy(), source=source)
 
-	**kwargs :
-		Arguments to pass to getDataWithMask and BSplineLSQ
+		# Check if enough data points (spline of order 4 needs at least 10 points)
+		if (x is None and y is None and dy is None) or len(x) < 10:
+			logConsole("Not enough points to fit. Returning zeros", "WARNING")
+			return None
 
-	Returns
-	-------
-	results : BSplineLSQ
-		bspline object fitted on the data.
-	"""
+		# Weights
+		w = 1/dy**2
 
-	# Getting 1D arrays
-	kwargs_cleanupImage = {k: v for k, v in kwargs.items() if k in inspect.signature(cleanupImage).parameters}
-	x,y,dy = getDataWithMask(data.copy(), error.copy(), wavelength.copy(), **kwargs_cleanupImage)
+		# Creating bspline object
+		logConsole(f"Starting BSpline fitting with {len(x)} data points (at least {self.interpolationKnots * len(x)} inside knots)...")
+		startTime = time.time()
 
-	# Check if enough data points (spline of order 4 needs at least 10 points)
-	if (x is None and y is None and dy is None) or len(x) < 10:
-		logConsole("Not enough points to fit. Returning zeros", "WARNING")
-		return None
+		bspline = BSplineLSQ(x,
+							 y,
+							 w,
+							 interpolationKnots=self.interpolationKnots,
+							 curvatureConstraint=self.curvatureConstraint,
+							 endpointConstraint=self.endpointConstraint)
 
-	# Weights
-	w = 1/dy**2
+		logConsole(f"Finished fitting in {round(time.time() - startTime,3)}s")
 
-	# Creating bspline object
-	kwargs_makeInterpolation = {k: v for k, v in kwargs.items() if k in inspect.signature(BSplineLSQ).parameters}
-	logConsole(f"Starting BSpline fitting with {len(x)} data points (at least {int(kwargs_makeInterpolation['interpolationKnots'] * len(x))} inside knots)...")
-	startTime = time.time()
-	bspline = BSplineLSQ(x,y,w,**kwargs_makeInterpolation)
-	logConsole(f"Finished fitting in {round(time.time() - startTime,3)}s")
+		logConsole(f"Model found with reduced_chi2 = {np.round(bspline.getReducedChi(),5)}")
 
-	logConsole(f"Model found with reduced_chi2 = {np.round(bspline.getReducedChi(),5)}")
+		return bspline
 
-	return bspline
+	def _getDataWithMask(self,
+						 data : np.ndarray,
+						 error : np.ndarray,
+						 wavelength : np.ndarray,
+						 source : float | None = None):
+		"""
+		Extracts 3 1D arrays x, y and dy from 2D arrays
 
-def getDataWithMask(data : np.ndarray,
-							 error : np.ndarray,
-							 wavelength : np.ndarray,
-							 **kwargs):
-	"""
-	Extracts 3 1D arrays x, y and dy from 2D arrays
+		Parameters
+		----------
+		data : np.ndarray
+			2D array of the s2d image
 
-	Parameters
-	----------
-	data : np.ndarray
-		2D array of the s2d image
+		error : np.ndarray
+			2D array of the error of the s2d image
 
-	error : np.ndarray
-		2D array of the error of the s2d image
+		wavelength : np.ndarray
+			2D array representing the wavelength of the s2d image
 
-	wavelength : np.ndarray
-		2D array representing the wavelength of the s2d image
+		Returns
+		-------
+		x, y, dy : (np.ndarray, np.ndarray, np.ndarray)
+			1D arrays, respectively wavelength, flux and error
+		"""
 
-	**kwargs :
-		Arguments to pass to cleanupImage
+		data = data
+		wavelength = wavelength
+		error = error
 
-	Returns
-	-------
-	x, y, dy : (np.ndarray, np.ndarray, np.ndarray)
-		1D arrays, respectively wavelength, flux and error
-	"""
+		mask = self._cleanupImage(data.copy(), error.copy(), source=source)
+		if np.all(mask):
+			# No data
+			return None, None, None
 
-	data = data
-	wavelength = wavelength
-	error = error
+		x = extractWithMask(wavelength, mask)
+		y = extractWithMask(data, mask)
+		dy = np.sqrt(extractWithMask(error ** 2, mask))
 
-	mask = cleanupImage(data.copy(), error.copy(), **kwargs)
-	if np.all(mask):
-		# No data
-		return None, None, None
+		nanMask = (np.isnan(y)) | (np.isnan(dy)) | (np.isnan(x))
 
-	x = extractWithMask(wavelength, mask)
-	y = extractWithMask(data, mask)
-	dy = np.sqrt(extractWithMask(error ** 2, mask))
+		x = x[~nanMask]
+		y = y[~nanMask]
+		dy = dy[~nanMask]
 
-	nanMask = (np.isnan(y)) | (np.isnan(dy)) | (np.isnan(x))
+		# Sort arrays in rising x order
+		indices = np.argsort(x)
+		x = x[indices]
+		y = y[indices]
+		dy = dy[indices]
 
-	x = x[~nanMask]
-	y = y[~nanMask]
-	dy = dy[~nanMask]
+		return x,y,dy
 
-	# Sort arrays in rising x order
-	indices = np.argsort(x)
-	x = x[indices]
-	y = y[indices]
-	dy = dy[indices]
+	def _cleanupImage(self,
+					  data : np.ndarray,
+					  error : np.ndarray,
+					  source : float | None = None):
+		"""
+		Creates a mask that selects bad pixels for background subtraction
 
-	return x,y,dy
+		The algorithm is as such:
+			* Mask non-physical values (<0, NaN), crop the top and bottom pixels (crop parameter)
+			* If a source is specified, masks the lines within radius around the source
+			* Using this temporary mask, apply a median filtering with a given kernelSize on the data and error arrays
+			* Subtracts this median array to the original data and error and calculates the median absolute deviation from each
+			* Adds to the mask every pixel outside the range [-Nsigma * MAD, Nsigma * MAD] for both arrays
 
-def cleanupImage(data : np.ndarray, error : np.ndarray, crop=3, source=None, radius=4, kernelSize=(1,15), Nsigma=10):
-	"""
-	Creates a mask that selects bad pixels for background subtraction
+		Parameters
+		----------
+		data : np.ndarray
+			2D array of the s2d image
 
-	The algorithm is as such:
-		* Mask non-physical values (<0, NaN), crop the top and bottom pixels (crop parameter)
-		* If a source is specified, masks the lines within radius around the source
-		* Using this temporary mask, apply a median filtering with a given kernelSize on the data and error arrays
-		* Subtracts this median array to the original data and error and calculates the median absolute deviation from each
-		* Adds to the mask every pixel outside the range [-Nsigma * MAD, Nsigma * MAD] for both arrays
+		error : np.ndarray
+			2D array of the error of the s2d image
 
-	Parameters
-	----------
-	data : np.ndarray
-		2D array of the s2d image
+		source : float
+			The vertical position, in number of lines, from which to mask the source. If None, no source will be masked
 
-	error : np.ndarray
-		2D array of the error of the s2d image
+		Returns
+		-------
+		mask : np.ndarray
+			Array of boolean where False means the pixel was kept for background subtraction and True means it was rejected
+		"""
+		data = data
+		error = error
 
-	crop : int
-		The amount of pixels to crop above and below the image
+		Y, X = np.indices(data.shape)
+		# Gets rid of negative values, crops the top and bottom of the image, ignores pixels marked as nan
+		mask = (data <= 0) | (Y < self.crop) | (Y > Y.max() - self.crop) | np.isnan(data)
 
-	source : float
-		The vertical position, in number of lines, from which to mask the source. If None, no source will be masked
+		# If source in the image, remove lines in a radius around
+		# This also works if the source is not in frame and the returned position is 1e48
+		if source is not None:
+			# TODO ? : Case of secondary source?
+			mask = mask | (np.round(abs(Y - source)) < self.radius)
 
-	radius : float
-		Radius of extraction along the source
+		data[mask] = np.nan
+		error[mask] = np.nan
+		medianData = generic_filter(data, lambda x : np.nanmedian(x), size=self.kernelSize, mode="nearest")
+		medianError = generic_filter(error, lambda x : np.nanmedian(x), size=self.kernelSize, mode="nearest")
 
-	kernelSize : tuple
-		Size of kernel to use for the median filtering.
-		By default, will be 15 pixels wide in spectral direction and 1 in spatial direction
+		medianSubtractData = data - medianData
+		_ = medianSubtractData.ravel()
+		_ = _[np.isfinite(_)]
+		MADData = median_abs_deviation(_)
 
-	Nsigma : float
-		Number of sigmas above which pixels in error and data will be masked after median filtering
+		medianSubtractError = error - medianError
+		_ = medianSubtractError.ravel()
+		_ = _[np.isfinite(_)]
+		MADError = median_abs_deviation(_)
 
-	Returns
-	-------
-	mask : np.ndarray
-		Array of boolean where False means the pixel was kept for background subtraction and True means it was rejected
-	"""
-	data = data
-	error = error
+		mask = (mask
+				| (np.abs(medianSubtractData) > self.Nsigma*MADData)
+				| (np.abs(medianSubtractError) > self.Nsigma*MADError))
 
-	Y, X = np.indices(data.shape)
-	# Gets rid of negative values, crops the top and bottom of the image, ignores pixels marked as nan
-	mask = (data <= 0) | (Y < crop) | (Y > Y.max() - crop) | np.isnan(data)
+		return mask
 
-	# If source in the image, remove lines in a radius around
-	# This also works if the source is not in frame and the returned position is 1e48
-	if source is not None:
-		# TODO ? : Case of secondary source?
-		mask = mask | (np.round(abs(Y - source)) < radius)
+	def _subtractBackground(self):
+		"""
+		Subtracts the background data from raw data.
+		Also adds the errors appropriately.
 
-	data[mask] = np.nan
-	error[mask] = np.nan
-	medianData = generic_filter(data, lambda x : np.nanmedian(x), size=kernelSize, mode="nearest")
-	medianError = generic_filter(error, lambda x : np.nanmedian(x), size=kernelSize, mode="nearest")
+		Returns
+		-------
+		result : MultiSlitModel
+			The subtracted background
 
-	medianSubtractData = data - medianData
-	_ = medianSubtractData.ravel()
-	_ = _[np.isfinite(_)]
-	MADData = median_abs_deviation(_)
+		"""
+		result = self.cal.copy()
+		for i, slit in enumerate(result.slits):
+			rawSlit = slit
+			bkgSlit = self.background.slits[i]
 
-	medianSubtractError = error - medianError
-	_ = medianSubtractError.ravel()
-	_ = _[np.isfinite(_)]
-	MADError = median_abs_deviation(_)
+			slit.data = rawSlit.data - bkgSlit.data
+			slit.err = np.sqrt((rawSlit.err ** 2 + bkgSlit.err ** 2)) # The error will be larger or equal
+			# The original master background from the pipeline does not propagate errors
+			# This is unfair imo
 
-	mask = mask | (np.abs(medianSubtractData) > Nsigma*MADData) | (np.abs(medianSubtractError) > Nsigma*MADError)
+		pathBNBG = self.ratePath.withSuffix("cal-BNBG")
+		result.save(pathBNBG)
+		logConsole(f"Saving File {os.path.basename(pathBNBG)}")
 
-	return mask
+		return result
+
+##########
+# STATIC
+##########
 
 def extractWithMask(data, mask):
 	"""
@@ -377,40 +416,3 @@ def extractWithMask(data, mask):
 	data[mask] = np.nan
 	x = np.nanmean(data,axis=0)
 	return x
-
-def subtractBackground(raw, background, pathBNBG):
-	"""
-	Subtracts the background data from raw data.
-	Also adds the errors appropriately.
-
-	Parameters
-	----------
-	raw : MultiSlitModel
-		Base model from which we want to subtract the background
-
-	background : MultiSlitModel
-		A similar model, which will be used as the background to subtract
-
-	pathBNBG : str
-		Where to save the result
-
-	Returns
-	-------
-	result : MultiSlitModel
-		The subtracted background
-
-	"""
-	result = raw.copy()
-	for i, slit in enumerate(result.slits):
-		rawSlit = raw.slits[i]
-		bkgSlit = background.slits[i]
-
-		slit.data = rawSlit.data - bkgSlit.data
-		slit.err = np.sqrt((rawSlit.err ** 2 + bkgSlit.err ** 2)) # The error will be larger or equal
-		# The original master background from the pipeline does not propagate errors
-		# This is unfair imo
-
-	result.save(pathBNBG)
-	logConsole(f"Saving File {os.path.basename(pathBNBG)}")
-
-	return result

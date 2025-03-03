@@ -1,17 +1,17 @@
 import os
 
 from BNBG.Pipeline.BetterBackgroundSubtractStep import BetterBackgroundStep
-from BNBG.utils import getCRDSPath
+from ..utils.utils import getCRDSPath
 
 os.environ['CRDS_PATH'] = getCRDSPath()
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
-from BNBG.utils import PathManager # Later import to avoid CRDS shenanigans
+from ..utils.utils import PathManager # Later import to avoid CRDS shenanigans
 
 from jwst.pipeline import Detector1Pipeline, Spec3Pipeline, Spec2Pipeline
 from stdatamodels.jwst import datamodels as dm
 
-from BNBG.utils import logConsole, rewriteJSON
+from ..utils.utils import logConsole, rewriteJSON
 
 
 def Stage1(uncal : str,path : str):
@@ -37,7 +37,7 @@ def Stage1(uncal : str,path : str):
 	# Handles the logic of checkpoint files, i.e. will apply the pipeline only if output file can't be found
 	uncalPath.openSuffix("rate", pipe1, open=False)
 
-def Stage2(asn : str, path : str, **kwargs):
+def Stage2(asn : str, path : str, skipbnbg=False, **kwargs):
 	"""
 	Applies the second stage of the pipeline. This is where the custom subtraction happens, after the pipeline has run.
 	Parameters
@@ -47,6 +47,9 @@ def Stage2(asn : str, path : str, **kwargs):
 
 	path : str
 		Path to the folder
+
+	skipbnbg : bool
+		Whether to skip BNBG or not. Defaults to False
 
 	**kwargs :
 		Arguments to pass to BetterBackgroundStep
@@ -77,7 +80,11 @@ def Stage2(asn : str, path : str, **kwargs):
 	logConsole(f"Opening corresponding s2d file...")
 	s2d = dm.open(ratePath.withSuffix("s2d"))  # The pipeline also saves a resampled file, which we need for the background.
 
-	BetterBackgroundStep(ratePath, s2d, cal, **kwargs)
+	if not skipbnbg:
+		step = BetterBackgroundStep(ratePath, s2d, cal, **kwargs)
+		step()
+	else:
+		logConsole(f"Skipping BNBG...")
 
 def Stage3(asn : str, path : str, suffix="cal-BNBG"):
 	"""

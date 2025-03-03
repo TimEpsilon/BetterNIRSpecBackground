@@ -5,7 +5,14 @@ from scipy.interpolate import BSpline
 import matplotlib.pyplot as plt
 
 class BSplineLSQ:
-	def __init__(self, x : np.ndarray, y : np.ndarray, w : np.ndarray, t : np.ndarray = None, interpolationKnots=0.25, k=4, curvatureConstraint=1, endpointConstraint=0.1):
+	def __init__(self, x : np.ndarray,
+				 y : np.ndarray,
+				 w : np.ndarray,
+				 t : np.ndarray = None,
+				 interpolationKnots=0.15,
+				 k=4,
+				 curvatureConstraint=1,
+				 endpointConstraint=0.1):
 		"""
 		A simple class for BSpline objects. Relies on the BSplines objects of scipy,
 		but allows for more control on the fitting than the usual LSQ algorithm of scipy.interpolate.
@@ -159,7 +166,11 @@ class BSplineLSQ:
 
 		return slider1, slider2, slider3
 
-	def updateParameters(self, t : np.ndarray = None, interpolationKnots=0.1, curvatureConstraint=None, endpointConstraint=None):
+	def updateParameters(self,
+						 t : np.ndarray = None,
+						 interpolationKnots : float = 0.1,
+						 curvatureConstraint : float = 1,
+						 endpointConstraint : float = 0.1):
 		"""
 		Recalculates the spline with new values for both hyperparameters.
 
@@ -314,7 +325,6 @@ class BSplineLSQ:
 
 		invcov += normCurv * self.curvatureConstraint ** 2 * self.G2  # Curvature correction
 		invcov += normEnd * self.endpointConstraint ** 2 * (self.A1_b + self.A1_a)  # Endpoint correction
-
 
 		cov = np.linalg.inv(invcov)
 
