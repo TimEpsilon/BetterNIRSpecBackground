@@ -12,8 +12,6 @@ os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
 
 from glob import glob
 
-import sys
-
 
 def main(directory,
 		 folders,
@@ -35,10 +33,21 @@ def main(directory,
 	Stage 2 should still take the _spec2 association files, as the multiple exposure are still used.
 	args.directory,
 	"""
+	logConsole(f"Working directory is {directory}")
+
 	if folders is None:
-		folders = glob(os.path.join(directory,"/*"))
+		folders = glob(os.path.join(directory,"*"))
 	else:
 		folders = [os.path.join(directory, f) for f in folders]
+
+	for i, f in enumerate(folders):
+		if not os.path.exists(f):
+			logConsole(f"{f} does not exist!", source="WARNING")
+			folders[i] = None
+
+	folders = [f for f in folders if f is not None]
+
+	logConsole(f"Found {len(folders)} folders : {folders}")
 
 
 	##########
