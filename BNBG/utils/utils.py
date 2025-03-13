@@ -1,14 +1,14 @@
 import json
-import logging
 import os
 import re
-import threading
 
 import numpy as np
 import stdatamodels.jwst.datamodels as dm
 from scipy.optimize import curve_fit
 from stdatamodels.jwst.datamodels import SlitModel
 import jwst.lib.suffix as sufx
+
+from .logger import logConsole
 
 # Update suffixes
 suffixList = ["bkg-BNBG", "cal-BNBG"]
@@ -18,28 +18,6 @@ sufx.REMOVE_SUFFIX_REGEX = re.compile(
     '^(?P<root>.+?)((?P<separator>_|-)(' +
     '|'.join(sufx.KNOW_SUFFIXES) + '))?$'
 )
-
-# Get logger of jwst pipeline
-logger = logging.getLogger("stpipe")
-
-def logConsole(text : str, source=None):
-	"""
-	 Logger : displays time + log
-
-	Parameters
-	----------
-	text : str
-		Text to display
-	source : str
-		 WARNING, ERROR, DEBUG, INFO/None
-	"""
-	text = f" [BetterBackground] (~{threading.get_native_id()}~) : {text}"
-	logType = {"WARNING": lambda : logger.warning(text),
-			   "ERROR": lambda : logger.error(text),
-			   "DEBUG": lambda : logger.debug(text)
-			   }
-
-	logType.get(source,lambda : logger.info(text))()
 
 def rewriteJSON(file, suffix="cal-BNBG"):
 	"""
@@ -74,26 +52,6 @@ def rewriteJSON(file, suffix="cal-BNBG"):
 	# Overwrite original file
 	with open(file, "w") as asn:
 		json.dump(data, asn, indent=4)
-
-def getCRDSPath() -> str:
-	"""
-	Get the path to the CRDS file from "./CRDS_PATH.txt"
-
-	Returns
-	-------
-	txt : str
-		Absolute path to the CRDS file
-
-	"""
-	# Get the directory of the current script
-	scriptDirectory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-	path = os.path.join(scriptDirectory, 'CRDS_PATH.txt')
-	with open(path) as file:
-		txt = file.readline()
-		if txt is None or txt == "":
-			raise Exception("CRDS_PATH.txt not found or file empty")
-		logConsole(f"CRDS folder at {txt}")
-		return txt
 
 def getSourcePosition(slit : SlitModel) -> float | None:
 	"""

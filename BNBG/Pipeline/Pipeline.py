@@ -3,7 +3,8 @@ import traceback
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from ..utils.utils import getCRDSPath, logConsole
+from ..utils.CrdsSetup import getCRDSPath
+from ..utils.logger import logConsole
 from ..Pipeline import PipelineStages
 
 # Needs to be overwritten in ../CRDS_PATH
@@ -117,7 +118,6 @@ def _runParallel(files : list, function : callable):
 		Function to apply to each file. Takes a single file as parameter
 	"""
 	n = min(os.cpu_count(), len(files))
-	#n = 1
 
 	# Execute in parallel
 	with ThreadPoolExecutor(max_workers=n) as executor:

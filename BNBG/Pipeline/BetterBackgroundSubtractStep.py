@@ -1,7 +1,9 @@
 import os
 import time
 
-from ..utils.utils import logConsole, getSourcePosition, PathManager, getCRDSPath
+from ..utils.utils import getSourcePosition, PathManager
+from ..utils.CrdsSetup import getCRDSPath
+from ..utils.logger import logConsole
 
 os.environ['CRDS_PATH'] = getCRDSPath()
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'

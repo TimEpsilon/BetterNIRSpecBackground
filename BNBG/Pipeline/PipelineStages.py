@@ -1,7 +1,7 @@
 import os
 
 from BNBG.Pipeline.BetterBackgroundSubtractStep import BetterBackgroundStep
-from ..utils.utils import getCRDSPath
+from ..utils.CrdsSetup import getCRDSPath
 
 os.environ['CRDS_PATH'] = getCRDSPath()
 os.environ['CRDS_SERVER_URL'] = 'https://jwst-crds.stsci.edu'
@@ -11,7 +11,8 @@ from ..utils.utils import PathManager # Later import to avoid CRDS shenanigans
 from jwst.pipeline import Detector1Pipeline, Spec3Pipeline, Spec2Pipeline
 from stdatamodels.jwst import datamodels as dm
 
-from ..utils.utils import logConsole, rewriteJSON
+from ..utils.utils import rewriteJSON
+from ..utils.logger import logConsole
 
 
 def Stage1(uncal : str,path : str):
