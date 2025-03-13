@@ -106,10 +106,7 @@ class BetterBackgroundStep:
 
 		# Subtract background from original
 		logConsole("Subtracting Background")
-		return self.ratePath.openSuffix("cal-BNBG",
-										lambda: self._subtractBackground)
-
-
+		return self.ratePath.openSuffix("cal-BNBG", self._subtractBackground)
 
 	def _generateBackground(self):
 		"""
@@ -378,6 +375,8 @@ class BetterBackgroundStep:
 			The subtracted background
 
 		"""
+		logConsole("Starting subtraction")
+
 		result = self.cal.copy()
 		for i, slit in enumerate(result.slits):
 			rawSlit = slit
