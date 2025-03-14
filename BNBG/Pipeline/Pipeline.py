@@ -95,11 +95,11 @@ def main(directory,
 
 	for path in folders:
 		logConsole(f"Starting on {os.path.basename(path)}")
-		asn = glob(os.path.join(path, "*_spec3_*_asn.json"))[0] # Only keep 1st _spec3
-		logConsole(f"Found a _spec3 association files")
+		asn = glob(os.path.join(path, "*_spec3_*_asn.json"))
+		logConsole(f"Found {len(asn)} _spec3 association files")
 
 		if not skip3:
-			PipelineStages.Stage3(asn, path)
+			_runParallel(asn, lambda file : PipelineStages.Stage3(file,path))
 		else:
 			logConsole(f"Skipping Stage 3...")
 	logConsole("Finished")
