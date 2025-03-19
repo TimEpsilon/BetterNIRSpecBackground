@@ -273,11 +273,8 @@ class BetterBackgroundStep:
 			1D arrays, respectively wavelength, flux and error
 		"""
 
-		data = data
-		wavelength = wavelength
-		error = error
-
 		mask = self._cleanupImage(data.copy(), error.copy(), source=source)
+		logConsole(f"Masking {np.nansum(mask)}/{len(mask.ravel())} pixels...")
 		if np.all(mask):
 			# No data
 			return None, None, None
@@ -341,7 +338,10 @@ class BetterBackgroundStep:
 		# This also works if the source is not in frame and the returned position is 1e48
 		if source is not None:
 			# TODO ? : Case of secondary source?
+			logConsole(f"Source position is {source}")
 			mask = mask | (np.round(abs(Y - source)) < self.radius)
+		else:
+			logConsole("No Source Found", source="WARNING")
 
 		data[mask] = np.nan
 		error[mask] = np.nan

@@ -117,7 +117,7 @@ def _runParallel(files : list, function : callable):
 	function : callable
 		Function to apply to each file. Takes a single file as parameter
 	"""
-	n = min(os.cpu_count(), len(files))
+	n = min(args.cpu, len(files))
 
 	# Execute in parallel
 	with ThreadPoolExecutor(max_workers=n) as executor:
@@ -225,6 +225,13 @@ if __name__ == "__main__":
 		help="Number of sigmas around the median image for which to filter extreme pixels. "
 			 "Here, sigma means median absolute deviation.",
 		default=10
+	)
+
+	parser.add_argument(
+		"--cpu",
+		type=int,
+		help="Max number of CPU cores to use. ",
+		default=os.cpu_count()
 	)
 
 	args = parser.parse_args()
