@@ -5,7 +5,7 @@ from astropy.table import Table, vstack, join
 from argparse import ArgumentParser
 import pandas as pd
 
-def main(directory, folders, redshifts, photom):
+def main(directory, folders, redshifts, photom, force=False):
 	"""
 	Allows to generate a CIGALE input file ::
 
@@ -24,6 +24,9 @@ def main(directory, folders, redshifts, photom):
 
 	photom : list of str
 		The relative paths to each file containing the table mapping each source to its photometry. Can be None
+
+	force : bool
+		Whether the tables should be forced combined.
 	"""
 	folders = [os.path.join(directory,folder) for folder in folders]
 	redshifts = [pd.read_csv(os.path.join(directory, redshift)) if not redshift is None else None for redshift in redshifts]
@@ -37,13 +40,13 @@ def main(directory, folders, redshifts, photom):
 		if table1 is None:
 			table1 = table2
 		else:
-			table1 = combineTable(table1, table2, i)
+			table1 = combineTable(table1, table2, i, force=force)
 
 	table1.sort("id")
 	print(table1)
 	table1.write(os.path.join(directory, 'cigale-data.fits'), overwrite=True, format='fits')
 
-def combineTable(table1, table2, n):
+def combineTable(table1, table2, n, force=False):
 	"""
 	Combines 2 tables into 1. The ids of table2 will be appended with a _n
 
@@ -58,6 +61,9 @@ def combineTable(table1, table2, n):
 	n : int
 		Discriminate between same sources.
 
+	force : bool
+		If True, the table1 will be kept and only the ids in table2 which aren't in table1 will be added.
+
 	Returns
 	-------
 	result : Table
@@ -66,8 +72,15 @@ def combineTable(table1, table2, n):
 	"""
 	table1["id"] = table1["id"].astype("str")
 	table2["id"] = table2["id"].astype("str")
-	table2["id"] = [f"{str(src).split('_')[0]}_{n}" for src in table2["id"]]
-	return vstack([table1, table2])
+	if not force:
+		table2["id"] = [f"{str(src).split('_')[0]}_{n}" for src in table2["id"]]
+		return vstack([table1, table2])
+	else:
+		table = vstack([table1, table2])
+		table = table.group_by("id")
+		table = table[table.groups.indices[:-1]]
+		return table
+
 
 
 def generateCigaleFile(directory, folder, redshift_map=None, photom=None):
@@ -122,7 +135,7 @@ def generateCigaleFile(directory, folder, redshift_map=None, photom=None):
 			if match.empty:
 				redshift.append(None)
 			else:
-				redshift.append(match["best.universe.redshift"].iloc[0])
+				redshift.append(match["redshift"].iloc[0])
 
 	norm = ["wave" for _ in range(len(ids))]
 
@@ -130,8 +143,8 @@ def generateCigaleFile(directory, folder, redshift_map=None, photom=None):
 				   names=('id', 'redshift', 'spectrum', 'mode', 'norm'))
 
 	# Photometry mapping
-	if not photom is None:
-		table = join(table, photom, keys="id")
+	if photom is not None:
+		table = join(table, photom, keys="id", join_type="outer")
 
 	return table
 
@@ -170,6 +183,13 @@ if __name__ == "__main__":
 		help="Relative paths to photometry tables to use"
 	)
 
+	parser.add_argument(
+		"--force",
+		action="store_true",
+		help="Force combining of tables",
+		default=False
+	)
+
 	args = parser.parse_args()
 
 	if len(args.folders) != len(args.redshifts):
@@ -182,4 +202,4 @@ if __name__ == "__main__":
 
 	args.photom = [None if r.lower() == 'none' else r for r in args.photom]
 
-	main(args.directory, args.folders, args.redshifts, args.photom)
+	main(args.directory, args.folders, args.redshifts, args.photom, args.force)
