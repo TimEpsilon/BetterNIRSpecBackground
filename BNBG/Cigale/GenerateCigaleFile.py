@@ -144,7 +144,7 @@ def generateCigaleFile(directory, folder, redshift_map=None, photom=None):
 
 	# Photometry mapping
 	if photom is not None:
-		table = join(table, photom, keys="id", join_type="outer")
+		table = join(table, photom, keys="id", join_type="left")
 
 	return table
 
