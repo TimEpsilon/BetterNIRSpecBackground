@@ -8,7 +8,7 @@
 /CIGALE/
 /prism/
 /Docs/
-*/Cigale/
+#*/Cigale/
 /GHZ2_external/
 
 *.ini
