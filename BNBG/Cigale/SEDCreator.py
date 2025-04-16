@@ -1,5 +1,6 @@
 from matplotlib.lines import Line2D
 from pcigale.warehouse import SedWarehouse
+from pcigale.sed_modules.dustatt_modified_starburst import a_vs_ebv
 import matplotlib.pyplot as plt
 import numpy as np
 import logging
@@ -43,7 +44,7 @@ SED_PARAMETERS = {
 		'uv_bump_wavelength': 217.5,  # fixed
 		'uv_bump_width': 35.0,  # fixed
 		'uv_bump_amplitude': np.linspace(0, 3, 100),
-		'powerlaw_slope': np.linspace(-2, 2, 100),
+		'powerlaw_slope': np.linspace(-2, 1, 100),
 		'Ext_law_emission_lines': [1, 2, 3],  # fixed
 		'Rv': np.linspace(2, 4, 50),
 	},
@@ -69,10 +70,16 @@ def generateSED(parameters : dict):
 def createPlot():
 	fig = plt.figure(figsize=(16, 10))
 
-	ax_spectra = fig.add_axes((0.05, 0.05, 0.7, 0.9), xlabel=r"$\lambda$ (µm)", ylabel=r"$L_\lambda (W/nm)$", xscale="log", yscale="log")
+	ax_spectra = fig.add_axes((0.05, 0.35, 0.7, 0.6), xlabel=r"$\lambda$ (µm)", ylabel=r"$L_\lambda (W/nm)$", xscale="log", yscale="log")
 	ax_spectra.grid(True, "both", alpha=0.5, linestyle="dashed")
 	ax_spectra.set_xlim(10**-2, 10**6)
 	ax_spectra.set_ylim(1.e6, 1.e30)
+	ax_spectra.set_xticklabels([])
+
+	ax_attenuation = fig.add_axes((0.05, 0.05, 0.7, 0.3), xlabel=r"$\lambda$ (µm)", ylabel=r"$A_\lambda / A_V$", xscale="log")
+	ax_attenuation.grid(True, "both", alpha=0.5, linestyle="dashed")
+	ax_attenuation.set_xlim(10**-2, 10**6)
+	ax_attenuation.set_ylim(0, 20)
 
 	ax_sfh = fig.add_axes((0.77, 0.7, 0.18, 0.25), xlabel=r"$t$ (Gyr)", ylabel=r"$SFR$ ($M_\odot / yr$)")
 	ax_sfh.grid(True, "both")
@@ -148,6 +155,9 @@ def createPlot():
 
 	igm : list[Line2D] = ax_spectra.plot([], [], color="orange", linestyle="--", label="IGM")
 
+	attenuation : list[Line2D] = ax_attenuation.plot([], [], color="purple",)
+	calzAtt : list[Line2D] = ax_attenuation.plot([], [], color="red",)
+
 	leg = ax_spectra.legend()
 
 	def updatePlot(val):
@@ -197,6 +207,15 @@ def createPlot():
 
 		# IGM
 		igm[0].set_data(sed.wavelength_grid / 1000, sed.luminosities["igm"])
+
+
+		# Attenuation
+		AL_EBV = a_vs_ebv(sed.wavelength_grid,
+						  sed.info["attenuation.uv_bump_wavelength"],
+						  sed.info["attenuation.uv_bump_width"],
+						  sed.info["attenuation.uv_bump_amplitude"],
+						  sed.info["attenuation.powerlaw_slope"])
+		calzAtt[0].set_data(sed.wavelength_grid / 1000, AL_EBV)
 
 
 	# Assigning method to sliders
