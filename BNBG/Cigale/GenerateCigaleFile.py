@@ -1,3 +1,5 @@
+#  Copyright (c) 2025. Tim Dewachter, LAM
+
 import os
 from glob import glob
 from astropy.io import fits

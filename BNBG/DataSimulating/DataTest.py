@@ -1,3 +1,5 @@
+#  Copyright (c) 2025. Tim Dewachter, LAM
+
 import numpy as np
 import scipy
 import MathFunctions

@@ -1,3 +1,5 @@
+#  Copyright (c) 2025. Tim Dewachter, LAM
+
 import numpy as np
 from astropy.visualization import ZScaleInterval
 from matplotlib.widgets import Slider

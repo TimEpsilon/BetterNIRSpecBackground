@@ -1,4 +1,6 @@
-from astroquery.mast import Observations as OBS 
+#  Copyright (c) 2025. Tim Dewachter, LAM
+
+from astroquery.mast import Observations as OBS
 import numpy as np
 import os
 from astropy import table

@@ -1,3 +1,5 @@
+#  Copyright (c) 2025. Tim Dewachter, LAM
+
 import matplotlib
 matplotlib.use('Qt5Agg')
 

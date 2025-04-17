@@ -1,3 +1,5 @@
+#  Copyright (c) 2025. Tim Dewachter, LAM
+
 import os
 import traceback
 from argparse import ArgumentParser

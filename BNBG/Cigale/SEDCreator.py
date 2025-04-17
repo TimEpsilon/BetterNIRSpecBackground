@@ -1,3 +1,5 @@
+#  Copyright (c) 2025. Tim Dewachter, LAM
+
 from matplotlib.lines import Line2D
 from pcigale.warehouse import SedWarehouse
 from pcigale.sed_modules.dustatt_modified_starburst import a_vs_ebv
