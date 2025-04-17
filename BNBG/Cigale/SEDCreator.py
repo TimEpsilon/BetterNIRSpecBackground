@@ -35,7 +35,7 @@ SED_PARAMETERS = {
 				  0.012, 0.014, 0.016, 0.019, 0.020, 0.022, 0.025, 0.03, 0.033, 0.037, 0.041, 0.046, 0.051],
 		'f_esc': np.linspace(0,1,100),
 		'f_dust': np.linspace(0,1,100),
-		'lines_width': np.linspace(100,400,10),
+		'lines_width': 150, # fixed
 		'ne': [10, 100, 1000],
 		'emission': True,
 		'line_list': " ",
@@ -88,50 +88,54 @@ def createPlot():
 	ax_sfh.yaxis.set_label_position('right')
 	ax_sfh.yaxis.set_ticks_position('right')
 
-	def _createSlider(ypos, name, N, ninit=0):
-		ax = fig.add_axes((0.8, ypos, 0.16, 0.015))
+	spacing = -0.02
+	ypos = 0.63
+	def _createSlider(name, N, ninit=0, additionalSpacing=0.0):
+		nonlocal ypos
+		ax = fig.add_axes((0.8, ypos+additionalSpacing, 0.15, 0.015))
 		slider = Slider(ax, label=name, valmin=0, valmax=N-1, valinit=ninit, valstep=1)
 		slider.valtext.set_visible(False)
 		text = ax.text(1.02, ypos, "", transform=ax.transAxes)
+		ypos += spacing + additionalSpacing
 		return slider, text
+
 
 	sed_sliders = {
 		'sfhdelayed': {
-			'tau_main': _createSlider(0.60, r"$\tau_{main}$", 1000, 100),
-			'age_main': _createSlider(0.58, r"$age_{main}$", 1000, 400),
-			'tau_burst': _createSlider(0.56, r"$\tau_{burst}$", 100, 99),
-			'age_burst': _createSlider(0.54, r"$age_{burst}$", 1000, 500),
-			'f_burst': _createSlider(0.52, r"$f_{burst}$", 100, 10),
+			'tau_main': _createSlider(r"$\tau_{main}$", 1000, 100),
+			'age_main': _createSlider(r"$age_{main}$", 1000, 400),
+			'tau_burst': _createSlider(r"$\tau_{burst}$", 100, 99),
+			'age_burst': _createSlider(r"$age_{burst}$", 1000, 500),
+			'f_burst': _createSlider(r"$f_{burst}$", 100, 10),
 		},
 		'bc03': {
-			'imf': _createSlider(0.48, r"$IMF$", 2, 1),
-			'metallicity': _createSlider(0.46, r"$Z_*$", 6, 3),
-			'separation_age': _createSlider(0.44, r"$\Delta_{age}$", 100, 10),
+			'imf': _createSlider(r"$IMF$", 2, 1, -0.02),
+			'metallicity': _createSlider(r"$Z_*$", 6, 3),
+			'separation_age': _createSlider(r"$\Delta_{age}$", 100, 10),
 		},
 		'nebular': {
-			'logU': _createSlider(0.40, r"$\log U$", 31, 15),
-			'zgas': _createSlider(0.38, r"$Z_{gas}$", 26, 10),
-			'f_esc': _createSlider(0.36, r"$f_{esc}$", 100),
-			'f_dust': _createSlider(0.34, r"$f_{dust}$", 100),
-			'lines_width': _createSlider(0.32, r"$\Delta v$", 10, 2),
-			'ne': _createSlider(0.30, r"$n_e$", 3, 2),
+			'logU': _createSlider(r"$\log U$", 31, 15, -0.02),
+			'zgas': _createSlider(r"$Z_{gas}$", 26, 10),
+			'f_esc': _createSlider(r"$f_{esc}$", 100),
+			'f_dust': _createSlider(r"$f_{dust}$", 100),
+			'ne': _createSlider(r"$n_e$", 3, 2),
 		},
 		'dustatt_modified_starburst': {
-			'E_BV_lines': _createSlider(0.26, r"$E_{BV-lines}$", 100, 40),
-			'E_BV_factor': _createSlider(0.24, r"$E_{BV-factor}$", 100, 20),
-			'uv_bump_amplitude': _createSlider(0.22, r"$A_{UV_{bump}}$", 100, 10),
-			'powerlaw_slope': _createSlider(0.20, r"$A_{slope}$", 100, 30),
-			'Ext_law_emission_lines': _createSlider(0.18, r"$Ext_{emission}$", 3, 2),
-			'Rv': _createSlider(0.16, r"$R_V$", 50, 40),
+			'E_BV_lines': _createSlider(r"$E_{BV-lines}$", 100, 40, -0.02),
+			'E_BV_factor': _createSlider(r"$E_{BV-factor}$", 100, 20),
+			'uv_bump_amplitude': _createSlider(r"$A_{UV_{bump}}$", 100, 10),
+			'powerlaw_slope': _createSlider(r"$A_{slope}$", 100, 30),
+			'Ext_law_emission_lines': _createSlider(r"$Ext_{emission}$", 3, 2),
+			'Rv': _createSlider(r"$R_V$", 50, 40),
 		},
 		'dl2014': {
-			'qpah': _createSlider(0.12, r"$q_{PAH}$", 11, 4),
-			'umin': _createSlider(0.10, r"$U_{min}$", 36, 10),
-			'alpha': _createSlider(0.08, r"$\alpha$", 21, 5),
-			'gamma': _createSlider(0.06, r"$\gamma$", 100, 30),
+			'qpah': _createSlider(r"$q_{PAH}$", 11, 4, -0.02),
+			'umin': _createSlider(r"$U_{min}$", 36, 10),
+			'alpha': _createSlider(r"$\alpha$", 21, 5),
+			'gamma': _createSlider(r"$\gamma$", 100, 30),
 		},
 		'redshifting': {
-			'redshift': _createSlider(0.02, r"$z$", 2501),
+			'redshift': _createSlider(r"$z$", 2501, additionalSpacing=-0.02),
 		}
 	}
 
@@ -217,7 +221,7 @@ def createPlot():
 						  sed.info["attenuation.uv_bump_width"],
 						  sed.info["attenuation.uv_bump_amplitude"],
 						  sed.info["attenuation.powerlaw_slope"])
-		calzAtt[0].set_data(sed.wavelength_grid / 1000, AL_EBV)
+		calzAtt[0].set_data(sed.wavelength_grid / 1000 * (1+sed.info["universe.redshift"]), AL_EBV)
 
 
 	# Assigning method to sliders
@@ -245,6 +249,20 @@ def createPlot():
 		fig.canvas.draw()
 
 	fig.canvas.mpl_connect('pick_event', onPick)
+
+
+	# Xlim link
+	def onXlimChange(ax):
+		def callback(event):
+			if event is ax:
+				return
+			ax.set_xlim(event.get_xlim())
+			ax.figure.canvas.draw_idle()
+		return callback
+
+	ax_spectra.callbacks.connect("xlim_changed", onXlimChange(ax_attenuation))
+	ax_attenuation.callbacks.connect("xlim_changed", onXlimChange(ax_attenuation))
+
 
 	plt.show()
 
