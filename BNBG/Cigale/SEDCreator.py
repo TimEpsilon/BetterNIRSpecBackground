@@ -8,6 +8,9 @@ import numpy as np
 import logging
 from matplotlib.widgets import Slider
 from copy import deepcopy
+import matplotlib as mpl
+
+mpl.use('Qt5Agg')
 
 # Logger
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -17,50 +20,55 @@ WAREHOUSE = SedWarehouse()
 
 SED_PARAMETERS = {
 	'sfhdelayed': {
-		'tau_main': np.linspace(10,5000, 1000),
-		'age_main': np.linspace(100, 13_000, 1000),
-		'tau_burst': np.linspace(100, 10_000, 100),
-		'age_burst': np.linspace(1, 100, 1000),
-		'f_burst': np.linspace(0, 1, 100),
+		'tau_main': np.arange(10,5000, 5),
+		'age_main': np.arange(100, 13_000, 15),
+		'tau_burst': np.arange(100, 10_000, 100),
+		'age_burst': np.arange(1, 100, 0.1),
+		'f_burst': np.arange(0, 1, 0.01),
 	},
 	'bc03': {
-		'imf': [0,1],
-		'metallicity': [0.0001, 0.0004, 0.004, 0.008, 0.02, 0.05],
-		'separation_age': np.linspace(1,100,100),
+		'imf': np.array([0,1]),
+		'metallicity': np.array([0.0001, 0.0004, 0.004, 0.008, 0.02, 0.05]),
+		'separation_age': np.arange(1,100,1),
 	},
 	'nebular': {
-		'logU': [-4.0, -3.9, -3.8, -3.7, -3.6, -3.5, -3.4, -3.3, -3.2, -3.1, -3.0, -2.9, -2.8, -2.7, -2.6,
-				 -2.5, -2.4, -2.3, -2.2, -2.1, -2.0, -1.9, -1.8, -1.7, -1.6, -1.5, -1.4, -1.3, -1.2, -1.1, -1.0],
-		'zgas' : [0.0001, 0.0004, 0.001, 0.002, 0.0025, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.011,
-				  0.012, 0.014, 0.016, 0.019, 0.020, 0.022, 0.025, 0.03, 0.033, 0.037, 0.041, 0.046, 0.051],
-		'f_esc': np.linspace(0,1,100),
-		'f_dust': np.linspace(0,1,100),
+		'logU': np.array([-4.0, -3.9, -3.8, -3.7, -3.6, -3.5, -3.4, -3.3, -3.2, -3.1, -3.0, -2.9, -2.8, -2.7, -2.6,
+				 -2.5, -2.4, -2.3, -2.2, -2.1, -2.0, -1.9, -1.8, -1.7, -1.6, -1.5, -1.4, -1.3, -1.2, -1.1, -1.0]),
+		'zgas' : np.array([0.0001, 0.0004, 0.001, 0.002, 0.0025, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.011,
+				  0.012, 0.014, 0.016, 0.019, 0.020, 0.022, 0.025, 0.03, 0.033, 0.037, 0.041, 0.046, 0.051]),
+		'f_esc': np.arange(0,1,0.01),
+		'f_dust': np.arange(0,1,0.01),
 		'lines_width': 150, # fixed
-		'ne': [10, 100, 1000],
+		'ne': np.array([10, 100, 1000]),
 		'emission': True,
 		'line_list': " ",
 	},
 	'dustatt_modified_starburst': {
-		'E_BV_lines': np.geomspace(1e-5, 5, 100),
-		'E_BV_factor': np.linspace(0,5, 100),
+		'E_BV_lines': np.arange(1e-3, 2, 0.001),
+		'E_BV_factor': np.arange(0,5, 0.01),
 		'uv_bump_wavelength': 217.5,  # fixed
 		'uv_bump_width': 35.0,  # fixed
-		'uv_bump_amplitude': np.linspace(0, 3, 100),
-		'powerlaw_slope': np.linspace(-2, 1, 100),
-		'Ext_law_emission_lines': [1, 2, 3],  # fixed
-		'Rv': np.linspace(2, 4, 50),
+		'uv_bump_amplitude': np.arange(0, 3, 0.1),
+		'powerlaw_slope': np.arange(-2, 1, 0.01),
+		'Ext_law_emission_lines': np.array([1, 2, 3]),  # fixed
+		'Rv': np.arange(2, 4, 0.01),
+		"filters" : "galex.FUV",
 	},
 	'dl2014' : {
-		'qpah': [0.47, 1.12, 1.77, 2.50, 3.19, 3.90, 4.58, 5.26, 5.95, 6.63, 7.32],
-		'umin': [0.100, 0.120, 0.150, 0.170, 0.200, 0.250, 0.300, 0.350, 0.400, 0.500, 0.600, 0.700, 0.800,
+		'qpah': np.array([0.47, 1.12, 1.77, 2.50, 3.19, 3.90, 4.58, 5.26, 5.95, 6.63, 7.32]),
+		'umin': np.array([0.100, 0.120, 0.150, 0.170, 0.200, 0.250, 0.300, 0.350, 0.400, 0.500, 0.600, 0.700, 0.800,
 				 1.000, 1.200, 1.500, 1.700, 2.000, 2.500, 3.000, 3.500, 4.000, 5.000, 6.000, 7.000, 8.000,
-				 10.00, 12.00, 15.00, 17.00, 20.00, 25.00, 30.00, 35.00, 40.00, 50.00],
-		'alpha': [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
-				  2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0],
-		'gamma': np.linspace(0, 1, 100),
+				 10.00, 12.00, 15.00, 17.00, 20.00, 25.00, 30.00, 35.00, 40.00, 50.00]),
+		'alpha': np.array([1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
+				  2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0]),
+		'gamma': np.arange(0, 1, 0.01),
+	},
+	'restframe_parameters' : {
+		'beta_calz94' : True,
+		'IRX' : True,
 	},
 	'redshifting': {
-		'redshift': np.linspace(0, 25, 2501)
+		'redshift': np.arange(0, 25, 0.01)
 	}
 }
 def generateSED(parameters : dict):
@@ -102,66 +110,65 @@ def createPlot():
 
 	sed_sliders = {
 		'sfhdelayed': {
-			'tau_main': _createSlider(r"$\tau_{main}$", 1000, 100),
-			'age_main': _createSlider(r"$age_{main}$", 1000, 400),
-			'tau_burst': _createSlider(r"$\tau_{burst}$", 100, 99),
-			'age_burst': _createSlider(r"$age_{burst}$", 1000, 500),
-			'f_burst': _createSlider(r"$f_{burst}$", 100, 10),
+			'tau_main': _createSlider(r"$\tau_{main}$", len(SED_PARAMETERS["sfhdelayed"]["tau_main"]), 100),
+			'age_main': _createSlider(r"$age_{main}$", len(SED_PARAMETERS["sfhdelayed"]["age_main"]), 400),
+			'tau_burst': _createSlider(r"$\tau_{burst}$", len(SED_PARAMETERS["sfhdelayed"]["tau_burst"]), 99),
+			'age_burst': _createSlider(r"$age_{burst}$", len(SED_PARAMETERS["sfhdelayed"]["age_burst"]), 500),
+			'f_burst': _createSlider(r"$f_{burst}$", len(SED_PARAMETERS["sfhdelayed"]["f_burst"]), 10),
 		},
 		'bc03': {
-			'imf': _createSlider(r"$IMF$", 2, 1, -0.02),
-			'metallicity': _createSlider(r"$Z_*$", 6, 3),
-			'separation_age': _createSlider(r"$\Delta_{age}$", 100, 10),
+			'imf': _createSlider(r"$IMF$", len(SED_PARAMETERS["bc03"]["imf"]), 1, -0.02),
+			'metallicity': _createSlider(r"$Z_*$", len(SED_PARAMETERS["bc03"]["metallicity"]), 3),
+			'separation_age': _createSlider(r"$\Delta_{age}$", len(SED_PARAMETERS["bc03"]["separation_age"]), 10),
 		},
 		'nebular': {
-			'logU': _createSlider(r"$\log U$", 31, 15, -0.02),
-			'zgas': _createSlider(r"$Z_{gas}$", 26, 10),
-			'f_esc': _createSlider(r"$f_{esc}$", 100),
-			'f_dust': _createSlider(r"$f_{dust}$", 100),
-			'ne': _createSlider(r"$n_e$", 3, 2),
+			'logU': _createSlider(r"$\log U$", len(SED_PARAMETERS["nebular"]["logU"]), 15, -0.02),
+			'zgas': _createSlider(r"$Z_{gas}$", len(SED_PARAMETERS["nebular"]["zgas"]), 10),
+			'f_esc': _createSlider(r"$f_{esc}$", len(SED_PARAMETERS["nebular"]["f_esc"])),
+			'f_dust': _createSlider(r"$f_{dust}$", len(SED_PARAMETERS["nebular"]["f_dust"])),
+			'ne': _createSlider(r"$n_e$", len(SED_PARAMETERS["nebular"]["ne"]), 2),
 		},
 		'dustatt_modified_starburst': {
-			'E_BV_lines': _createSlider(r"$E_{BV-lines}$", 100, 40, -0.02),
-			'E_BV_factor': _createSlider(r"$E_{BV-factor}$", 100, 20),
-			'uv_bump_amplitude': _createSlider(r"$A_{UV_{bump}}$", 100, 10),
-			'powerlaw_slope': _createSlider(r"$A_{slope}$", 100, 30),
-			'Ext_law_emission_lines': _createSlider(r"$Ext_{emission}$", 3, 2),
-			'Rv': _createSlider(r"$R_V$", 50, 40),
+			'E_BV_lines': _createSlider(r"$E_{BV-lines}$", len(SED_PARAMETERS["dustatt_modified_starburst"]["E_BV_lines"]), 40, -0.02),
+			'E_BV_factor': _createSlider(r"$E_{BV-factor}$", len(SED_PARAMETERS["dustatt_modified_starburst"]["E_BV_factor"]), 20),
+			'uv_bump_amplitude': _createSlider(r"$A_{UV_{bump}}$", len(SED_PARAMETERS["dustatt_modified_starburst"]["uv_bump_amplitude"]), 10),
+			'powerlaw_slope': _createSlider(r"$A_{slope}$", len(SED_PARAMETERS["dustatt_modified_starburst"]["powerlaw_slope"]), 30),
+			'Ext_law_emission_lines': _createSlider(r"$Ext_{emission}$", len(SED_PARAMETERS["dustatt_modified_starburst"]["Ext_law_emission_lines"]), 2),
+			'Rv': _createSlider(r"$R_V$", len(SED_PARAMETERS["dustatt_modified_starburst"]["Rv"]), 40),
 		},
 		'dl2014': {
-			'qpah': _createSlider(r"$q_{PAH}$", 11, 4, -0.02),
-			'umin': _createSlider(r"$U_{min}$", 36, 10),
-			'alpha': _createSlider(r"$\alpha$", 21, 5),
-			'gamma': _createSlider(r"$\gamma$", 100, 30),
+			'qpah': _createSlider(r"$q_{PAH}$", len(SED_PARAMETERS["dl2014"]["qpah"]), 4, -0.02),
+			'umin': _createSlider(r"$U_{min}$", len(SED_PARAMETERS["dl2014"]["umin"]), 10),
+			'alpha': _createSlider(r"$\alpha$", len(SED_PARAMETERS["dl2014"]["alpha"]), 5),
+			'gamma': _createSlider(r"$\gamma$", len(SED_PARAMETERS["dl2014"]["gamma"]), 30),
 		},
 		'redshifting': {
-			'redshift': _createSlider(r"$z$", 2501, additionalSpacing=-0.02),
+			'redshift': _createSlider(r"$z$",  len(SED_PARAMETERS["redshifting"]["redshift"]), additionalSpacing=-0.02),
 		}
 	}
 
 	sfh : list[Line2D] = ax_sfh.plot([],[], color='r')
-	fnu : list[Line2D] = ax_spectra.plot([],[], color='k', label=r"$F_\nu$")
+	fnu : list[Line2D] = ax_spectra.plot([],[], color='k', label=r"$F_\nu$", linewidth=1)
 	# Stellar lines
 	stellar = [
-		ax_spectra.plot([], [], color="xkcd:royal blue", linestyle='--', label="Stellar Old")[0],
-		ax_spectra.plot([], [], color="xkcd:bright blue", linestyle='--', label="Stellar Young")[0]
+		ax_spectra.plot([], [], color="xkcd:royal blue", linestyle='--', label="Stellar Old", linewidth=1)[0],
+		ax_spectra.plot([], [], color="xkcd:bright blue", linestyle='--', label="Stellar Young", linewidth=1)[0]
 	]
 
 	# Nebular lines
 	nebular = [
-		ax_spectra.plot([], [], color="xkcd:grass green", linestyle='--', label="Nebular Old")[0],
-		ax_spectra.plot([], [], color="xkcd:lime green", linestyle='--', label="Nebular Young")[0]
+		ax_spectra.plot([], [], color="xkcd:grass green", linestyle='--', label="Nebular Old", linewidth=1)[0],
+		ax_spectra.plot([], [], color="xkcd:lime green", linestyle='--', label="Nebular Young", linewidth=1)[0]
 	]
 
 	# Dust lines
 	dust = [
-		ax_spectra.plot([], [], color="xkcd:purple", linestyle='--', label=r"Dust $U_{min}$")[0],
-		ax_spectra.plot([], [], color="xkcd:lavender", linestyle='--', label=r"Dust $U_{max}$")[0]
+		ax_spectra.plot([], [], color="xkcd:purple", linestyle='--', label=r"Dust $U_{min}$", linewidth=1)[0],
+		ax_spectra.plot([], [], color="xkcd:lavender", linestyle='--', label=r"Dust $U_{max}$", linewidth=1)[0]
 	]
 
-	igm : list[Line2D] = ax_spectra.plot([], [], color="orange", linestyle="--", label="IGM")
+	igm : list[Line2D] = ax_spectra.plot([], [], color="orange", linestyle="--", label="IGM", linewidth=1)
 
-	attenuation : list[Line2D] = ax_attenuation.plot([], [], color="purple",)
 	calzAtt : list[Line2D] = ax_attenuation.plot([], [], color="red",)
 
 	leg = ax_spectra.legend()
@@ -172,6 +179,8 @@ def createPlot():
 		# Updating values
 		for module in SED_PARAMETERS.keys():
 			for p in SED_PARAMETERS[module].keys():
+				if module not in sed_sliders.keys():
+					continue
 				if p in sed_sliders[module].keys():
 					index = int(sed_sliders[module][p][0].val)
 					value = SED_PARAMETERS[module][p][index]
@@ -222,6 +231,8 @@ def createPlot():
 						  sed.info["attenuation.uv_bump_amplitude"],
 						  sed.info["attenuation.powerlaw_slope"])
 		calzAtt[0].set_data(sed.wavelength_grid / 1000 * (1+sed.info["universe.redshift"]), AL_EBV)
+
+		#print(f'{(sed.info["dust.luminosity"] - np.trapezoid(sed.luminosities["dust.Umin_Umax"] + sed.luminosities["dust.Umin_Umin"], sed.wavelength_grid))/sed.info["dust.luminosity"] *100:.03e}')
 
 
 	# Assigning method to sliders
