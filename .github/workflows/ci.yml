@@ -1,0 +1,47 @@
+name: "CI"
+
+on:
+  pull_request: # Triggered on pull requests to any branch
+  push:
+    branches: # Additionally, trigger on push events to specific branches
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Fetching JWST data
+    defaults:
+      run:
+        working-directory: 'JWST'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.x
+        cache: "pip"
+
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Create virtual environment
+      run: python3 -m venv env
+
+    - name: Upgrade pip and install dependencies
+      run: |
+        source env/bin/activate
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run fetcher
+      run: |
+        source env/bin/activate
+        python apply_pipeline.py
